@@ -1,0 +1,15 @@
+{
+  "name": "Funny Face Block Game",
+  "short_name": "Block Game",
+  "description": "Ride the Block Wheel through five worlds, befriend spiders, and win the Golden Candy Treasure.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#241a45",
+  "theme_color": "#241a45",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
