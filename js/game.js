@@ -13,8 +13,11 @@ function fitCanvas() {
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
-let saveUnlocked = 1;
-try { saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 6); } catch (e) {}
+let saveUnlocked = 1, saveChar = 'boy';
+try {
+  saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 6);
+  if (localStorage.getItem('ffbg_char') === 'girl') saveChar = 'girl';
+} catch (e) {}
 
 const game = {
   state: 'title', t: 0,
@@ -25,6 +28,8 @@ const game = {
   candy: 0, friendCount: 0,
   shake: 0, hudPulse: 0, heartFlash: 0,
   unlocked: saveUnlocked,
+  character: saveChar,
+  selLevel: saveUnlocked,
   introT: 0, completeT: 0, deadT: 0,
   caught: null, cut: null,
   zombie: null, bossStage: 0, arenaL: 4020, arenaR: 4960,
@@ -37,6 +42,39 @@ const game = {
 };
 
 // ================================================================ flow
+const PORTRAITS = [
+  { who: 'boy', x: 200, y: 452, r: 46 },
+  { who: 'girl', x: 318, y: 452, r: 46 }
+];
+const medalPos = i => ({ x: W / 2 - 220 + (i - 1) * 88, y: 688, r: 30 });
+game.goTitle = function () {
+  game.state = 'title';
+  game.titleT = 0;
+  game.selLevel = clamp(game.unlocked, 1, 6);
+  AudioSys.setMusic('title');
+};
+game.setCharacter = function (who) {
+  if (game.character === who) return;
+  game.character = who;
+  try { localStorage.setItem('ffbg_char', who); } catch (e) {}
+  AudioSys.sfx('switch');
+  const px2 = PORTRAITS.find(p => p.who === who);
+  if (px2) Particles.burst(px2.x, px2.y, 10, { colors: ['#ffe156', '#ff8fb0', '#fff'], type: 'star', sp1: 220, l1: 0.6, s1: 9, grav: 200 });
+};
+game.titleTap = function (p) {
+  for (const pt of PORTRAITS) {
+    if (Math.hypot(p.x - pt.x, p.y - pt.y) < pt.r * 1.25) { game.setCharacter(pt.who); return true; }
+  }
+  for (let i = 1; i <= 6; i++) {
+    const m = medalPos(i);
+    if (Math.hypot(p.x - m.x, p.y - m.y) < m.r * 1.35) {
+      if (i <= game.unlocked) { game.selLevel = i; game.startLevel(i); }
+      else AudioSys.sfx('boing');
+      return true;
+    }
+  }
+  return false;
+};
 game.startLevel = function (n) {
   const lv = buildLevel(n);
   game.level = lv;
@@ -319,10 +357,7 @@ function updatePlay(dt) {
     if (lv.n === 6 && chance(0.4)) Particles.candyBurst(4470 + rand(-60, 60), 250, 1); // the volcano keeps giving
     if (game.partyT > 5 && justP.Space) {
       if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
-      else {
-        game.state = 'title'; game.titleT = 0;
-        AudioSys.setMusic('title');
-      }
+      else game.goTitle();
     }
   }
 
@@ -349,10 +384,15 @@ function updateTitle(dt) {
   tp.power = kinds[Math.floor(game.titleT / 2.5) % kinds.length];
   const ts = game.titleSpider;
   ts.t += dt; ts.danceT = 1;
+  // Up/Down (or tapping a portrait) switches the hero
+  if (justP.ArrowUp || justP.ArrowDown) game.setCharacter(game.character === 'boy' ? 'girl' : 'boy');
+  // Left/Right (or tapping a medallion) picks the level to play
+  if (justP.ArrowLeft && game.selLevel > 1) { game.selLevel--; AudioSys.sfx('candy'); }
+  if (justP.ArrowRight && game.selLevel < game.unlocked) { game.selLevel++; AudioSys.sfx('candy'); }
   for (let i = 1; i <= 6; i++) {
-    if (justP['Digit' + i] && i <= game.unlocked) { game.startLevel(i); return; }
+    if (justP['Digit' + i] && i <= game.unlocked) { game.selLevel = i; game.startLevel(i); return; }
   }
-  if (justP.Space) game.startLevel(clamp(game.unlocked, 1, 6));
+  if (justP.Space) game.startLevel(clamp(game.selLevel, 1, game.unlocked));
 }
 function update(dt) {
   game.t += dt;
@@ -396,7 +436,7 @@ function update(dt) {
       Particles.update(dt);
       if (game.completeT > 2.4) {
         if (game.level.n < 5) game.startLevel(game.level.n + 1);
-        else { game.state = 'title'; game.titleT = 0; AudioSys.setMusic('title'); }
+        else game.goTitle();
       }
       break;
   }
@@ -766,30 +806,94 @@ function renderTitle() {
   // characters
   if (game.titlePlayer) game.titlePlayer.draw(ctx);
   if (game.titleSpider) game.titleSpider.draw(ctx);
+  // hero picker: two portraits, Up/Down or tap to switch
+  for (const pt of PORTRAITS) {
+    const sel = game.character === pt.who;
+    ctx.save();
+    if (sel) {
+      ctx.globalAlpha = 0.45 + 0.2 * Math.sin(t * 4);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r + 12, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = sel ? '#fff' : 'rgba(255,255,255,0.75)';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = sel ? '#ffa726' : '#8a7fae'; ctx.lineWidth = sel ? 6 : 4;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, TAU); ctx.stroke();
+    drawHead(ctx, pt.x, pt.y + 4, pt.who, t, sel);
+    ctx.restore();
+  }
+  drawKeycap(ctx, 259, 538, 36, 'up', t);
+  drawKeycap(ctx, 259, 582, 36, 'down', t + 0.5);
   // press space
   drawSpacebar(ctx, W / 2, 475, 175, t, false);
   ctx.save();
   ctx.globalAlpha = 0.7 + Math.sin(t * 4) * 0.3;
   outlineText(ctx, 'PRESS SPACE', W / 2, 545, 34, '#fff', '#5a4a86');
   ctx.restore();
-  // world medallions
+  // world medallions: Left/Right or tap to pick where to play
+  drawKeycap(ctx, W / 2 - 292, 688, 40, 'left', t);
+  drawKeycap(ctx, W / 2 + 292, 688, 40, 'right', t + 0.5);
   for (let i = 1; i <= 6; i++) {
-    const mx = W / 2 - 220 + (i - 1) * 88, my = 688;
+    const m = medalPos(i);
     const open = i <= game.unlocked;
+    const sel = i === game.selLevel && open;
+    const my = m.y - (sel ? 6 : 0);
+    if (sel) {
+      ctx.save();
+      ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 5);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(m.x, my, m.r + 10, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
     ctx.fillStyle = open ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
-    ctx.beginPath(); ctx.arc(mx, my, 30, 0, TAU); ctx.fill();
-    ctx.strokeStyle = open ? '#ffd24a' : '#8a8a9a'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(mx, my, 30, 0, TAU); ctx.stroke();
-    if (open) drawLevelIcon(ctx, mx, my, 15, LEVEL_META[i].theme, t);
-    else {
+    ctx.beginPath(); ctx.arc(m.x, my, m.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = sel ? '#ffa726' : open ? '#ffd24a' : '#8a8a9a'; ctx.lineWidth = sel ? 5 : 4;
+    ctx.beginPath(); ctx.arc(m.x, my, m.r, 0, TAU); ctx.stroke();
+    if (open) {
+      drawLevelIcon(ctx, m.x, my, 15, LEVEL_META[i].theme, t);
+      // number badge
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(m.x + 22, my - 22, 11, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(m.x + 22, my - 22, 11, 0, TAU); ctx.stroke();
+      outlineText(ctx, String(i), m.x + 22, my - 21, 16, '#5a4a86', '#fff');
+    } else {
       ctx.fillStyle = '#8a8a9a';
-      rr(ctx, mx - 10, my - 6, 20, 15, 4); ctx.fill();
+      rr(ctx, m.x - 10, my - 6, 20, 15, 4); ctx.fill();
       ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(mx, my - 7, 7, Math.PI, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(m.x, my - 7, 7, Math.PI, TAU); ctx.stroke();
     }
   }
   Particles.draw(ctx);
   drawTouchUI();
+}
+function drawHead(ctx, x, y, who, t, sel) {
+  ctx.fillStyle = '#ffcf9f';
+  ctx.beginPath(); ctx.arc(x, y, 22, 0, TAU); ctx.fill();
+  if (who === 'girl') {
+    ctx.fillStyle = '#ffd84f';
+    for (let i = 0; i <= 6; i++) {
+      const a = Math.PI + i * Math.PI / 6;
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * 20, y + Math.sin(a) * 20, 9, 0, TAU);
+      ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(x - 24, y + 10, 7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 24, y + 10, 7, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ff5fa2';
+    ctx.beginPath();
+    ctx.moveTo(x + 12, y - 15); ctx.lineTo(x + 4, y - 21); ctx.lineTo(x + 5, y - 10);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 12, y - 15); ctx.lineTo(x + 20, y - 21); ctx.lineTo(x + 19, y - 10);
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.fillStyle = '#ffa62b';
+    ctx.beginPath(); ctx.arc(x, y - 2, 22.5, Math.PI, TAU); ctx.fill();
+    rr(ctx, x + 2, y - 10, 24, 8, 4); ctx.fill();
+  }
+  drawFace(ctx, x, y + 6, 34, sel ? 'grin' : 'happy', t, who === 'girl' ? 13 : 3);
 }
 function render() {
   if (game.state === 'title') renderTitle();

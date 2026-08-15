@@ -212,8 +212,9 @@ class Player {
     ctx.strokeStyle = '#4a3a66'; ctx.lineWidth = 3; ctx.stroke();
     drawFace(ctx, wx, wy + 1, 21, this.superT > 0 ? 'grin' : 'happy', t, 7, this.facing, 0);
   }
-  drawBoy(ctx, bx, by, mood) {
+  drawBoy(ctx, bx, by, mood) { // draws whichever hero is selected (boy or girl)
     const t = this.t;
+    const girl = game.character === 'girl';
     // arms
     ctx.strokeStyle = '#ffcf9f'; ctx.lineWidth = 8; ctx.lineCap = 'round';
     const sw = Math.sin(t * 10) * (Math.abs(this.vx) > 10 ? 4 : 1.2);
@@ -222,15 +223,40 @@ class Player {
     ctx.moveTo(bx + 11, by + 33); ctx.lineTo(bx + 23, by + 42 - sw);
     ctx.stroke();
     // body
-    ctx.fillStyle = '#ff5a5a'; rr(ctx, -15 + bx, by + 26, 30, 26, 9); ctx.fill();
-    ctx.fillStyle = '#4a6cff'; rr(ctx, -14 + bx, by + 46, 28, 12, 5); ctx.fill();
+    ctx.fillStyle = girl ? '#ff5fa2' : '#ff5a5a'; rr(ctx, -15 + bx, by + 26, 30, 26, 9); ctx.fill();
+    ctx.fillStyle = girl ? '#8f5fff' : '#4a6cff'; rr(ctx, -14 + bx, by + 46, 28, 12, 5); ctx.fill();
     // head
     ctx.fillStyle = '#ffcf9f';
     ctx.beginPath(); ctx.arc(bx, by + 8, 19, 0, TAU); ctx.fill();
-    // cap
-    ctx.fillStyle = '#ffa62b';
-    ctx.beginPath(); ctx.arc(bx, by + 6, 19.5, Math.PI, TAU); ctx.fill();
-    rr(ctx, bx + (this.facing > 0 ? 4 : -26), by - 1, 22, 7, 3); ctx.fill();
+    if (girl) {
+      // curly blonde hair: a crown of springy puffs
+      ctx.fillStyle = '#ffd84f';
+      for (let i = 0; i <= 6; i++) {
+        const a = Math.PI + i * Math.PI / 6;
+        ctx.beginPath();
+        ctx.arc(bx + Math.cos(a) * 17, by + 8 + Math.sin(a) * 17, 8, 0, TAU);
+        ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(bx - 21, by + 16, 6.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx + 21, by + 16, 6.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx - 22, by + 24, 5.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx + 22, by + 24, 5.5, 0, TAU); ctx.fill();
+      // little pink bow
+      ctx.fillStyle = '#ff5fa2';
+      const bwx = bx + this.facing * 11, bwy = by - 11;
+      ctx.beginPath();
+      ctx.moveTo(bwx, bwy); ctx.lineTo(bwx - 8, bwy - 6); ctx.lineTo(bwx - 7, bwy + 5);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bwx, bwy); ctx.lineTo(bwx + 8, bwy - 6); ctx.lineTo(bwx + 7, bwy + 5);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(bwx, bwy, 3, 0, TAU); ctx.fill();
+    } else {
+      // cap
+      ctx.fillStyle = '#ffa62b';
+      ctx.beginPath(); ctx.arc(bx, by + 6, 19.5, Math.PI, TAU); ctx.fill();
+      rr(ctx, bx + (this.facing > 0 ? 4 : -26), by - 1, 22, 7, 3); ctx.fill();
+    }
     // face
     drawFace(ctx, bx, by + 13, 30, mood, t, 3, this.facing * 0.7 + this.vx / 500, this.vy / 1100);
   }

@@ -344,6 +344,8 @@ const TouchUI = {
         this.goFs();
         continue;
       }
+      // title screen: portraits and level medallions are directly tappable
+      if (typeof game !== 'undefined' && game.state === 'title' && game.titleTap && game.titleTap(p)) continue;
       const b = this.hit(p);
       this.assign(t.identifier, b ? b.key : 'Space');
     }
