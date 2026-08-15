@@ -15,7 +15,7 @@ fitCanvas();
 
 let saveUnlocked = 1, saveChar = 'boy';
 try {
-  saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 6);
+  saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 7);
   if (localStorage.getItem('ffbg_char') === 'girl') saveChar = 'girl';
 } catch (e) {}
 
@@ -46,11 +46,11 @@ const PORTRAITS = [
   { who: 'boy', x: 200, y: 452, r: 46 },
   { who: 'girl', x: 318, y: 452, r: 46 }
 ];
-const medalPos = i => ({ x: W / 2 - 220 + (i - 1) * 88, y: 688, r: 30 });
+const medalPos = i => ({ x: W / 2 - 264 + (i - 1) * 88, y: 688, r: 30 });
 game.goTitle = function () {
   game.state = 'title';
   game.titleT = 0;
-  game.selLevel = clamp(game.unlocked, 1, 6);
+  game.selLevel = clamp(game.unlocked, 1, 7);
   AudioSys.setMusic('title');
 };
 game.setCharacter = function (who) {
@@ -65,7 +65,7 @@ game.titleTap = function (p) {
   for (const pt of PORTRAITS) {
     if (Math.hypot(p.x - pt.x, p.y - pt.y) < pt.r * 1.25) { game.setCharacter(pt.who); return true; }
   }
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 7; i++) {
     const m = medalPos(i);
     if (Math.hypot(p.x - m.x, p.y - m.y) < m.r * 1.35) {
       if (i <= game.unlocked) { game.selLevel = i; game.startLevel(i); }
@@ -87,6 +87,7 @@ game.startLevel = function (n) {
   game.friendCount = 0;
   game.zombie = null; game.bossStage = 0; game.bossPickups = [];
   game.chest = null; game.endPhase = null; game.cut = null; game.caught = null;
+  game.raceDone = false; game.cheerT = 0;
   game.cam.x = 0;
   game.cam.y = lv.h > H ? clamp(game.player.cy - H * 0.5, 0, lv.h - H) : 0;
   game.state = 'intro'; game.introT = 0;
@@ -197,9 +198,21 @@ game.setBossStage = function (k) {
   }
   AudioSys.setMusic('boss');
 };
+game.finishRace = function () {
+  if (game.raceDone) return;
+  game.raceDone = true;
+  game.endPhase = 'party'; game.partyT = 0;
+  AudioSys.setMusic('win');
+  AudioSys.sfx('cheer');
+  AudioSys.sfx('fanfare');
+  game.shake = Math.max(game.shake, 0.3);
+  Particles.candyBurst(game.player.cx, game.player.y - 40, 16);
+  Particles.burst(game.player.cx, game.player.y, 24, { colors: RAINBOW, type: 'confetti', sp1: 400, l0: 1, l1: 2, s1: 12, grav: 300 });
+};
 game.startEnding = function () {
-  game.unlocked = 6; // beating the zombie unlocks the bonus level
-  try { localStorage.setItem('ffbg_unlocked', '6'); } catch (e) {}
+  // each boss beaten unlocks the next bonus world
+  game.unlocked = Math.max(game.unlocked, game.level.n === 6 ? 7 : 6);
+  try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
   if (game.level.n === 6) {
     game.endPhase = 'erupting';
     game.cut = { name: 'eruption', t: 0 };
@@ -211,6 +224,7 @@ game.startEnding = function () {
   AudioSys.sfx('rumble');
   game.shake = 0.8;
 };
+
 
 // ================================================================ update
 function updateCut(dt) {
@@ -285,8 +299,9 @@ function updateCut(dt) {
 }
 function updateCamera(dt) {
   const lv = game.level, pl = game.player;
-  const tx = clamp(pl.cx + pl.facing * 70 - W * 0.5, 0, lv.w - W);
-  game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-6 * dt));
+  const lead = pl.vehicle === 'truck' ? 180 : 70; // look further ahead at rally speed
+  const tx = clamp(pl.cx + pl.facing * lead - W * 0.5, 0, lv.w - W);
+  game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-(pl.turboT > 0 ? 10 : 6) * dt));
   const ty = lv.h > H ? clamp(pl.cy - H * 0.52, 0, lv.h - H) : 0;
   game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-6 * dt));
 }
@@ -306,7 +321,7 @@ function updatePlay(dt) {
     }
   }
 
-  if (game.endPhase !== 'party') pl.update(dt);
+  if (game.endPhase !== 'party' || lv.n === 7) pl.update(dt); // victory laps allowed at the rally!
   else {
     pl.t += dt;
     pl.squash = 1 + Math.sin(game.t * 8) * 0.08;
@@ -355,8 +370,17 @@ function updatePlay(dt) {
       Particles.candyBurst(game.cam.x + rand(150, W - 150), game.cam.y + rand(100, 300), 1);
     }
     if (lv.n === 6 && chance(0.4)) Particles.candyBurst(4470 + rand(-60, 60), 250, 1); // the volcano keeps giving
+    if (lv.n === 7) { // the crowd goes wild
+      game.cheerT -= dt;
+      if (game.cheerT <= 0) {
+        game.cheerT = 1.5;
+        AudioSys.sfx('cheer');
+        Particles.burst(6870 + rand(-260, 260), 470, 10, { colors: RAINBOW, type: 'confetti', sp1: 260, l0: 1, l1: 2, s1: 11, grav: 250, up: 200 });
+      }
+    }
     if (game.partyT > 5 && justP.Space) {
       if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
+      else if (lv.n === 6) game.startLevel(7); // and another one!
       else game.goTitle();
     }
   }
@@ -389,7 +413,7 @@ function updateTitle(dt) {
   // Left/Right (or tapping a medallion) picks the level to play
   if (justP.ArrowLeft && game.selLevel > 1) { game.selLevel--; AudioSys.sfx('candy'); }
   if (justP.ArrowRight && game.selLevel < game.unlocked) { game.selLevel++; AudioSys.sfx('candy'); }
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 7; i++) {
     if (justP['Digit' + i] && i <= game.unlocked) { game.selLevel = i; game.startLevel(i); return; }
   }
   if (justP.Space) game.startLevel(clamp(game.selLevel, 1, game.unlocked));
@@ -497,6 +521,15 @@ function drawLevelIcon(ctx, x, y, s, theme, t) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffe156';
     ctx.beginPath(); ctx.arc(0, -s * 0.95 - Math.abs(Math.sin(t * 3)) * s * 0.2, s * 0.14, 0, TAU); ctx.fill();
+  } else if (theme === 'dirt') {
+    ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = s * 0.16; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-s * 0.6, s); ctx.lineTo(-s * 0.6, -s * 0.95); ctx.stroke();
+    for (let r2 = 0; r2 < 2; r2++) {
+      for (let c2 = 0; c2 < 3; c2++) {
+        ctx.fillStyle = (r2 + c2) % 2 ? '#3a2a3a' : '#fff';
+        ctx.fillRect(-s * 0.55 + c2 * s * 0.38, -s * 0.95 + r2 * s * 0.34 + Math.sin(t * 3 + c2) * s * 0.05, s * 0.38, s * 0.34);
+      }
+    }
   } else if (theme === 'cave') {
     ctx.fillStyle = '#cfc8e0';
     rr(ctx, -s * 0.7, -s * 0.8, s * 1.4, s * 1.2, s * 0.35); ctx.fill();
@@ -650,7 +683,7 @@ function drawIntroCard() {
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.fill();
   ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 6;
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.stroke();
-  outlineText(ctx, lv.n === 6 ? 'BONUS LEVEL!' : 'LEVEL ' + lv.n, W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
+  outlineText(ctx, lv.n >= 6 ? 'BONUS LEVEL!' : 'LEVEL ' + lv.n, W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
   outlineText(ctx, lv.name, W / 2, y, 44, '#5a4a86', '#fff');
   drawLevelIcon(ctx, W / 2, y + 85, 38, lv.theme, game.t);
   ctx.restore();
@@ -693,7 +726,10 @@ function drawPartyOverlay() {
     ctx.save();
     ctx.globalAlpha = k;
     ctx.translate(0, (1 - k) * -60);
-    if (game.level.n === 6) {
+    if (game.level.n === 7) {
+      outlineText(ctx, 'CANDY TROPHY!', W / 2, 130, 76, '#ffd24a', '#5a4a86');
+      outlineText(ctx, 'YOU WIN THE RACE!', W / 2, 205, 44, '#fff', '#5a4a86');
+    } else if (game.level.n === 6) {
       outlineText(ctx, 'CANDY VOLCANO!', W / 2, 150, 80, '#ffd24a', '#8a2a10');
     } else {
       outlineText(ctx, 'YOU FOUND THE', W / 2, 130, 52, '#ffd24a', '#5a4a86');
@@ -832,9 +868,9 @@ function renderTitle() {
   outlineText(ctx, 'PRESS SPACE', W / 2, 545, 34, '#fff', '#5a4a86');
   ctx.restore();
   // world medallions: Left/Right or tap to pick where to play
-  drawKeycap(ctx, W / 2 - 292, 688, 40, 'left', t);
-  drawKeycap(ctx, W / 2 + 292, 688, 40, 'right', t + 0.5);
-  for (let i = 1; i <= 6; i++) {
+  drawKeycap(ctx, W / 2 - 336, 688, 40, 'left', t);
+  drawKeycap(ctx, W / 2 + 336, 688, 40, 'right', t + 0.5);
+  for (let i = 1; i <= 7; i++) {
     const m = medalPos(i);
     const open = i <= game.unlocked;
     const sel = i === game.selLevel && open;

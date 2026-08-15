@@ -6,7 +6,8 @@ const LEVEL_META = {
   3: { name: 'CLOUD WORLD', theme: 'cloud', music: 'cloud' },
   4: { name: 'MOUNTAIN WORLD', theme: 'mountain', music: 'mountain' },
   5: { name: 'ZOMBIE CAVE', theme: 'cave', music: 'cave' },
-  6: { name: 'LAVA WORLD', theme: 'lava', music: 'lava' }
+  6: { name: 'LAVA WORLD', theme: 'lava', music: 'lava' },
+  7: { name: 'MONSTER TRUCK RALLY', theme: 'dirt', music: 'dirt' }
 };
 
 function newLevel(n) {
@@ -16,6 +17,7 @@ function newLevel(n) {
     w: 4200, h: 720,
     solids: [], spiders: [], pickups: [], checks: [], hints: [], bridges: [],
     decor: {}, lights: [], lava: null,
+    ramps: null, turbos: null, finishX: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -260,6 +262,54 @@ function buildLevel(n) {
     for (let x = 150; x < lv.w; x += rand(350, 700)) lv.decor.rocks.push({ x, s: rand(0.7, 1.4) });
   }
 
+  if (n === 7) { // ---------------- MONSTER TRUCK RALLY (bonus)
+    lv.w = 7200;
+    lv.lava = [{ x: 1500, w: 220 }, { x: 3000, w: 260 }, { x: 5100, w: 200 }];
+    addGround(lv, 0, 1500, G);
+    addGround(lv, 1720, 1280, G);
+    addGround(lv, 3260, 1840, G);
+    addGround(lv, 5300, 1900, G);
+    lv.ramps = [
+      { x: 1290, y: G, w: 210, h: 85 },
+      { x: 2400, y: G, w: 180, h: 70 },
+      { x: 2780, y: G, w: 210, h: 92 },
+      { x: 4000, y: G, w: 180, h: 70 },
+      { x: 4870, y: G, w: 220, h: 95 },
+      { x: 5750, y: G, w: 300, h: 210, big: true } // THE ramp
+    ];
+    lv.turbos = [{ x: 5430, w: 130 }];
+    lv.finishX = 6420;
+    lv.pickups.push(new ParkedTruck(300, G));
+    pick(lv, 650, G - 90, 'fire');
+    pick(lv, 2550, G - 80, 'ice');
+    pick(lv, 3450, G - 70, 'heart');
+    pick(lv, 4250, G - 80, 'rainbow');
+    pick(lv, 5250, G - 70, 'heart');
+    candyRow(lv, 500, 1150, G - 60, 5);
+    candyArc(lv, 1500, 1950, 300, 540, 6);
+    candyRow(lv, 2050, 2350, G - 60, 3);
+    candyArc(lv, 2990, 3450, 290, 540, 6);
+    candyRow(lv, 3600, 3950, G - 60, 4);
+    candyArc(lv, 4180, 4560, 340, 540, 5);
+    candyArc(lv, 5090, 5450, 300, 540, 5);
+    candyArc(lv, 6050, 6700, 130, 480, 8);
+    spider(lv, 1050, G, 'walk', { range: 180 });
+    spider(lv, 2050, G, 'walk', { range: 150 });
+    spider(lv, 2250, G, 'tornado', { range: 220 });
+    spider(lv, 3700, G, 'tornado', { range: 250 });
+    spider(lv, 3900, G, 'jump');
+    spider(lv, 4450, G, 'walk', { range: 150 });
+    spider(lv, 4650, G, 'tornado', { range: 200 });
+    spider(lv, 5000, G, 'tornado', { range: 140 });
+    lv.checks.push(new Checkpoint(1850, G));
+    lv.checks.push(new Checkpoint(3450, G));
+    lv.checks.push(new Checkpoint(5350, G));
+    lv.hints.push({ x: 480, y: G - 220, icon: 'arrows' });
+    lv.decor.mesas = true;
+    lv.decor.flags = [];
+    for (let x = 700; x < 6200; x += rand(500, 900)) lv.decor.flags.push({ x, c: randi(0, 3) });
+  }
+
   return lv;
 }
 function inLava(lv, cx) {
@@ -284,6 +334,9 @@ function drawBG(ctx, lv, cam, t) {
   } else if (th === 'lava') {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#3a0d14'); g.addColorStop(0.6, '#6a1c10'); g.addColorStop(1, '#9a3612');
+  } else if (th === 'dirt') {
+    g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#7ec8e8'); g.addColorStop(0.7, '#ffe2b0'); g.addColorStop(1, '#ffd18a');
   } else {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#171029'); g.addColorStop(1, '#2c1e4a');
@@ -424,6 +477,24 @@ function drawBG(ctx, lv, cam, t) {
       // a sleepy face on the volcano, because everything here has a face
       drawFace(ctx, vwx, 420, 70, 'sleepy', t, 31);
     }
+  } else if (th === 'dirt') {
+    // desert sun
+    const sx = 1100 - cam.x * 0.04, sy = 100;
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(sx, sy, 48, 0, TAU); ctx.fill();
+    drawFace(ctx, sx, sy, 48, 'happy', t, 11);
+    // flat-top mesas
+    for (let i = -1; i < 5; i++) {
+      const mx = i * 560 - (cam.x * 0.22) % 560;
+      ctx.fillStyle = '#d9a05e';
+      ctx.beginPath();
+      ctx.moveTo(mx - 250, 640); ctx.lineTo(mx - 160, 330); ctx.lineTo(mx + 40, 330); ctx.lineTo(mx + 130, 640);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c98f4e';
+      ctx.fillRect(mx - 160, 330, 200, 24);
+    }
+    // drifting dust
+    if (chance(0.2)) Particles.burst(cam.x + rand(0, W), cam.y + rand(480, 640), 1, { colors: ['#e8caa0', '#d9b98a'], sp1: 40, grav: -15, l0: 1.5, l1: 3, up: 0, s0: 6, s1: 14 });
   } else if (th === 'cave') {
     // stalactites silhouettes
     ctx.fillStyle = '#241640';
@@ -504,6 +575,7 @@ function drawSolids(ctx, lv, cam, t) {
     else if (th === 'mountain') { fill = '#8d8fa0'; topFill = '#ffffff'; line = 'rgba(60,60,80,0.3)'; }
     else if (th === 'cave') { fill = '#453563'; topFill = '#6a4fa0'; line = 'rgba(20,10,40,0.4)'; }
     else if (th === 'lava') { fill = '#43222e'; topFill = '#ff7a2b'; line = 'rgba(20,8,12,0.45)'; }
+    else if (th === 'dirt') { fill = '#a8672f'; topFill = '#c9924a'; line = 'rgba(90,50,20,0.3)'; }
     else { fill = '#b07845'; topFill = '#5ecb4a'; line = 'rgba(90,50,20,0.25)'; }
     if (s.plat && th !== 'cave') { fill = '#c98f4e'; }
     ctx.fillStyle = fill;
@@ -577,6 +649,60 @@ function drawSolids(ctx, lv, cam, t) {
       ctx.restore();
       const ix = b.x + b.w / 2, iy = b.y - 46 + Math.sin(t * 3) * 8;
       drawBlock(ctx, ix - 20, iy - 20, 40, 'rainbow', t);
+    }
+  }
+  // dirt ramps
+  if (lv.ramps) {
+    for (const r of lv.ramps) {
+      if (r.x + r.w < cam.x - 60 || r.x > cam.x + W + 60) continue;
+      ctx.fillStyle = r.big ? '#8a4f22' : '#96592a';
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.w, r.y - r.h); ctx.lineTo(r.x + r.w, r.y);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6a3a18'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.w, r.y - r.h); ctx.lineTo(r.x + r.w, r.y);
+      ctx.closePath(); ctx.stroke();
+      // plank stripes up the slope
+      ctx.strokeStyle = 'rgba(255,220,150,0.5)'; ctx.lineWidth = 4;
+      const nSt = r.big ? 6 : 4;
+      for (let i = 1; i <= nSt; i++) {
+        const k = i / (nSt + 1);
+        ctx.beginPath();
+        ctx.moveTo(r.x + r.w * k, r.y - r.h * k + 4);
+        ctx.lineTo(r.x + r.w * k, r.y);
+        ctx.stroke();
+      }
+      // launch chevron
+      ctx.fillStyle = '#ffe156';
+      ctx.save();
+      ctx.translate(r.x + r.w * 0.62, r.y - r.h * 0.62 + 14 + (r.big ? Math.sin(t * 5) * 4 : 0));
+      ctx.rotate(-Math.atan2(r.h, r.w));
+      ctx.beginPath();
+      ctx.moveTo(14, 0); ctx.lineTo(-8, -11); ctx.lineTo(-8, 11);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+  // turbo pads
+  if (lv.turbos) {
+    for (const tp of lv.turbos) {
+      if (tp.x + tp.w < cam.x - 60 || tp.x > cam.x + W + 60) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 6);
+      ctx.fillStyle = '#ffe156';
+      rr(ctx, tp.x - 8, 606, tp.w + 16, 18, 8); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#ff9f43';
+      rr(ctx, tp.x, 610, tp.w, 12, 6); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (let i = 0; i < 3; i++) {
+        const chx = tp.x + 20 + i * 34 + (t * 90) % 34;
+        if (chx > tp.x + tp.w - 14) continue;
+        ctx.beginPath();
+        ctx.moveTo(chx, 612); ctx.lineTo(chx + 12, 616); ctx.lineTo(chx, 620);
+        ctx.closePath(); ctx.fill();
+      }
     }
   }
   // lava pools
@@ -680,6 +806,100 @@ function drawDecor(ctx, lv, cam, t) {
       ctx.beginPath();
       ctx.moveTo(p.x - 14 * s, gt - 100 * s); ctx.lineTo(p.x, gt - 62 * s - 42 * s); ctx.lineTo(p.x + 14 * s, gt - 100 * s);
       ctx.closePath(); ctx.fill();
+    }
+  } else if (th === 'dirt') {
+    const G2 = 620;
+    // pennant flags along the track
+    for (const f of d.flags || []) {
+      if (!visible(f.x)) continue;
+      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(f.x, G2); ctx.lineTo(f.x, G2 - 120); ctx.stroke();
+      ctx.fillStyle = ['#ff5a8a', '#4aa3ff', '#ffe156', '#57d357'][f.c];
+      const wv = Math.sin(t * 4 + f.x) * 5;
+      ctx.beginPath();
+      ctx.moveTo(f.x, G2 - 120); ctx.lineTo(f.x + 42, G2 - 110 + wv); ctx.lineTo(f.x, G2 - 98);
+      ctx.closePath(); ctx.fill();
+    }
+    // checkered FINISH banner
+    if (visible(6420)) {
+      for (const px2 of [6330, 6560]) {
+        ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(px2, G2); ctx.lineTo(px2, 330); ctx.stroke();
+      }
+      for (let cxr = 0; cxr < 10; cxr++) {
+        for (let ro = 0; ro < 3; ro++) {
+          ctx.fillStyle = (cxr + ro) % 2 ? '#fff' : '#3a2a3a';
+          ctx.fillRect(6330 + cxr * 23, 330 + ro * 20 + Math.sin(t * 3 + cxr) * 3, 23, 20);
+        }
+      }
+    }
+    // grandstand with a cheering crowd of old friends
+    if (visible(6800)) {
+      for (let row = 0; row < 3; row++) {
+        const ry = 560 - row * 52, rx = 6560 + row * 24;
+        ctx.fillStyle = row % 2 ? '#b0743e' : '#9a6232';
+        rr(ctx, rx, ry, 620 - row * 48, G2 - ry, 8); ctx.fill();
+        // the crowd
+        for (let i = 0; i < 9 - row; i++) {
+          const px3 = rx + 40 + i * 64, py3 = ry - 16 + Math.abs(Math.sin(t * 5 + i * 1.3 + row)) * -10;
+          const kind = hash2(i, row);
+          if (kind < 0.16) { // friendly spider fan
+            ctx.fillStyle = '#f060a8';
+            ctx.beginPath(); ctx.ellipse(px3, py3, 17, 13, 0, 0, TAU); ctx.fill();
+            drawFace(ctx, px3, py3, 20, 'happy', t, i * 7 + row);
+          } else if (kind < 0.26) { // zombie fan
+            ctx.fillStyle = '#8bc34a';
+            rr(ctx, px3 - 15, py3 - 14, 30, 28, 8); ctx.fill();
+            drawFace(ctx, px3, py3, 22, 'grin', t, i * 5 + row);
+          } else if (kind < 0.36) { // King Magma fan (the cool one)
+            ctx.fillStyle = '#ff8fd0';
+            ctx.beginPath(); ctx.arc(px3, py3, 16, 0, TAU); ctx.fill();
+            ctx.fillStyle = '#2a1a2a';
+            rr(ctx, px3 - 12, py3 - 7, 10, 6, 2); ctx.fill();
+            rr(ctx, px3 + 2, py3 - 7, 10, 6, 2); ctx.fill();
+          } else { // block fans
+            const bk = ['fire', 'ice', 'rainbow', 'power', 'none'][Math.floor(kind * 13) % 5];
+            drawBlock(ctx, px3 - 14, py3 - 14, 28, bk, t, { seed: i * 3 + row });
+          }
+          // waving arms
+          ctx.strokeStyle = 'rgba(60,40,60,0.55)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+          const wave = Math.sin(t * 6 + i + row * 2) * 8;
+          ctx.beginPath();
+          ctx.moveTo(px3 - 16, py3 + 2); ctx.lineTo(px3 - 24, py3 - 12 + wave);
+          ctx.moveTo(px3 + 16, py3 + 2); ctx.lineTo(px3 + 24, py3 - 12 - wave);
+          ctx.stroke();
+        }
+      }
+      // THE CANDY TROPHY
+      const tx2 = 6880, ty2 = G2;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 3);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(tx2, ty2 - 120, 95, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#cfc8e0';
+      rr(ctx, tx2 - 42, ty2 - 64, 84, 64, 8); ctx.fill();
+      ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 4;
+      rr(ctx, tx2 - 42, ty2 - 64, 84, 64, 8); ctx.stroke();
+      // golden cup
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath();
+      ctx.moveTo(tx2 - 34, ty2 - 150);
+      ctx.bezierCurveTo(tx2 - 34, ty2 - 100, tx2 - 12, ty2 - 92, tx2, ty2 - 92);
+      ctx.bezierCurveTo(tx2 + 12, ty2 - 92, tx2 + 34, ty2 - 100, tx2 + 34, ty2 - 150);
+      ctx.closePath(); ctx.fill();
+      rr(ctx, tx2 - 8, ty2 - 94, 16, 18, 3); ctx.fill();
+      rr(ctx, tx2 - 26, ty2 - 78, 52, 14, 5); ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4;
+      for (const sd of [-1, 1]) { // handles
+        ctx.beginPath();
+        ctx.arc(tx2 + sd * 40, ty2 - 132, 13, sd > 0 ? -1.4 : 1.75, sd > 0 ? 1.4 : 4.9);
+        ctx.stroke();
+      }
+      drawFace(ctx, tx2, ty2 - 122, 34, 'grin', t, 77);
+      // giant golden candy on top
+      drawCandy(ctx, tx2, ty2 - 172, 30, 1, t);
+      if (chance(0.15)) Particles.burst(tx2 + rand(-50, 50), ty2 - rand(80, 180), 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 25, grav: -40, l1: 0.8, s1: 9, up: 0 });
     }
   } else if (th === 'lava') {
     for (const r of d.rocks || []) {

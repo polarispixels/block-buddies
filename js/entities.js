@@ -67,6 +67,41 @@ class Player {
     this.duck = false; this.t = rand(10);
     this.coyote = 0; this.jbuf = 0;
     this.bubbleT = 0;
+    this.vehicle = 'wheel'; // 'wheel' | 'truck'
+    this.turboT = 0; this.airT = 0; this.rot = 0;
+    this.rampCd = 0; this.dustT = 0;
+  }
+  boardTruck() {
+    if (this.vehicle === 'truck') return;
+    this.vehicle = 'truck';
+    const grow = 104 - this.w;
+    this.x -= grow / 2; this.w = 104;
+    this.y -= 96 - this.h; this.h = 96;
+    AudioSys.sfx('powerup');
+    AudioSys.sfx('rev');
+    game.shake = Math.max(game.shake, 0.2);
+    this.setMood('grin', 1.5);
+    Particles.burst(this.cx, this.cy, 22, { colors: ['#f8b53c', '#d98f1f', '#ffe156', '#fff'], type: 'block', sp1: 360, l1: 1, s1: 12, grav: 800 });
+  }
+  checkHazards(lv) {
+    // lava is HOT: bounce out with a yelp (invulnerability prevents a drain)
+    if (lv.lava && this.y + this.h > 648) {
+      for (const L of lv.lava) {
+        if (this.cx > L.x && this.cx < L.x + L.w) {
+          if (this.inv <= 0) this.damage(1);
+          this.vy = -800;
+          this.setMood('surprised', 1);
+          AudioSys.sfx('steam');
+          Particles.burst(this.cx, this.y + this.h, 12, { colors: ['#ff9f43', '#ffe156', '#fff'], type: 'flame', sp1: 220, grav: -80, l1: 0.6, s1: 11 });
+          break;
+        }
+      }
+    }
+    // fell off the world
+    if (this.y > lv.h + 220) {
+      if (lv.fallCatch) game.startCloudCatch();
+      else { this.damage(1); if (this.hearts > 0) game.softRespawn(); }
+    }
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
@@ -105,6 +140,79 @@ class Player {
       this.spin += this.vx * dt / 30;
       this.x = clamp(this.x, 0, lv.w - this.w);
       this.y = clamp(this.y, 40, lv.h - this.h - 4);
+    } else if (this.vehicle === 'truck') {
+      // ---- MONSTER TRUCK ----
+      this.turboT = Math.max(0, this.turboT - dt);
+      this.rampCd = Math.max(0, this.rampCd - dt);
+      if (this.turboT > 0) {
+        this.facing = 1;
+        this.vx += (920 - this.vx) * Math.min(1, 6 * dt);
+        this.inv = Math.max(this.inv, 0.12); // turbo mode is invincible
+        Particles.burst(this.x, this.y + this.h - 26, 2, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 130, grav: -40, l1: 0.4, s1: 11, up: 0 });
+      } else {
+        this.vx += (ax * 470 - this.vx) * Math.min(1, 7 * dt);
+        if (ax) this.facing = ax;
+      }
+      this.duck = false;
+      if (this.onGround) this.coyote = 0.12; else this.coyote -= dt;
+      if (justP.ArrowUp) this.jbuf = 0.14; else this.jbuf = Math.max(0, this.jbuf - dt);
+      if (this.jbuf > 0 && this.coyote > 0) {
+        this.jbuf = 0; this.coyote = 0;
+        this.vy = -760; this.onGround = false; this.squash = 1.25;
+        AudioSys.sfx('jump');
+      }
+      this.vy += 1600 * dt;
+      if (this.vy > 950) this.vy = 950;
+      const wasG = this.onGround;
+      const res = moveEntity(this, lv, dt);
+      this.onGround = res.ground;
+      if (res.ground && !wasG) {
+        AudioSys.sfx('land');
+        this.squash = 0.72;
+        Particles.burst(this.cx, this.y + this.h, 8, { colors: ['#c9a96a', '#b08a55'], sp1: 160, grav: 100, l1: 0.5, s1: 12, up: 20 });
+      }
+      // automatic backflips on big air!
+      if (!this.onGround) {
+        this.airT += dt;
+        if (this.airT > 0.45) this.rot -= (this.turboT > 0 ? 9.5 : 7) * dt;
+      } else { this.airT = 0; this.rot = 0; }
+      // kick up dust while driving
+      this.dustT -= dt;
+      if (this.onGround && Math.abs(this.vx) > 200 && this.dustT <= 0) {
+        this.dustT = 0.08;
+        Particles.burst(this.cx - this.facing * 48, this.y + this.h - 8, 1, { colors: ['#c9a96a', '#b08a55'], sp1: 70, grav: -30, l1: 0.7, s1: 13, up: 20 });
+      }
+      // ramps launch you when you hit them with speed
+      if (lv.ramps && this.onGround && this.facing > 0 && Math.abs(this.vx) > 220 && this.rampCd <= 0) {
+        for (const r of lv.ramps) {
+          if (this.cx > r.x + r.w * 0.45 && this.cx < r.x + r.w + 40) {
+            this.vy = -(420 + Math.abs(this.vx) * (r.big ? 0.85 : 0.6));
+            this.onGround = false;
+            this.rampCd = 0.6;
+            AudioSys.sfx(r.big ? 'launch' : 'whoosh');
+            if (r.big) game.shake = Math.max(game.shake, 0.3);
+            break;
+          }
+        }
+      }
+      // TURBO pads
+      if (lv.turbos) {
+        for (const tp of lv.turbos) {
+          if (this.onGround && this.cx > tp.x && this.cx < tp.x + tp.w && this.turboT <= 0.1) {
+            this.turboT = 2.6;
+            AudioSys.sfx('launch');
+            AudioSys.sfx('rev');
+            game.shake = Math.max(game.shake, 0.25);
+            Particles.burst(this.cx, this.y + this.h, 14, { colors: ['#ffe156', '#ff9f43'], type: 'star', sp1: 320, l1: 0.7, s1: 11 });
+          }
+        }
+      }
+      // the finish line!
+      if (lv.finishX && !game.raceDone && this.x > lv.finishX && this.onGround) game.finishRace();
+      this.spin += this.vx * dt / 42;
+      this.x = clamp(this.x, 0, lv.w - this.w);
+      if (res.ground) game.lastSafe = { x: this.x, y: this.y };
+      this.checkHazards(lv);
     } else {
       if (ax) { this.vx = ax * spd; this.facing = ax; } else this.vx = 0;
       this.duck = !!keys.ArrowDown && this.onGround;
@@ -132,25 +240,7 @@ class Player {
       this.spin += this.vx * dt / 30;
       this.x = clamp(this.x, 0, lv.w - this.w);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
-      // lava is HOT: bounce out with a yelp (invulnerability prevents a drain)
-      if (lv.lava && this.y + this.h > 648) {
-        for (const L of lv.lava) {
-          if (this.cx > L.x && this.cx < L.x + L.w) {
-            const hadInv = this.inv > 0;
-            if (!hadInv) this.damage(1);
-            this.vy = -800;
-            this.setMood('surprised', 1);
-            AudioSys.sfx('steam');
-            Particles.burst(this.cx, this.y + this.h, 12, { colors: ['#ff9f43', '#ffe156', '#fff'], type: 'flame', sp1: 220, grav: -80, l1: 0.6, s1: 11 });
-            break;
-          }
-        }
-      }
-      // fell off the world
-      if (this.y > lv.h + 220) {
-        if (lv.fallCatch) game.startCloudCatch();
-        else { this.damage(1); if (this.hearts > 0) game.softRespawn(); }
-      }
+      this.checkHazards(lv);
     }
     if (justP.Space) this.action();
   }
@@ -262,7 +352,29 @@ class Player {
   }
   draw(ctx) {
     ctx.save();
-    if (this.inv > 0 && Math.floor(this.t * 14) % 2 === 0) ctx.globalAlpha = 0.35;
+    if (this.inv > 0 && this.turboT <= 0 && Math.floor(this.t * 14) % 2 === 0) ctx.globalAlpha = 0.35;
+    if (this.vehicle === 'truck') {
+      if (this.rot) {
+        ctx.translate(this.cx, this.cy);
+        ctx.rotate(this.rot);
+        ctx.translate(-this.cx, -this.cy);
+      }
+      const sq = clamp(this.squash, 0.6, 1.5);
+      const baseY = this.y + this.h;
+      ctx.translate(this.cx, baseY);
+      ctx.scale(2 - sq, sq);
+      ctx.translate(-this.cx, -baseY);
+      drawTruckBody(ctx, this.x, this.y, this.w, this.h, this.t, {
+        driving: Math.abs(this.vx) > 40,
+        character: game.character,
+        facing: this.facing,
+        turbo: this.turboT > 0,
+        spin: this.spin,
+        mood: this.mood
+      });
+      ctx.restore();
+      return;
+    }
     const sq = clamp(this.squash, 0.6, 1.5);
     const baseY = this.y + this.h;
     ctx.translate(this.cx, baseY);
@@ -278,6 +390,117 @@ class Player {
     ctx.translate(0, Math.sin(this.t * 2) * 2);
     this.drawBoy(ctx, x, y, 'surprised');
     ctx.restore();
+  }
+}
+
+// ================================================================ monster truck
+function drawTruckBody(ctx, x, y, w, h, t, o = {}) {
+  const bounce = o.driving ? Math.sin(t * 16) * 2 : Math.sin(t * 2) * 1;
+  const wy = y + h - 26; // wheel centers
+  // wheels: huge knobbly tires
+  for (const wx of [x + 26, x + w - 26]) {
+    ctx.fillStyle = '#2e2430';
+    ctx.beginPath(); ctx.arc(wx, wy, 26, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#1a1420'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(wx, wy, 26, 0, TAU); ctx.stroke();
+    // treads
+    ctx.fillStyle = '#4a3a50';
+    for (let i = 0; i < 8; i++) {
+      const a = (o.spin || 0) + i * TAU / 8;
+      ctx.beginPath();
+      ctx.arc(wx + Math.cos(a) * 22, wy + Math.sin(a) * 22, 4.5, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#c9c1d6';
+    ctx.beginPath(); ctx.arc(wx, wy, 9, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8a7fae';
+    starPath(ctx, wx, wy, 7, 3, 5, (o.spin || 0));
+    ctx.fill();
+  }
+  ctx.save();
+  ctx.translate(0, bounce);
+  // body
+  const bodC = o.turbo ? '#ff8a2b' : '#e8482b';
+  ctx.fillStyle = bodC;
+  rr(ctx, x + 2, y + 26, w - 4, h - 56, 12); ctx.fill();
+  ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3.5;
+  rr(ctx, x + 2, y + 26, w - 4, h - 56, 12); ctx.stroke();
+  // flame decals
+  ctx.fillStyle = '#ffe156';
+  for (const sd of [0, 1]) {
+    const fx = x + 12 + sd * (w - 44);
+    ctx.beginPath();
+    ctx.moveTo(fx, y + h - 34);
+    ctx.quadraticCurveTo(fx + 8, y + h - 52, fx + 5, y + 34);
+    ctx.quadraticCurveTo(fx + 13, y + h - 54, fx + 20, y + h - 34);
+    ctx.closePath(); ctx.fill();
+  }
+  // funny face on the door (of course)
+  drawFace(ctx, x + w / 2, y + h - 46, 26, o.mood === 'surprised' ? 'surprised' : 'grin', t, 17, o.facing || 1, 0);
+  // cab + driver
+  ctx.fillStyle = bodC;
+  rr(ctx, x + w * 0.28, y - 4, w * 0.5, 36, 9); ctx.fill();
+  ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3;
+  rr(ctx, x + w * 0.28, y - 4, w * 0.5, 36, 9); ctx.stroke();
+  const winX = x + w * 0.33, winW = w * 0.4;
+  ctx.fillStyle = '#bfe8ff';
+  rr(ctx, winX, y + 1, winW, 26, 6); ctx.fill();
+  if (o.character) {
+    ctx.save();
+    ctx.beginPath();
+    rr(ctx, winX, y + 1, winW, 26, 6);
+    ctx.clip();
+    ctx.translate(winX + winW / 2, y + 22);
+    ctx.scale(0.62, 0.62);
+    drawHead(ctx, 0, 0, o.character, t, false);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(winX + 4, y + 22); ctx.lineTo(winX + 12, y + 5); ctx.stroke();
+  }
+  // exhaust pipe
+  ctx.fillStyle = '#8a8a9a';
+  rr(ctx, x + w - 16, y - 12, 9, 30, 3); ctx.fill();
+  if (o.driving && chance(0.35)) {
+    Particles.burst(x + w - 11, y - 14, 1, { color: 'rgba(200,200,210,0.6)', sp1: 30, grav: -120, l1: 0.6, s1: 10, up: 10 });
+  }
+  // bumper
+  ctx.fillStyle = '#c9c1d6';
+  const bx2 = (o.facing || 1) > 0 ? x + w - 8 : x;
+  rr(ctx, bx2 - 2, y + 34, 10, h - 68, 4); ctx.fill();
+  ctx.restore();
+}
+
+class ParkedTruck {
+  constructor(x, groundY) {
+    this.w = 104; this.h = 96;
+    this.x = x; this.y = groundY - this.h;
+    this.t = rand(9);
+    this.dead = false;
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt) {
+    this.t += dt;
+    if (!this.dead && overlaps(this, game.player)) {
+      this.dead = true;
+      game.player.boardTruck();
+    }
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(this.t * 4);
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(this.cx, this.cy, 78, 0, TAU); ctx.fill();
+    ctx.restore();
+    drawTruckBody(ctx, this.x, this.y, this.w, this.h, this.t, { driving: false, facing: 1 });
+    // bouncing arrow: hop in!
+    const ay = this.y - 56 + Math.sin(this.t * 5) * 9;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.cx, ay); ctx.lineTo(this.cx, ay + 34);
+    ctx.moveTo(this.cx - 12, ay + 20); ctx.lineTo(this.cx, ay + 36); ctx.lineTo(this.cx + 12, ay + 20);
+    ctx.stroke();
   }
 }
 
@@ -371,7 +594,8 @@ class Spider {
   // kinds: walk, jump, hang, swim
   constructor(x, y, kind = 'walk', opt = {}) {
     this.kind = kind;
-    this.w = 58; this.h = 44;
+    this.w = kind === 'tornado' ? 62 : 58;
+    this.h = kind === 'tornado' ? 84 : 44;
     this.x = x - this.w / 2; this.y = y - this.h;
     this.x0 = this.x; this.y0 = this.y;
     this.vx = 0; this.vy = 0;
@@ -523,6 +747,24 @@ class Spider {
         this.x0 = this.x;
         AudioSys.sfx('whoosh');
       }
+    } else if (this.kind === 'tornado') {
+      // dirt devil: fast wander, drifts after the player
+      const dx = pl.cx - this.cx;
+      if (Math.abs(dx) < 360) this.dir = Math.sign(dx) || this.dir;
+      this.vx = this.dir * 135;
+      this.vy += 1600 * dt;
+      const r = moveEntity(this, lv, dt);
+      this.onGround = r.ground;
+      if (r.wall) this.dir *= -1;
+      if (this.x < this.x0 - this.range) this.dir = 1;
+      if (this.x > this.x0 + this.range) this.dir = -1;
+      if (this.onGround) {
+        const aheadX = this.dir > 0 ? this.x + this.w + 6 : this.x - 6;
+        if (!solidAtPoint(lv, aheadX, this.y + this.h + 20)) this.dir *= -1;
+      }
+      if (chance(7 * dt)) {
+        Particles.burst(this.cx + rand(-20, 20), this.y + this.h - rand(0, 30), 1, { colors: ['#c9a96a', '#b08a55'], sp1: 60, grav: -60, l1: 0.5, s1: 9, up: 10 });
+      }
     } else if (this.kind === 'swim') {
       this.y = clamp(this.y0 + Math.sin(this.t * 1.6) * 34, 50, lv.h - this.h - 10);
       const dx = pl.cx - this.cx, dy = pl.cy - this.cy;
@@ -619,7 +861,8 @@ class Spider {
     if (this.dead) return;
     this.dead = true;
     AudioSys.sfx('poof');
-    Particles.burst(this.cx, this.cy, 12, { colors: ['#b06cf0', '#fff', '#ffe156'], type: 'star', sp1: 260, l1: 0.7, s1: 10 });
+    const popCols = this.kind === 'tornado' ? ['#c9a96a', '#8a5a2a', '#ffe156'] : ['#b06cf0', '#fff', '#ffe156'];
+    Particles.burst(this.cx, this.cy, 12, { colors: popCols, type: 'star', sp1: 260, l1: 0.7, s1: 10 });
     // candy reward pops out
     if (chance(0.75)) {
       const c = new Pickup(this.cx, this.cy, 'candy');
@@ -627,8 +870,48 @@ class Spider {
       game.pickups.push(c);
     }
   }
+  drawTornado(ctx) {
+    const t = this.t, friend = this.state === 'friend';
+    const cx = this.cx;
+    ctx.save();
+    if (this.state === 'flying') { ctx.translate(cx, this.cy); ctx.rotate(t * 14); ctx.translate(-cx, -this.cy); }
+    // swirling dust cone: wide up top, narrow at the ground
+    const layers = 6;
+    for (let i = 0; i < layers; i++) {
+      const k = i / (layers - 1); // 0 bottom, 1 top
+      const ly = this.y + this.h - 8 - k * (this.h - 16);
+      const lw = 10 + k * 26;
+      const off = Math.sin(t * 11 + i * 1.9) * (3 + k * 8);
+      ctx.fillStyle = friend
+        ? (i % 2 ? '#ff9fd0' : '#ffc0e0')
+        : (i % 2 ? '#c9a96a' : '#b08a55');
+      ctx.beginPath();
+      ctx.ellipse(cx + off, ly, lw, 9 + k * 3, 0, 0, TAU);
+      ctx.fill();
+    }
+    // flying debris flecks
+    ctx.fillStyle = friend ? '#ff5fa2' : '#8a5a2a';
+    for (let i = 0; i < 3; i++) {
+      const a = t * 7 + i * TAU / 3;
+      ctx.fillRect(cx + Math.cos(a) * 30 - 3, this.y + 22 + Math.sin(a) * 14, 6, 4);
+    }
+    // googly face near the top
+    drawFace(ctx, cx + Math.sin(t * 11 + 4) * 6, this.y + 22, 32, friend ? 'happy' : 'angry', t, this.x0, this.dir, 0);
+    if (friend && chance(0.02)) {
+      Particles.burst(cx, this.y, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 40, grav: -100, l1: 0.8, s1: 8, up: 0 });
+    }
+    // ice cube overlay
+    if (this.state === 'frozen') {
+      ctx.fillStyle = 'rgba(160,225,255,0.55)';
+      rr(ctx, this.x - 8, this.y - 8, this.w + 16, this.h + 12, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,245,255,0.9)'; ctx.lineWidth = 3;
+      rr(ctx, this.x - 8, this.y - 8, this.w + 16, this.h + 12, 8); ctx.stroke();
+    }
+    ctx.restore();
+  }
   draw(ctx) {
     if (this.dead) return;
+    if (this.kind === 'tornado') { this.drawTornado(ctx); return; }
     const t = this.t, friend = this.state === 'friend';
     const cx = this.cx, cy = this.cy;
     ctx.save();
