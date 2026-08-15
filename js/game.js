@@ -14,7 +14,7 @@ window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
 let saveUnlocked = 1;
-try { saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 5); } catch (e) {}
+try { saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 6); } catch (e) {}
 
 const game = {
   state: 'title', t: 0,
@@ -28,6 +28,7 @@ const game = {
   introT: 0, completeT: 0, deadT: 0,
   caught: null, cut: null,
   zombie: null, bossStage: 0, arenaL: 4020, arenaR: 4960,
+  bossPlan: { 1: 'fire', 2: 'ice', 3: 'rainbow' },
   stageHintT: 0, bossPickups: [],
   chest: null, endPhase: null, partyT: 0,
   titleT: 0, titleBoyX: 300, titleBoyD: 1,
@@ -94,7 +95,7 @@ game.levelComplete = function () {
   if (game.state !== 'play' || game.cut) return;
   game.state = 'complete'; game.completeT = 0;
   AudioSys.sfx('fanfare');
-  game.unlocked = Math.max(game.unlocked, Math.min(5, game.level.n + 1));
+  game.unlocked = Math.max(game.unlocked, Math.min(6, game.level.n + 1));
   try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
   Particles.burst(game.player.cx, game.player.y, 26, { colors: ['#ffe156', '#57d357', '#4aa3ff', '#ff8fb0'], type: 'star', sp1: 430, l1: 1.2, s1: 13 });
 };
@@ -122,24 +123,35 @@ game.startCloudCatch = function () {
 };
 game.startBossIntro = function () {
   const G = 620;
-  game.zombie = new Zombie(4760, G);
-  game.zombie.state = 'enter';
-  game.arenaL = 3900; game.arenaR = 4960;
-  // rocks fall BEHIND the player, sealing the arena entrance
-  game.level.solids.push({ x: 3820, y: G - 260, w: 56, h: 260, pile: true });
+  if (game.level.n === 6) {
+    game.zombie = new Magma(4720, G); // same slot as the zombie — same interface
+    game.zombie.state = 'intro';
+    game.bossPlan = { 1: 'ice', 2: 'power', 3: 'rainbow' };
+    game.arenaL = 3950; game.arenaR = 4810;
+    game.level.solids.push({ x: 3870, y: G - 260, w: 56, h: 260, pile: true });
+    Particles.burst(3898, G - 180, 14, { colors: ['#43222e', '#ff7a2b'], type: 'block', sp1: 300, l1: 1, s1: 12, grav: 900 });
+    game.cut = { name: 'magmaintro', t: 0 };
+  } else {
+    game.zombie = new Zombie(4760, G);
+    game.zombie.state = 'enter';
+    game.bossPlan = { 1: 'fire', 2: 'ice', 3: 'rainbow' };
+    game.arenaL = 3900; game.arenaR = 4960;
+    // rocks fall BEHIND the player, sealing the arena entrance
+    game.level.solids.push({ x: 3820, y: G - 260, w: 56, h: 260, pile: true });
+    Particles.burst(3848, G - 180, 14, { colors: ['#453563', '#6a4fa0'], type: 'block', sp1: 300, l1: 1, s1: 12, grav: 900 });
+    game.cut = { name: 'bossintro', t: 0 };
+  }
   game.shake = 0.5;
   AudioSys.sfx('rumble');
   AudioSys.setMusic('');
-  Particles.burst(3848, G - 180, 14, { colors: ['#453563', '#6a4fa0'], type: 'block', sp1: 300, l1: 1, s1: 12, grav: 900 });
-  game.cut = { name: 'bossintro', t: 0 };
 };
 game.setBossStage = function (k) {
   game.bossStage = k;
   game.stageHintT = 3.5;
-  const kind = k === 1 ? 'fire' : k === 2 ? 'ice' : 'rainbow';
+  const kind = game.bossPlan[k];
   for (const p of game.bossPickups) { p.bossKind = null; p.dead = true; }
   game.bossPickups = [];
-  for (const px of [4150, 4840]) {
+  for (const px of [game.arenaL + 250, game.arenaL + 680]) {
     const p = new Pickup(px, 556, kind);
     p.bossKind = kind;
     game.pickups.push(p);
@@ -148,10 +160,15 @@ game.setBossStage = function (k) {
   AudioSys.setMusic('boss');
 };
 game.startEnding = function () {
-  game.unlocked = 5;
-  try { localStorage.setItem('ffbg_unlocked', '5'); } catch (e) {}
-  game.endPhase = 'rumble';
-  game.cut = { name: 'rumble', t: 0 };
+  game.unlocked = 6; // beating the zombie unlocks the bonus level
+  try { localStorage.setItem('ffbg_unlocked', '6'); } catch (e) {}
+  if (game.level.n === 6) {
+    game.endPhase = 'erupting';
+    game.cut = { name: 'eruption', t: 0 };
+  } else {
+    game.endPhase = 'rumble';
+    game.cut = { name: 'rumble', t: 0 };
+  }
   AudioSys.setMusic('');
   AudioSys.sfx('rumble');
   game.shake = 0.8;
@@ -178,6 +195,43 @@ function updateCut(dt) {
     else { game.cut = null; z.setState('chase'); game.setBossStage(1); }
     const tx = clamp(z.cx - W * 0.55, 0, game.level.w - W);
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'magmaintro') {
+    const t = c.t;
+    if (t < 1.5) { // rises out of the lava, dripping
+      z.y = lerp(660, 480, Math.min(1, t / 1.5));
+      if (chance(0.5)) Particles.burst(z.cx + rand(-60, 60), 648, 2, { colors: ['#ff8a2b', '#ffe156'], type: 'flame', sp1: 200, grav: -60, l1: 0.6, s1: 11 });
+    }
+    else if (t < 2.7) { if (!c.blorped) { c.blorped = true; AudioSys.sfx('roar'); AudioSys.sfx('blorp'); game.shake = 0.5; } }
+    else if (t < 3.5) {
+      if (!c.sneezed) {
+        c.sneezed = true;
+        AudioSys.sfx('hiccup');
+        z.crownDrop = true; // AH-CHOO — crown slips over his eyes
+        Particles.burst(z.cx - 60, z.y + 50, 14, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 320, l1: 0.6, s1: 10 });
+      }
+    }
+    else if (t < 4.6) { z.x += Math.sin(t * 12) * 60 * dt; } // stumbles around blind
+    else {
+      z.crownDrop = false;
+      game.cut = null;
+      z.setState('chase');
+      game.setBossStage(1);
+    }
+    const tx = clamp(z.cx - W * 0.55, 0, game.level.w - W);
+    game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'eruption') {
+    game.shake = Math.max(game.shake, 0.45);
+    if (c.t > 0.5) {
+      Particles.candyBurst(4470 + rand(-50, 50), 250, 2);
+      if (chance(0.5)) Particles.burst(4470 + rand(-50, 50), 245, 2, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 240, grav: 300, l1: 1, s1: 11, up: 300 });
+    }
+    if (c.t > 2.4) {
+      game.cut = null;
+      game.endPhase = 'party'; game.partyT = 0;
+      AudioSys.setMusic('win');
+      if (game.zombie) game.zombie.setState('dance');
+      game.player.setMood('grin', 999);
+    }
   } else if (c.name === 'rumble') {
     game.shake = Math.max(game.shake, 0.4);
     if (c.t > 1.4) {
@@ -224,7 +278,7 @@ function updatePlay(dt) {
   for (const sp of game.spiders) {
     if (sp.dead) continue;
     sp.update(dt);
-    if (sp.state === 'angry' && !sp.dead && overlaps(sp, pl)) {
+    if ((sp.state === 'angry' || sp.state === 'burning') && !sp.dead && overlaps(sp, pl)) {
       if (pl.superT > 0) sp.knockAway(pl.cx);
       else pl.damage(1);
     }
@@ -262,9 +316,13 @@ function updatePlay(dt) {
     if (game.partyT > 1.5 && chance(0.2)) {
       Particles.candyBurst(game.cam.x + rand(150, W - 150), game.cam.y + rand(100, 300), 1);
     }
+    if (lv.n === 6 && chance(0.4)) Particles.candyBurst(4470 + rand(-60, 60), 250, 1); // the volcano keeps giving
     if (game.partyT > 5 && justP.Space) {
-      game.state = 'title'; game.titleT = 0;
-      AudioSys.setMusic('title');
+      if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
+      else {
+        game.state = 'title'; game.titleT = 0;
+        AudioSys.setMusic('title');
+      }
     }
   }
 
@@ -291,10 +349,10 @@ function updateTitle(dt) {
   tp.power = kinds[Math.floor(game.titleT / 2.5) % kinds.length];
   const ts = game.titleSpider;
   ts.t += dt; ts.danceT = 1;
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 6; i++) {
     if (justP['Digit' + i] && i <= game.unlocked) { game.startLevel(i); return; }
   }
-  if (justP.Space) game.startLevel(clamp(game.unlocked, 1, 5));
+  if (justP.Space) game.startLevel(clamp(game.unlocked, 1, 6));
 }
 function update(dt) {
   game.t += dt;
@@ -386,6 +444,19 @@ function drawLevelIcon(ctx, x, y, s, theme, t) {
     ctx.moveTo(-s * 0.3, -s * 0.36); ctx.lineTo(0, -s * 0.9); ctx.lineTo(s * 0.3, -s * 0.36);
     ctx.lineTo(s * 0.15, -s * 0.45); ctx.lineTo(0, -s * 0.3); ctx.lineTo(-s * 0.15, -s * 0.45);
     ctx.closePath(); ctx.fill();
+  } else if (theme === 'lava') {
+    ctx.fillStyle = '#4a1410';
+    ctx.beginPath();
+    ctx.moveTo(-s, s * 0.8); ctx.lineTo(-s * 0.3, -s * 0.7); ctx.lineTo(s * 0.3, -s * 0.7); ctx.lineTo(s, s * 0.8);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ff8a2b';
+    ctx.beginPath(); ctx.ellipse(0, -s * 0.68, s * 0.32, s * 0.12, 0, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.16, -s * 0.62); ctx.quadraticCurveTo(-s * 0.3, s * 0.1, -s * 0.2, s * 0.5);
+    ctx.lineTo(0, s * 0.5); ctx.quadraticCurveTo(-s * 0.05, 0, -s * 0.02, -s * 0.62);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(0, -s * 0.95 - Math.abs(Math.sin(t * 3)) * s * 0.2, s * 0.14, 0, TAU); ctx.fill();
   } else if (theme === 'cave') {
     ctx.fillStyle = '#cfc8e0';
     rr(ctx, -s * 0.7, -s * 0.8, s * 1.4, s * 1.2, s * 0.35); ctx.fill();
@@ -539,7 +610,7 @@ function drawIntroCard() {
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.fill();
   ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 6;
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.stroke();
-  outlineText(ctx, 'LEVEL ' + lv.n, W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
+  outlineText(ctx, lv.n === 6 ? 'BONUS LEVEL!' : 'LEVEL ' + lv.n, W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
   outlineText(ctx, lv.name, W / 2, y, 44, '#5a4a86', '#fff');
   drawLevelIcon(ctx, W / 2, y + 85, 38, lv.theme, game.t);
   ctx.restore();
@@ -582,8 +653,12 @@ function drawPartyOverlay() {
     ctx.save();
     ctx.globalAlpha = k;
     ctx.translate(0, (1 - k) * -60);
-    outlineText(ctx, 'YOU FOUND THE', W / 2, 130, 52, '#ffd24a', '#5a4a86');
-    outlineText(ctx, 'GOLDEN CANDY TREASURE!', W / 2, 205, 62, '#ffd24a', '#5a4a86');
+    if (game.level.n === 6) {
+      outlineText(ctx, 'CANDY VOLCANO!', W / 2, 150, 80, '#ffd24a', '#8a2a10');
+    } else {
+      outlineText(ctx, 'YOU FOUND THE', W / 2, 130, 52, '#ffd24a', '#5a4a86');
+      outlineText(ctx, 'GOLDEN CANDY TREASURE!', W / 2, 205, 62, '#ffd24a', '#5a4a86');
+    }
     ctx.restore();
   }
   if (t > 5) drawSpacebar(ctx, W / 2, H - 70, 130, game.t);
@@ -616,6 +691,12 @@ function renderWorld() {
     const z = game.zombie;
     if (game.cut.t >= 1.4 && game.cut.t < 2.6) outlineText(ctx, 'RAWR!', z.cx, z.y - 80, 62, '#ff5a5a', '#fff');
     else if (game.cut.t >= 2.6 && game.cut.t < 3.3) outlineText(ctx, '...hic!', z.cx, z.y - 80, 42, '#ffe156', '#5a4a86');
+  }
+  if (game.cut && game.cut.name === 'magmaintro' && game.zombie) {
+    const z = game.zombie;
+    if (game.cut.t >= 1.5 && game.cut.t < 2.7) outlineText(ctx, 'BLORP!', z.cx, z.y - 90, 62, '#ff9f43', '#fff');
+    else if (game.cut.t >= 2.7 && game.cut.t < 3.5) outlineText(ctx, 'AH-CHOO!', z.cx, z.y - 90, 48, '#ffe156', '#8a2a10');
+    else if (game.cut.t >= 3.5 && game.cut.t < 4.6) outlineText(ctx, '?!', z.cx, z.y - 90, 54, '#fff', '#8a2a10');
   }
   if (game.endPhase === 'prompt' && game.chest && game.chest.landed && !game.chest.open) {
     drawSpacebar(ctx, game.chest.cx, game.chest.y - 70, 120, t);
@@ -692,8 +773,8 @@ function renderTitle() {
   outlineText(ctx, 'PRESS SPACE', W / 2, 545, 34, '#fff', '#5a4a86');
   ctx.restore();
   // world medallions
-  for (let i = 1; i <= 5; i++) {
-    const mx = W / 2 - 176 + (i - 1) * 88, my = 688;
+  for (let i = 1; i <= 6; i++) {
+    const mx = W / 2 - 220 + (i - 1) * 88, my = 688;
     const open = i <= game.unlocked;
     ctx.fillStyle = open ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
     ctx.beginPath(); ctx.arc(mx, my, 30, 0, TAU); ctx.fill();

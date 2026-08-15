@@ -5,7 +5,8 @@ const LEVEL_META = {
   2: { name: 'UNDERWATER WORLD', theme: 'water', music: 'water' },
   3: { name: 'CLOUD WORLD', theme: 'cloud', music: 'cloud' },
   4: { name: 'MOUNTAIN WORLD', theme: 'mountain', music: 'mountain' },
-  5: { name: 'ZOMBIE CAVE', theme: 'cave', music: 'cave' }
+  5: { name: 'ZOMBIE CAVE', theme: 'cave', music: 'cave' },
+  6: { name: 'LAVA WORLD', theme: 'lava', music: 'lava' }
 };
 
 function newLevel(n) {
@@ -14,7 +15,7 @@ function newLevel(n) {
     n, name: m.name, theme: m.theme, music: m.music,
     w: 4200, h: 720,
     solids: [], spiders: [], pickups: [], checks: [], hints: [], bridges: [],
-    decor: {}, lights: [],
+    decor: {}, lights: [], lava: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -217,7 +218,54 @@ function buildLevel(n) {
     for (let x = 60; x < lv.w; x += rand(140, 300)) lv.decor.stals.push({ x, h: rand(40, 130), w: rand(24, 50) });
   }
 
+  if (n === 6) { // ---------------- LAVA WORLD (bonus)
+    lv.w = 5000; lv.boss = true; lv.bossType = 'magma';
+    lv.lava = [
+      { x: 900, w: 180 }, { x: 1900, w: 180 }, { x: 2980, w: 180 }, { x: 4820, w: 180 }
+    ];
+    addGround(lv, 0, 900, G);
+    addGround(lv, 1080, 820, G);
+    addGround(lv, 2080, 900, G);
+    addGround(lv, 3160, 840, G);
+    addGround(lv, 4000, 820, G); // boss arena floor; lava at its right edge
+    addPlat(lv, 1950, 470, 140);
+    addPlat(lv, 2660, 600, 100, { bouncy: true, h: 40 });
+    addBlockPile(lv, 3500, G, 2, 1);
+    pick(lv, 500, G - 90, 'fire');
+    pick(lv, 2450, G - 80, 'fire');
+    pick(lv, 3320, G - 80, 'ice');
+    pick(lv, 2710, 380, 'heart');
+    pick(lv, 3760, G - 60, 'heart');
+    candyRow(lv, 250, 800, G - 55, 4);
+    candyArc(lv, 860, 1130, 430, G - 70, 5);
+    candyRow(lv, 1500, 1800, G - 55, 3);
+    candyArc(lv, 1860, 2130, 400, G - 70, 5);
+    candyArc(lv, 2940, 3210, 400, G - 70, 5);
+    candyRow(lv, 3550, 3900, G - 60, 4);
+    // clusters close together = chain-reaction fireworks
+    spider(lv, 700, G, 'walk', { range: 130 });
+    spider(lv, 1400, G, 'walk', { range: 90 });
+    spider(lv, 1540, G, 'walk', { range: 90 });
+    spider(lv, 1750, G, 'jump');
+    spider(lv, 2300, G, 'walk', { range: 80 });
+    spider(lv, 2430, G, 'walk', { range: 80 });
+    spider(lv, 2550, G, 'jump');
+    spider(lv, 3400, G, 'walk', { range: 120 });
+    spider(lv, 3650, G, 'jump');
+    lv.checks.push(new Checkpoint(1700, G));
+    lv.checks.push(new Checkpoint(3750, G));
+    lv.hints.push({ x: 1200, y: G - 230, icon: 'space' });
+    lv.decor.volcanoes = true;
+    lv.decor.rocks = [];
+    for (let x = 150; x < lv.w; x += rand(350, 700)) lv.decor.rocks.push({ x, s: rand(0.7, 1.4) });
+  }
+
   return lv;
+}
+function inLava(lv, cx) {
+  if (!lv.lava) return false;
+  for (const L of lv.lava) if (cx > L.x && cx < L.x + L.w) return true;
+  return false;
 }
 
 // ================================================================ backgrounds
@@ -233,6 +281,9 @@ function drawBG(ctx, lv, cam, t) {
   } else if (th === 'mountain') {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#8fb8e8'); g.addColorStop(1, '#dcedff');
+  } else if (th === 'lava') {
+    g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#3a0d14'); g.addColorStop(0.6, '#6a1c10'); g.addColorStop(1, '#9a3612');
   } else {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#171029'); g.addColorStop(1, '#2c1e4a');
@@ -341,6 +392,38 @@ function drawBG(ctx, lv, cam, t) {
       const sy = ((seed * 91 + t * (46 + (i % 5) * 18)) % (H + 40)) - 20;
       ctx.beginPath(); ctx.arc(sx, sy, 2.5 + (i % 3), 0, TAU); ctx.fill();
     }
+  } else if (th === 'lava') {
+    // parallax volcano silhouettes with glowing mouths
+    for (let i = -1; i < 6; i++) {
+      const px = i * 520 - (cam.x * 0.25) % 520;
+      ctx.fillStyle = '#4a1410';
+      ctx.beginPath();
+      ctx.moveTo(px - 240, 640); ctx.lineTo(px - 40, 250); ctx.lineTo(px + 40, 250); ctx.lineTo(px + 240, 640);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,120,40,' + (0.5 + 0.2 * Math.sin(t * 2 + i)) + ')';
+      ctx.beginPath(); ctx.ellipse(px, 252, 42, 12, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,150,50,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(px - 14, 255); ctx.quadraticCurveTo(px - 30, 380, px - 20, 500);
+      ctx.lineTo(px + 4, 500); ctx.quadraticCurveTo(px + 4, 370, px + 14, 255);
+      ctx.closePath(); ctx.fill();
+    }
+    // rising embers
+    if (chance(0.35)) Particles.burst(cam.x + rand(0, W), cam.y + rand(300, 740), 1, { colors: ['#ff9f43', '#ffe156', '#ff6b35'], type: 'circle', sp1: 20, grav: -110, l0: 1.5, l1: 3, up: 0, s0: 3, s1: 7 });
+    // THE candy volcano looms behind the boss arena (world-locked, drawn behind terrain)
+    const vwx = 4470 - cam.x;
+    if (vwx > -450 && vwx < W + 450) {
+      ctx.fillStyle = '#38100e';
+      ctx.beginPath();
+      ctx.moveTo(vwx - 400, 620); ctx.lineTo(vwx - 70, 240); ctx.lineTo(vwx + 70, 240); ctx.lineTo(vwx + 400, 620);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#571d14'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,130,45,' + (0.6 + 0.25 * Math.sin(t * 3)) + ')';
+      ctx.beginPath(); ctx.ellipse(vwx, 244, 68, 18, 0, 0, TAU); ctx.fill();
+      if (chance(0.2)) Particles.burst(4470 + rand(-40, 40), 240, 1, { colors: ['#ff9f43', '#ffe156'], type: 'circle', sp1: 40, grav: -140, l1: 1.2, s1: 7, up: 40 });
+      // a sleepy face on the volcano, because everything here has a face
+      drawFace(ctx, vwx, 420, 70, 'sleepy', t, 31);
+    }
   } else if (th === 'cave') {
     // stalactites silhouettes
     ctx.fillStyle = '#241640';
@@ -420,6 +503,7 @@ function drawSolids(ctx, lv, cam, t) {
     else if (th === 'water') { fill = '#c9a96a'; topFill = '#7ec850'; line = 'rgba(90,70,30,0.3)'; }
     else if (th === 'mountain') { fill = '#8d8fa0'; topFill = '#ffffff'; line = 'rgba(60,60,80,0.3)'; }
     else if (th === 'cave') { fill = '#453563'; topFill = '#6a4fa0'; line = 'rgba(20,10,40,0.4)'; }
+    else if (th === 'lava') { fill = '#43222e'; topFill = '#ff7a2b'; line = 'rgba(20,8,12,0.45)'; }
     else { fill = '#b07845'; topFill = '#5ecb4a'; line = 'rgba(90,50,20,0.25)'; }
     if (s.plat && th !== 'cave') { fill = '#c98f4e'; }
     ctx.fillStyle = fill;
@@ -446,6 +530,12 @@ function drawSolids(ctx, lv, cam, t) {
     if (th === 'cave') {
       ctx.save(); ctx.globalAlpha = 0.5 + Math.sin(t * 2 + s.x) * 0.15;
       ctx.fillStyle = '#9a7fd8';
+      rr(ctx, s.x, s.y - 3, s.w, 6, 3); ctx.fill();
+      ctx.restore();
+    }
+    if (th === 'lava') {
+      ctx.save(); ctx.globalAlpha = 0.45 + Math.sin(t * 3 + s.x) * 0.15;
+      ctx.fillStyle = '#ffce54';
       rr(ctx, s.x, s.y - 3, s.w, 6, 3); ctx.fill();
       ctx.restore();
     }
@@ -487,6 +577,33 @@ function drawSolids(ctx, lv, cam, t) {
       ctx.restore();
       const ix = b.x + b.w / 2, iy = b.y - 46 + Math.sin(t * 3) * 8;
       drawBlock(ctx, ix - 20, iy - 20, 40, 'rainbow', t);
+    }
+  }
+  // lava pools
+  if (lv.lava) {
+    for (const L of lv.lava) {
+      if (L.x + L.w < cam.x - 60 || L.x > cam.x + W + 60) continue;
+      const top = 648;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + Math.sin(t * 3 + L.x) * 0.1;
+      ctx.fillStyle = '#ff9f43';
+      rr(ctx, L.x - 14, top - 16, L.w + 28, 30, 12); ctx.fill();
+      ctx.restore();
+      const g2 = ctx.createLinearGradient(0, top, 0, top + 120);
+      g2.addColorStop(0, '#ffe14d'); g2.addColorStop(0.4, '#ff8a2b'); g2.addColorStop(1, '#c2451a');
+      ctx.fillStyle = g2;
+      ctx.fillRect(L.x, top, L.w, lv.h - top + 60);
+      // wavy bright surface
+      ctx.fillStyle = '#ffe156';
+      for (let bx = L.x + 10; bx < L.x + L.w - 6; bx += 26) {
+        ctx.beginPath();
+        ctx.arc(bx, top + Math.sin(t * 4 + bx) * 3, 9, Math.PI, TAU);
+        ctx.fill();
+      }
+      // bubbles
+      if (chance(0.12)) {
+        Particles.burst(L.x + rand(10, L.w - 10), top, 1, { colors: ['#ffe156', '#ff9f43'], type: 'circle', sp1: 30, grav: -220, l1: 0.7, s1: 8, up: 0 });
+      }
     }
   }
   // theme decorations
@@ -563,6 +680,20 @@ function drawDecor(ctx, lv, cam, t) {
       ctx.beginPath();
       ctx.moveTo(p.x - 14 * s, gt - 100 * s); ctx.lineTo(p.x, gt - 62 * s - 42 * s); ctx.lineTo(p.x + 14 * s, gt - 100 * s);
       ctx.closePath(); ctx.fill();
+    }
+  } else if (th === 'lava') {
+    for (const r of d.rocks || []) {
+      if (!visible(r.x)) continue;
+      const gt = groundTopAt(lv, r.x);
+      if (gt === null) continue;
+      const s = r.s;
+      ctx.fillStyle = '#2e1620';
+      ctx.beginPath();
+      ctx.moveTo(r.x - 26 * s, gt); ctx.lineTo(r.x - 10 * s, gt - 38 * s); ctx.lineTo(r.x + 2 * s, gt - 16 * s);
+      ctx.lineTo(r.x + 12 * s, gt - 44 * s); ctx.lineTo(r.x + 28 * s, gt);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,122,43,0.4)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(r.x - 10 * s, gt - 38 * s); ctx.lineTo(r.x - 4 * s, gt - 10 * s); ctx.stroke();
     }
   } else if (th === 'cave') {
     for (const c of d.crystals || []) {
