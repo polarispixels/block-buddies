@@ -297,8 +297,9 @@ class Player {
     if (this.cool > 0) return;
     if (this.vehicle === 'unicorn') {
       // the horn always fires rainbows — unicorns are friendly
+      // (fired at chest height so it can reach little bugs on the ground)
       this.cool = 0.4;
-      game.projectiles.push(new Projectile(this.cx + this.facing * 52, this.y + 22, this.facing, 'rainbow'));
+      game.projectiles.push(new Projectile(this.cx + this.facing * 52, this.y + 48, this.facing, 'rainbow'));
       AudioSys.sfx('rainbow');
       this.setMood('grin', 0.4);
       Particles.burst(this.cx + this.facing * 52, this.y + 22, 6, { colors: RAINBOW, type: 'sparkle', sp1: 140, l1: 0.5, s1: 8 });
@@ -771,8 +772,12 @@ class Centipede {
   }
   overlapsRect(r) {
     if (this.dead) return false;
-    for (const s of this.segs) {
-      if (r.x < s.x + 18 && r.x + r.w > s.x - 18 && r.y < s.y + 18 && r.y + r.h > s.y - 18) return true;
+    for (let i = 0; i < this.n; i++) {
+      const s = this.segs[i];
+      // the head is big and tall — an easy target
+      const hw = i === 0 ? 26 : 18;
+      const top = i === 0 ? 34 : 18, bot = i === 0 ? 20 : 18;
+      if (r.x < s.x + hw && r.x + r.w > s.x - hw && r.y < s.y + bot && r.y + r.h > s.y - top) return true;
     }
     return false;
   }
@@ -817,22 +822,28 @@ class Centipede {
       }
       const col = friend ? RAINBOW[i % RAINBOW.length] : (i % 2 ? '#6fbf4f' : '#57a83f');
       ctx.fillStyle = col;
-      rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.fill();
-      ctx.strokeStyle = 'rgba(30,60,25,0.5)'; ctx.lineWidth = 2.5;
-      rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.stroke();
+      if (i === 0) { // big noggin
+        rr(ctx, s.x - 24, s.y - 30, 48, 50, 13); ctx.fill();
+        ctx.strokeStyle = 'rgba(30,60,25,0.5)'; ctx.lineWidth = 2.5;
+        rr(ctx, s.x - 24, s.y - 30, 48, 50, 13); ctx.stroke();
+      } else {
+        rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.fill();
+        ctx.strokeStyle = 'rgba(30,60,25,0.5)'; ctx.lineWidth = 2.5;
+        rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.stroke();
+      }
       if (i === 0) {
         // antennae with bobble tips
         ctx.strokeStyle = friend ? '#d6559a' : '#3a6a2a'; ctx.lineWidth = 3.5;
         for (const sd of [-1, 1]) {
-          const tipY = s.y - 27 + Math.sin(t * 6 + sd) * 3;
+          const tipY = s.y - 44 + Math.sin(t * 6 + sd) * 3;
           ctx.beginPath();
-          ctx.moveTo(s.x + sd * 6, s.y - 14);
-          ctx.quadraticCurveTo(s.x + sd * 14, s.y - 30, s.x + sd * 18, tipY);
+          ctx.moveTo(s.x + sd * 8, s.y - 28);
+          ctx.quadraticCurveTo(s.x + sd * 16, s.y - 46, s.x + sd * 21, tipY);
           ctx.stroke();
           ctx.fillStyle = friend ? '#ff8fb0' : '#8fd05a';
-          ctx.beginPath(); ctx.arc(s.x + sd * 18, tipY, 4.5, 0, TAU); ctx.fill();
+          ctx.beginPath(); ctx.arc(s.x + sd * 21, tipY, 5, 0, TAU); ctx.fill();
         }
-        drawFace(ctx, s.x, s.y + 1, 28, friend ? 'happy' : 'angry', t, this.x0, this.dir, 0);
+        drawFace(ctx, s.x, s.y - 4, 38, friend ? 'happy' : 'angry', t, this.x0, this.dir, 0);
       } else {
         drawFace(ctx, s.x, s.y + 1, friend ? 20 : 17, friend ? 'happy' : 'sleepy', t, i * 3 + this.x0);
       }
