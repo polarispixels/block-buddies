@@ -67,9 +67,21 @@ class Player {
     this.duck = false; this.t = rand(10);
     this.coyote = 0; this.jbuf = 0;
     this.bubbleT = 0;
-    this.vehicle = 'wheel'; // 'wheel' | 'truck'
+    this.vehicle = 'wheel'; // 'wheel' | 'truck' | 'unicorn'
     this.turboT = 0; this.airT = 0; this.rot = 0;
     this.rampCd = 0; this.dustT = 0;
+    this.flapCd = 0; this.flapT = 0;
+  }
+  boardUnicorn() {
+    if (this.vehicle === 'unicorn') return;
+    this.vehicle = 'unicorn';
+    const grow = 112 - this.w;
+    this.x -= grow / 2; this.w = 112;
+    this.y -= 98 - this.h; this.h = 98;
+    AudioSys.sfx('neigh');
+    AudioSys.sfx('collect');
+    this.setMood('grin', 1.5);
+    Particles.burst(this.cx, this.cy, 26, { colors: RAINBOW.concat(['#fff']), type: 'sparkle', sp1: 340, l1: 1, s1: 11, grav: 250 });
   }
   boardTruck() {
     if (this.vehicle === 'truck') return;
@@ -213,6 +225,43 @@ class Player {
       this.x = clamp(this.x, 0, lv.w - this.w);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
       this.checkHazards(lv);
+    } else if (this.vehicle === 'unicorn') {
+      // ---- UNICORN (with Pegasus wings!) ----
+      this.flapCd = Math.max(0, this.flapCd - dt);
+      this.flapT = Math.max(0, this.flapT - dt);
+      if (ax) { this.vx = ax * 340; this.facing = ax; } else this.vx *= Math.exp(-9 * dt);
+      this.duck = false;
+      if (this.onGround) this.coyote = 0.12; else this.coyote -= dt;
+      if (justP.ArrowUp) {
+        if (this.onGround || this.coyote > 0) {
+          this.coyote = 0;
+          this.vy = -650; this.onGround = false; this.squash = 1.25;
+          AudioSys.sfx('jump');
+        } else if (this.flapCd <= 0) {
+          // FLAP! press Up again and again to fly
+          this.flapCd = 0.18; this.flapT = 0.28;
+          this.vy = Math.max(-560, Math.min(this.vy, 0) - 430);
+          AudioSys.sfx('flap');
+          Particles.burst(this.cx - this.facing * 30, this.cy + 14, 10, { colors: RAINBOW, type: 'sparkle', sp1: 190, grav: 120, l1: 0.8, s1: 10 });
+        }
+      }
+      this.vy += 1500 * dt;
+      if (this.vy > 640) this.vy = 640; // floaty
+      const wasG = this.onGround;
+      const res = moveEntity(this, lv, dt);
+      this.onGround = res.ground;
+      if (res.bounced) { AudioSys.sfx('bounce'); this.squash = 1.45; }
+      if (res.ground && !wasG) {
+        AudioSys.sfx('land'); this.squash = 0.78;
+      }
+      // glitter trail whenever the unicorn is flying
+      if (!this.onGround && chance(0.8)) {
+        Particles.burst(this.cx - this.facing * 42, this.cy + rand(-12, 20), 2, { colors: RAINBOW.concat(['#fff']), type: 'sparkle', sp1: 60, grav: 170, l0: 0.5, l1: 1, s0: 5, s1: 10, up: 0 });
+      }
+      this.x = clamp(this.x, 0, lv.w - this.w);
+      this.y = Math.max(this.y, 40);
+      if (res.ground) game.lastSafe = { x: this.x, y: this.y };
+      this.checkHazards(lv);
     } else {
       if (ax) { this.vx = ax * spd; this.facing = ax; } else this.vx = 0;
       this.duck = !!keys.ArrowDown && this.onGround;
@@ -246,6 +295,15 @@ class Player {
   }
   action() {
     if (this.cool > 0) return;
+    if (this.vehicle === 'unicorn') {
+      // the horn always fires rainbows — unicorns are friendly
+      this.cool = 0.4;
+      game.projectiles.push(new Projectile(this.cx + this.facing * 52, this.y + 22, this.facing, 'rainbow'));
+      AudioSys.sfx('rainbow');
+      this.setMood('grin', 0.4);
+      Particles.burst(this.cx + this.facing * 52, this.y + 22, 6, { colors: RAINBOW, type: 'sparkle', sp1: 140, l1: 0.5, s1: 8 });
+      return;
+    }
     if (this.power === 'none') {
       this.cool = 0.3; this.squash = 1.3;
       AudioSys.sfx('boing');
@@ -347,6 +405,8 @@ class Player {
       ctx.beginPath(); ctx.arc(bx, by + 6, 19.5, Math.PI, TAU); ctx.fill();
       rr(ctx, bx + (this.facing > 0 ? 4 : -26), by - 1, 22, 7, 3); ctx.fill();
     }
+    // royalty wears the crown everywhere, forever
+    if (game.royal) drawCrown(ctx, bx, by - (girl ? 14 : 10), 13);
     // face
     drawFace(ctx, bx, by + 13, 30, mood, t, 3, this.facing * 0.7 + this.vx / 500, this.vy / 1100);
   }
@@ -372,6 +432,22 @@ class Player {
         spin: this.spin,
         mood: this.mood
       });
+      ctx.restore();
+      return;
+    }
+    if (this.vehicle === 'unicorn') {
+      const sq = clamp(this.squash, 0.6, 1.5);
+      const baseY = this.y + this.h;
+      ctx.translate(this.cx, baseY);
+      ctx.scale(2 - sq, sq);
+      ctx.translate(-this.cx, -baseY);
+      drawUnicornBody(ctx, this.x, this.y, this.w, this.h, this.t, {
+        running: Math.abs(this.vx) > 60 && this.onGround,
+        airborne: !this.onGround,
+        flapT: this.flapT,
+        facing: this.facing
+      });
+      this.drawBoy(ctx, this.cx - this.facing * 16, this.y - 16, this.mood);
       ctx.restore();
       return;
     }
@@ -501,6 +577,270 @@ class ParkedTruck {
     ctx.moveTo(this.cx, ay); ctx.lineTo(this.cx, ay + 34);
     ctx.moveTo(this.cx - 12, ay + 20); ctx.lineTo(this.cx, ay + 36); ctx.lineTo(this.cx + 12, ay + 20);
     ctx.stroke();
+  }
+}
+
+// ================================================================ unicorn
+function drawUnicornBody(ctx, x, y, w, h, t, o = {}) {
+  ctx.save();
+  const cx = x + w / 2;
+  if ((o.facing || 1) < 0) { ctx.translate(cx, 0); ctx.scale(-1, 1); ctx.translate(-cx, 0); }
+  const bodyY = y + 34;
+  // wing behind the body
+  const airborne = o.airborne;
+  const wingA = airborne ? -(o.flapT > 0 ? (o.flapT / 0.28) * 1 : 0.2 + Math.sin(t * 7) * 0.22) : 0;
+  const drawWing = (wx2, wy2, s, alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(wx2, wy2);
+    ctx.rotate(wingA);
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-14 - i * 13 * s, -8 - i * 8 * s, 22 * s, 10 * s, -0.5 - i * 0.16, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#d9c9ef'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(-14, -8, 22 * s, 10 * s, -0.5, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
+  };
+  if (airborne) drawWing(x + w * 0.42, bodyY + 4, 1.15, 0.85);
+  // tail: flowing rainbow strands
+  for (let i = 0; i < 5; i++) {
+    ctx.strokeStyle = RAINBOW[i % RAINBOW.length]; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + 12, bodyY + 12 + i * 3);
+    ctx.quadraticCurveTo(
+      x - 12 - i * 3, bodyY + 16 + i * 5 + Math.sin(t * 4 + i) * 6,
+      x - 20 - i * 4, bodyY + 34 + i * 4 + Math.sin(t * 4 + i) * 8
+    );
+    ctx.stroke();
+  }
+  // legs: galloping stubs
+  ctx.strokeStyle = '#f2ecff'; ctx.lineWidth = 11; ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    const lx = x + 24 + i * 20;
+    const swing = o.running ? Math.sin(t * 13 + i * 1.7) * 9 : (airborne ? 6 - i * 3 : 0);
+    ctx.beginPath();
+    ctx.moveTo(lx, bodyY + 26);
+    ctx.lineTo(lx + swing, y + h - 6);
+    ctx.stroke();
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath(); ctx.arc(lx + swing, y + h - 5, 6, 0, TAU); ctx.fill();
+  }
+  // body
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.ellipse(x + w * 0.42, bodyY + 16, w * 0.34, 26, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#d9c9ef'; ctx.lineWidth = 3; ctx.stroke();
+  // neck + head
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.6, bodyY + 26);
+  ctx.quadraticCurveTo(x + w * 0.74, bodyY - 8, x + w * 0.8, y + 16);
+  ctx.lineTo(x + w * 0.94, y + 26);
+  ctx.quadraticCurveTo(x + w * 0.86, bodyY + 18, x + w * 0.72, bodyY + 30);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + w * 0.85, y + 18, 20, 15, -0.25, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#d9c9ef'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(x + w * 0.85, y + 18, 20, 15, -0.25, 0, TAU); ctx.stroke();
+  // muzzle
+  ctx.fillStyle = '#ffd9e8';
+  ctx.beginPath(); ctx.ellipse(x + w * 0.97, y + 22, 8, 6.5, -0.2, 0, TAU); ctx.fill();
+  // ear
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.78, y + 8); ctx.lineTo(x + w * 0.74, y - 6); ctx.lineTo(x + w * 0.84, y + 4);
+  ctx.closePath(); ctx.fill();
+  // golden horn with stripes
+  ctx.fillStyle = '#ffd24a';
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.86, y + 6); ctx.lineTo(x + w * 0.98, y - 24); ctx.lineTo(x + w * 0.94, y + 8);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + w * 0.9, y - 2); ctx.lineTo(x + w * 0.95, y + 1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + w * 0.93, y - 11); ctx.lineTo(x + w * 0.965, y - 8); ctx.stroke();
+  // mane: rainbow strands down the neck
+  for (let i = 0; i < 6; i++) {
+    ctx.strokeStyle = RAINBOW[i]; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.8 - i * 4.5, y + 8 + i * 5);
+    ctx.quadraticCurveTo(
+      x + w * 0.68 - i * 4, y + 18 + i * 6 + Math.sin(t * 5 + i) * 3,
+      x + w * 0.62 - i * 3, y + 30 + i * 5
+    );
+    ctx.stroke();
+  }
+  // eye with a lash
+  ctx.fillStyle = '#3a2a3a';
+  ctx.beginPath(); ctx.arc(x + w * 0.85, y + 15, 4, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x + w * 0.86, y + 13.5, 1.5, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#3a2a3a'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x + w * 0.81, y + 10); ctx.lineTo(x + w * 0.77, y + 7); ctx.stroke();
+  // smile
+  ctx.beginPath(); ctx.arc(x + w * 0.94, y + 26, 4, 0.3, Math.PI * 0.9); ctx.stroke();
+  // wing in front
+  if (airborne) drawWing(x + w * 0.5, bodyY + 6, 0.9, 1);
+  ctx.restore();
+}
+
+class ParkedUnicorn {
+  constructor(x, groundY) {
+    this.w = 112; this.h = 98;
+    this.x = x; this.y = groundY - this.h;
+    this.t = rand(9);
+    this.dead = false;
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt) {
+    this.t += dt;
+    if (!this.dead && overlaps(this, game.player)) {
+      this.dead = true;
+      game.player.boardUnicorn();
+    }
+    if (!this.dead && chance(0.08)) {
+      Particles.burst(this.cx + rand(-40, 40), this.cy + rand(-30, 30), 1, { colors: RAINBOW, type: 'sparkle', sp1: 25, grav: -40, l1: 0.8, s1: 8, up: 0 });
+    }
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    ctx.save();
+    ctx.globalAlpha = 0.3 + 0.15 * Math.sin(this.t * 4);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(this.cx, this.cy, 80, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(0, Math.sin(this.t * 2.5) * 3);
+    drawUnicornBody(ctx, this.x, this.y, this.w, this.h, this.t, { facing: 1 });
+    ctx.restore();
+    const ay = this.y - 58 + Math.sin(this.t * 5) * 9;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.cx, ay); ctx.lineTo(this.cx, ay + 34);
+    ctx.moveTo(this.cx - 12, ay + 20); ctx.lineTo(this.cx, ay + 36); ctx.lineTo(this.cx + 12, ay + 20);
+    ctx.stroke();
+  }
+}
+
+// ================================================================ centipede
+// A multi-block bug: a chain of funny blocks that wiggles along the ground.
+// Rainbow turns the whole chain into a rainbow parade that follows the player.
+class Centipede {
+  constructor(x, groundY, n = 6, range = 260) {
+    this.n = n;
+    this.groundY = groundY;
+    this.state = 'angry';
+    this.dir = -1; this.range = range; this.x0 = x;
+    this.t = rand(9);
+    this.frozenT = 0;
+    this.dead = false;
+    this.segs = [];
+    for (let i = 0; i < n; i++) this.segs.push({ x: x + i * 30, y: groundY - 20 });
+  }
+  update(dt) {
+    this.t += dt;
+    if (this.dead) return;
+    if (this.frozenT > 0) { this.frozenT -= dt; return; }
+    const pl = game.player;
+    const head = this.segs[0];
+    if (this.state === 'angry') {
+      head.x += this.dir * 85 * dt;
+      if (head.x < this.x0 - this.range) this.dir = 1;
+      if (head.x > this.x0 + this.range) this.dir = -1;
+    } else {
+      // the rainbow parade follows its new best friend
+      const tx = pl.cx - pl.facing * 130;
+      head.x += clamp(tx - head.x, -230 * dt, 230 * dt);
+      if (Math.abs(tx - head.x) > 4) this.dir = Math.sign(tx - head.x);
+      if (chance(1.2 * dt)) Particles.burst(head.x, head.y - 26, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 40, grav: -100, l1: 0.8, s1: 8, up: 0 });
+    }
+    head.y = this.groundY - 22 + Math.sin(this.t * 5) * 8;
+    for (let i = 1; i < this.n; i++) {
+      const p = this.segs[i - 1], s = this.segs[i];
+      const dx = p.x - s.x;
+      if (Math.abs(dx) > 30) s.x += (Math.abs(dx) - 30) * Math.sign(dx);
+      s.y = this.groundY - 20 + Math.sin(this.t * 5 - i * 0.85) * 9;
+    }
+  }
+  touches(r) {
+    if (this.dead || this.state !== 'angry' || this.frozenT > 0) return false;
+    return this.overlapsRect(r);
+  }
+  overlapsRect(r) {
+    if (this.dead) return false;
+    for (const s of this.segs) {
+      if (r.x < s.x + 18 && r.x + r.w > s.x - 18 && r.y < s.y + 18 && r.y + r.h > s.y - 18) return true;
+    }
+    return false;
+  }
+  hitBy(kind) {
+    if (this.dead) return;
+    if (kind === 'rainbow') {
+      if (this.state !== 'friend') {
+        this.state = 'friend';
+        AudioSys.sfx('friend');
+        for (const s of this.segs) {
+          Particles.burst(s.x, s.y, 5, { colors: ['#ff8fb0', '#ffd24a', '#fff'], type: 'heart', sp1: 180, l1: 0.9, s1: 9 });
+        }
+      }
+    } else if (kind === 'ice') {
+      this.frozenT = 4;
+      AudioSys.sfx('freeze');
+    } else if (kind === 'fire' && this.state === 'angry') {
+      this.dead = true;
+      AudioSys.sfx('poof');
+      for (const s of this.segs) {
+        Particles.burst(s.x, s.y, 8, { colors: ['#8fd05a', '#57b84a', '#ffe156'], type: 'star', sp1: 240, l1: 0.7, s1: 10 });
+        if (chance(0.5)) {
+          const c = new Pickup(s.x, s.y, 'candy');
+          c.vx = rand(-150, 150); c.vy = -350; c.physics = true;
+          game.pickups.push(c);
+        }
+      }
+    }
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    const t = this.t, friend = this.state === 'friend';
+    for (let i = this.n - 1; i >= 0; i--) {
+      const s = this.segs[i];
+      // little legs
+      ctx.strokeStyle = friend ? '#d6559a' : '#3a6a2a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(s.x + sd * 8, s.y + 10);
+        ctx.lineTo(s.x + sd * 13, s.y + 21 + Math.sin(t * 10 + i + sd) * 3);
+        ctx.stroke();
+      }
+      const col = friend ? RAINBOW[i % RAINBOW.length] : (i % 2 ? '#6fbf4f' : '#57a83f');
+      ctx.fillStyle = col;
+      rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,60,25,0.5)'; ctx.lineWidth = 2.5;
+      rr(ctx, s.x - 17, s.y - 16, 34, 34, 10); ctx.stroke();
+      if (i === 0) {
+        // antennae with bobble tips
+        ctx.strokeStyle = friend ? '#d6559a' : '#3a6a2a'; ctx.lineWidth = 3.5;
+        for (const sd of [-1, 1]) {
+          const tipY = s.y - 27 + Math.sin(t * 6 + sd) * 3;
+          ctx.beginPath();
+          ctx.moveTo(s.x + sd * 6, s.y - 14);
+          ctx.quadraticCurveTo(s.x + sd * 14, s.y - 30, s.x + sd * 18, tipY);
+          ctx.stroke();
+          ctx.fillStyle = friend ? '#ff8fb0' : '#8fd05a';
+          ctx.beginPath(); ctx.arc(s.x + sd * 18, tipY, 4.5, 0, TAU); ctx.fill();
+        }
+        drawFace(ctx, s.x, s.y + 1, 28, friend ? 'happy' : 'angry', t, this.x0, this.dir, 0);
+      } else {
+        drawFace(ctx, s.x, s.y + 1, friend ? 20 : 17, friend ? 'happy' : 'sleepy', t, i * 3 + this.x0);
+      }
+      if (this.frozenT > 0) {
+        ctx.fillStyle = 'rgba(160,225,255,0.5)';
+        rr(ctx, s.x - 20, s.y - 20, 40, 44, 8); ctx.fill();
+      }
+    }
   }
 }
 

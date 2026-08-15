@@ -254,6 +254,21 @@ function drawCandy(ctx, x, y, s, kind = 0, t = 0) {
   ctx.restore();
 }
 
+// ---------------------------------------------------------------- royal crown
+function drawCrown(ctx, cx, y, s) { // y = base of the crown band
+  ctx.fillStyle = '#ffd24a';
+  ctx.beginPath();
+  ctx.moveTo(cx - s, y); ctx.lineTo(cx - s, y - s * 0.55); ctx.lineTo(cx - s * 0.5, y - s * 0.28);
+  ctx.lineTo(cx, y - s * 0.8); ctx.lineTo(cx + s * 0.5, y - s * 0.28);
+  ctx.lineTo(cx + s, y - s * 0.55); ctx.lineTo(cx + s, y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#c8861b'; ctx.lineWidth = Math.max(2, s * 0.13);
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.fillStyle = '#ff5a8a';
+  ctx.beginPath(); ctx.arc(cx, y - s * 0.14, s * 0.17, 0, TAU); ctx.fill();
+}
+
 // ---------------------------------------------------------------- input
 const keys = {}, justP = {};
 const GAMEKEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'];
