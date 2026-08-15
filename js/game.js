@@ -58,6 +58,11 @@ game.respawnPlayer = function () {
   pl.x = cp ? cp.x - 20 : lv.playerStart.x;
   pl.y = cp ? cp.groundY - pl.h - 4 : lv.playerStart.y;
   if (lv.water && cp) pl.y = cp.groundY - pl.h - 40;
+  if (game.zombie) {
+    // the rock wall has sealed the arena — respawn just inside it, not at the flag
+    pl.x = game.arenaL + 20;
+    pl.y = game.zombie.groundY - pl.h - 4;
+  }
   pl.vx = 0; pl.vy = 0; pl.hearts = 3; pl.inv = 2; pl.mood = 'happy';
   game.projectiles = []; game.shoes = [];
   if (game.zombie && game.bossStage > 0 && game.zombie.state !== 'friend') {
