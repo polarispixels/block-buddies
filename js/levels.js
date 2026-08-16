@@ -174,8 +174,13 @@ function buildLevel(n) {
     addWallBreak(lv, 2640, 572, 4);
     addWallBreak(lv, 4180, 524, 4);
     pick(lv, 500, G - 90, 'ice');
-    pick(lv, 2450, 524 - 80, 'power');
-    pick(lv, 4020, 524 - 80, 'power');
+    // power blocks RESPAWN (reusing the boss-pickup respawner): the crystal
+    // wall must never soft-lock the mission if super mode gets spent elsewhere
+    for (const px of [2000, 4020]) { // placed clear of spider patrols
+      const pw = new Pickup(px, 524 - 80, 'power');
+      pw.bossKind = 'power'; // respawns ~3s after super mode runs out
+      lv.pickups.push(pw);
+    }
     pick(lv, 3500, 572 - 70, 'heart');
     pick(lv, 1330, 400, 'ice');
     candyRow(lv, 250, 700, G - 60, 4);
@@ -197,16 +202,19 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(1750, 572));
     lv.checks.push(new Checkpoint(3850, 524));
     lv.gate = new Gate(4700, 524);
-    lv.hints.push({ x: 2530, y: 350, icon: 'power' });
+    lv.hints.push({ x: 2725, y: 330, icon: 'power' }); // right beside the cracked wall
     // ---- Golden Key adventure mission (collection): the cave under the
     // overhang holds the crystal Shrine — a chest with three empty sockets.
     // The three Mountain Crystals are scattered nearby, each a different
     // little challenge; bring them all back and the chest opens into the key.
     // Crystal 1 (ice): on a small block pile at the cave mouth — easy hops.
     addBlockPile(lv, 3060, 572, 2, 1);
-    // Crystal 2 (fire): on a high ledge — the spring block launches you up.
-    addPlat(lv, 2830, 330, 170, { oneWay: true });
-    addPlat(lv, 2880, 532, 90, { bouncy: true, h: 40, bounceVy: -1150 });
+    // Crystal 2 (fire): high in the sky over the tier-3 straightaway. The
+    // spring pad sits on a raised one-way platform ABOVE head height, so
+    // walking the ground path never touches it — hopping onto the spring is a
+    // deliberate choice, and the bounce carries you up through the crystal.
+    addPlat(lv, 2470, 420, 140, { oneWay: true });
+    addPlat(lv, 2490, 396, 110, { bouncy: true, h: 24, bounceVy: -1150 });
     // Crystal 3 (power): sealed in a pocket at the cave's back — cracked wall
     // on the left (power-smash it, as learned earlier), solid rock on the
     // right so the pocket can't be entered from the far side.
@@ -218,7 +226,7 @@ function buildLevel(n) {
       mGate,
       new CollectionPuzzle([
         new MissionToken(3108, 468, 'ice', 'crystal'),
-        new MissionToken(2915, 268, 'fire', 'crystal'),
+        new MissionToken(2545, 110, 'fire', 'crystal'),
         new MissionToken(3696, 520, 'power', 'crystal')
       ], new Shrine(3300, 572, { theme: 'stone' })),
       new MissionItem('key'));

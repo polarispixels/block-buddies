@@ -265,11 +265,15 @@ check('door bump gives key hint, costs nothing', MIS().gate.hintT > 0 && G().pla
 // distributed collection: three crystals, any order, each its own challenge
 const TOK = i => vm.runInContext(`game.level.mission.puzzle.tokens[${i}]`, sandbox);
 check('shrine chest waits closed with three empty sockets', MIS().puzzle.shrine.chest.open === false && MIS().puzzle.count() === 0);
-// the spring block launches far higher than any jump — straight to the ledge crystal
-put(2925, 532 - 94);
+// the raised spring never interrupts ground travel...
+put(2400, 524 - 94);
+frames(40, { ArrowRight: 1 });
+check('walking under the spring platform never bounces', G().player.x > 2560 && Math.abs(G().player.y - (524 - 94)) < 4);
+// ...but hopping onto it launches far higher than any jump, through the sky crystal
+put(2530, 270); // drop onto the raised spring
 let minY = 1e9;
 for (let i = 0; i < 70; i++) { frames(1); minY = Math.min(minY, G().player.y); }
-check('spring block launches the hero to the high ledge', minY < 320);
+check('spring block launches the hero sky-high', minY < 200);
 check('bounce route collects the fire crystal first (any order works)', TOK(1).taken === true && MIS().puzzle.count() === 1);
 // dying must not un-collect anything
 vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
@@ -292,6 +296,13 @@ put(3540, 572 - 94);
 vm.runInContext('game.player.superT = 3', sandbox);
 frames(30, { ArrowRight: 1 });
 check('power smash frees the last crystal', MIS().puzzle.count() === 3);
+// mission-critical power blocks respawn — the wall can never soft-lock the run
+put(2000 - 28, 524 - 94);
+frames(5);
+check('power block grants super mode', G().player.superT > 0);
+put(2700, 524 - 94); // wait somewhere safe
+frames(580); // super expires, then the respawn timer passes
+check('used power block respawns (no soft-lock)', vm.runInContext("game.pickups.some(p => p.kind === 'power' && p.bossKind && !p.dead)", sandbox) === true);
 // return to the shrine: sockets fill, chest opens, key appears
 put(3300, 572 - 94);
 frames(20);

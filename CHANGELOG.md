@@ -8,6 +8,27 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.6.1] - 2026-08-16
+
+Playtest fixes from Jack's Mountain run.
+
+### Fixed
+- **The spring pad no longer ambushes ground travel.** It used to sit on the
+  walking path, flinging anyone heading for the cave. It now sits on a raised
+  one-way platform above head height on the tier-3 straightaway: walking
+  underneath never touches it, and hopping onto it is a deliberate choice —
+  the bounce carries you straight up through the relocated sky-high fire
+  crystal (with instant boing-retry if you miss).
+- **The mission can no longer soft-lock.** Both Mountain power blocks now
+  respawn (~3 seconds after super mode runs out, reusing the boss-pickup
+  respawner), so the cracked-wall crystal is always reachable even if the
+  power block was spent elsewhere first.
+- The power hint sign moved next to the cracked wall it explains (it had ended
+  up hovering over the spring, implying the wrong thing), and the respawning
+  power block moved clear of the spider patrol.
+- Harness: walk-under-never-bounces and power-block-respawn regression checks
+  ( checks total).
+
 ## [1.6.0] - 2026-08-16
 
 ### Added
