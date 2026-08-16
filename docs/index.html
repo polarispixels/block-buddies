@@ -94,7 +94,7 @@
     <li><a href="#progression">Progression &amp; persistence</a></li>
     <li><a href="#testing">Testing &amp; verification</a></li>
     <li><a href="#collaborating">Collaborating: adding levels &amp; features</a></li>
-    <li><a href="#bug-class">Known recurring bug class</a></li>
+    <li><a href="#bug-class">Known recurring bug classes</a></li>
   </ul>
 </nav>
 
@@ -608,7 +608,14 @@ losable without punishment (checkpoint + retry), and it should end in a celebrat
   with item → unlock → stays open → level still completable), then screenshot every new visual.</li>
 </ol>
 
-<h2 id="bug-class">Known recurring bug class</h2>
+<h2 id="bug-class">Known recurring bug classes</h2>
+<p class="callout rule"><strong>Solid ceilings over jump/launch paths.</strong> Shipped twice
+(Cloud Climb v1.7.1, Volcano Escape v1.8.2): a solid underside within jump or bouncer-launch reach
+head-bonks the hero and can make a route unfinishable. Every landable surface on a climb must be
+one-way; any deliberately solid ceiling (walls, crater rims) must float higher than the apex of a
+jump (rise 148&nbsp;px) or launch (rise = <code>bounceVy²/3200</code>) from every platform beneath
+it. And harness checks must <em>ride</em> the launch for real — teleporting past a traversal leg is
+exactly how both bugs shipped.</p>
 <p class="callout rule"><strong>Projectile/target height mismatches.</strong> Three shipped bugs were
 variations of "the shot sails N pixels over the enemy's hitbox on flat ground" (fireball vs. spider,
 unicorn rainbow vs. centipede, crouch-shot). Whenever adding an enemy or a firing height, add a harness

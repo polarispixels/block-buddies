@@ -173,7 +173,16 @@ everywhere via `drawBoy`/`drawHead`).
   cannot catch visual/layering bugs.
 - `node --check js/*.js` for quick syntax validation.
 
-## Recurring bug class — watch for it
+## Recurring bug classes — watch for them
+
+**Solid ceilings over jump/launch paths.** Shipped twice (Cloud Climb v1.7.1,
+Volcano Escape v1.8.2): a solid platform/wall underside sitting within jump or
+bouncer-launch reach head-bonks the hero and can make a route unfinishable.
+Rules: every landable surface on a climb is one-way; any solid that must stay
+solid (walls, rims) floats HIGHER than apex-of-jump from every platform
+beneath it (jump rise 148, launch rise = bounceVy^2/3200). Harness checks must
+RIDE the launch/jump for real — teleporting past a traversal leg is how both
+bugs shipped.
 
 **Projectile/target height mismatches.** Three shipped bugs were "the shot
 sails N pixels over the enemy's hitbox on flat ground" (fireball vs spider,
