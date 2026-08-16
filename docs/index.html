@@ -153,7 +153,7 @@ changelog lacks an entry for it, or if this page doesn't mention it.</p>
   <tr><td><code>js/util.js</code></td><td><code>GAME_VERSION</code>, constants (<code>W=1280</code>, <code>H=720</code>), drawing helpers (<code>rr</code>, <code>drawFace</code>, <code>drawBlock</code>, <code>drawCrown</code>, keycaps, candy), palettes (<code>POW</code>, <code>RAINBOW</code>), keyboard input (<code>keys</code>/<code>justP</code>), <code>TouchUI</code> (two-thumb layout + fullscreen button + title tap hook)</td></tr>
   <tr><td><code>js/audio.js</code></td><td><code>AudioSys</code>: procedural sound effects (one <code>sfx(name)</code> switch) and step-sequenced music (<code>SONGS</code> table, midi-note arrays per theme). Unlocked on first user input.</td></tr>
   <tr><td><code>js/particles.js</code></td><td><code>Particles</code> pool (star / sparkle / heart / block / confetti / candy / flame / bubble), <code>candyBurst</code></td></tr>
-  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, and the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>PuzzleSwitch</code>, <code>SequencePuzzle</code>)</td></tr>
+  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>), <code>FireBreather</code>, the <code>Spino</code> boss, and <code>SubDoor</code> (mini-game entrances)</td></tr>
   <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star), <code>drawDecor</code> (incl. castle, grandstand, royals)</td></tr>
   <tr><td><code>js/game.js</code></td><td>The <code>game</code> state machine, boss and ending flows, cutscenes (<code>updateCut</code>), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop</td></tr>
 </table></div>
@@ -250,7 +250,11 @@ befriending the guard — all fair).</p>
 <p>Any solid with <code>bouncy: true</code> is a bouncer; <code>bounceVy</code> sets launch strength
 (default −980 ≈ 2× jump height; the mission ledges use −1150 ≈ 3×). Add one with
 <code>addPlat(lv, x, y, w, {bouncy: true, h: 40, bounceVy: -1150})</code>. Skins follow the level
-theme automatically: pink spring block everywhere, pink booster mushroom in forest/jungle. Overshoot
+theme automatically: pink spring block everywhere, pink booster mushroom in forest/jungle — and the
+color is the vocabulary: <strong>pink</strong> = normal bounce, <strong>gold with a star</strong> =
+super bounce (drawn automatically when <code>bounceVy ≤ −1300</code>), <strong>blue with a tilted
+arrow</strong> = sideways launch (<code>bounceVx</code>, which also grants a short airborne momentum
+window so the launch carries without input). Overshoot
 generously and give wide landing platforms (<code>oneWay: true</code> so the player sails up through
 them) — bouncing should never need precision.</p>
 
@@ -323,6 +327,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>🌈 rainbow block (the <strong>befriending</strong> mechanic), one-way pass-through platforms, pink bouncy spring blocks, rainbow bridges, and <strong>cloud-catch</strong> (<code>lv.fallCatch</code>): falling never hurts — a smiling cloud scoops the player back up.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2, heart ×1, candy.</dd>
   <dt>Cameos</dt><dd>Walk spiders from level 1. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches.</dd>
+  <dt>Mini-game</dt><dd>A cloud-swirl <code>SubDoor</code> on the middle island leads into <strong>Cloud Climb</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -334,7 +339,8 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Enemies</dt><dd>5 walking, 1 jumping, and 2 <strong>hanging spiders</strong> (new: dangle on webs under the high ledge and drop on you). The puzzle cave and door approach are deliberately enemy-free.</dd>
   <dt>New here</dt><dd>The ⭐ <strong>power block / super mode</strong> (6&nbsp;s of speed, big jumps, shielding, wall-smashing), breakable cracked walls with worried faces — and the game's first <strong>adventure mission</strong>: a big googly-eyed locked door (bump it → CLUNK + key thought-bubble) between the smashable wall and the gate. The cave under the overhang holds the <strong>crystal Shrine</strong> — a chest with three empty sockets showing ghost crystals. The three Mountain Crystals are scattered nearby: ice on a block pile at the cave mouth (easy hops), fire on a high ledge reached by a <strong>spring-block launch</strong>, power sealed in a pocket behind a cracked wall (its glow sparkles over the top — smash through with the power block). Bring all three back and the ceremony opens the chest into a huge Golden Key; it follows the hero to the door, flies into the lock, and the door swings open forever (a candy waits in the doorway).</dd>
   <dt>Pickups</dt><dd>Power ×2, ice ×2, heart ×1, candy, and the mission's Golden Key.</dd>
-  <dt>Cameos</dt><dd>Ice blocks from level 2; the sequence-puzzle icons are the fire/ice/power blocks from levels 1–4; the reward chest is Zombie Cave's treasure chest making an early appearance. The super-mode ram introduced here is later required against King Magma (level 6).</dd>
+  <dt>Cameos</dt><dd>Ice blocks from level 2; the crystal icons are the familiar power-block colors; the shrine chest is Zombie Cave's treasure chest making an early appearance. The super-mode ram introduced here is later required against King Magma (level 6).</dd>
+  <dt>Mini-game</dt><dd>The spring → stepping-stone → cave-roof route ends at a sparkling cave-mouth <code>SubDoor</code> into the <strong>Secret Ascent</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -387,6 +393,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Ending</dt><dd>The <strong>coronation</strong> cutscene at the castle: you are crowned, and the crown is <em>permanent</em> — <code>game.royal</code> persists in <code>localStorage</code> and the hero wears the crown in every level and on the title screen forever after. Party → unlocks Space Maze.</dd>
   <dt>Pickups</dt><dd>Rainbow ×3, heart ×2, candy arcs through the treetops.</dd>
   <dt>Cameos</dt><dd>Cloud World's one-way platforms return as leafy branches and its spring blocks as pink mushrooms; walk/jump spiders from the base game; the befriending mechanic (level 3) becomes the level's main verb.</dd>
+  <dt>Mini-game</dt><dd>A shimmering rainbow-ring <code>SubDoor</code> before the castle leads into <strong>Unicorn Sky Flight</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -507,7 +514,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 216 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 216 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
