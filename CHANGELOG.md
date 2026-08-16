@@ -8,6 +8,40 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.5.0] - 2026-08-16
+
+Both adventure missions redesigned from trivial walk-through sequences into
+small genuine adventures: **distributed collection puzzles**.
+
+### Changed
+- **New pattern (both missions):** discover the gate → find the Shrine showing
+  three empty ghost-silhouette sockets → explore and collect three scattered
+  tokens in ANY order → return → ceremony (tokens fly into sockets one at a
+  time, shrine shakes, chest opens) → mission key appears → carry it to the
+  gate. Difficulty comes from *reaching* things, never logic: token 1 is an
+  easy visible grab, token 2 is high overhead (a bouncer launches you), token 3
+  sits behind a mechanic learned earlier.
+- **Mountain:** the cave now holds the crystal Shrine. Ice crystal on a block
+  pile at the cave mouth; fire crystal on a high ledge via a spring-block
+  launch; power crystal sealed in a pocket behind a cracked wall (power-smash
+  it — the pocket's far side is solid rock so it can't be sneaked into, a
+  bypass caught during testing).
+- **Jungle:** the terrace holds the Dinosaur Nest Shrine (vine-wrapped chest,
+  three nest bowls). Egg 1 on a low leaf platform; egg 2 in the canopy via a
+  giant bouncy mushroom; egg 3 bobbing in the shrine guard's flame path (time
+  the fire — or freeze/befriend the guard). The ceremony includes a one-second
+  gag: a placed egg cracks and a baby eye peeks out.
+- Wordless progress: after each pickup a toast pops over the hero — three
+  icons, collected ones bright with a star. Collected tokens survive death and
+  checkpoint respawns.
+
+### Added
+- Reusable **Bouncer** upgrade: any bouncy solid now takes `bounceVy` (default
+  −980 ≈ 2× jump; mission ledges use −1150 ≈ 3×) with theme-automatic skins
+  (spring block / giant pink mushroom).
+- `MissionToken`, `Shrine`, `CollectionPuzzle` in the mission kit
+  (`SequencePuzzle`/`PuzzleSwitch` retired with their sequence puzzles).
+
 ## [1.4.0] - 2026-08-16
 
 ### Added

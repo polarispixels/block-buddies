@@ -32,7 +32,7 @@ function addGround(lv, x, w, top) {
   lv.solids.push({ x, y: top, w, h: lv.h - top + 400, ground: true, top });
 }
 function addPlat(lv, x, y, w, opts = {}) {
-  lv.solids.push({ x, y, w, h: opts.h || 36, oneWay: opts.oneWay, bouncy: opts.bouncy, plat: true });
+  lv.solids.push({ x, y, w, h: opts.h || 36, oneWay: opts.oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, plat: true });
 }
 function addBlockPile(lv, x, top, cols, rows) {
   lv.solids.push({ x, y: top - rows * 48, w: cols * 48, h: rows * 48, pile: true });
@@ -176,7 +176,7 @@ function buildLevel(n) {
     pick(lv, 500, G - 90, 'ice');
     pick(lv, 2450, 524 - 80, 'power');
     pick(lv, 4020, 524 - 80, 'power');
-    pick(lv, 3350, 572 - 70, 'heart');
+    pick(lv, 3500, 572 - 70, 'heart');
     pick(lv, 1330, 400, 'ice');
     candyRow(lv, 250, 700, G - 60, 4);
     candyArc(lv, 1150, 1550, 350, 520, 5);
@@ -198,19 +198,30 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(3850, 524));
     lv.gate = new Gate(4700, 524);
     lv.hints.push({ x: 2530, y: 350, icon: 'power' });
-    // ---- Golden Key adventure mission: the overhang cave is the puzzle
-    // chamber (step the plates in the shown order -> chest -> key), and a
-    // locked door blocks the path between the smashable wall and the gate.
+    // ---- Golden Key adventure mission (collection): the cave under the
+    // overhang holds the crystal Shrine — a chest with three empty sockets.
+    // The three Mountain Crystals are scattered nearby, each a different
+    // little challenge; bring them all back and the chest opens into the key.
+    // Crystal 1 (ice): on a small block pile at the cave mouth — easy hops.
+    addBlockPile(lv, 3060, 572, 2, 1);
+    // Crystal 2 (fire): on a high ledge — the spring block launches you up.
+    addPlat(lv, 2830, 330, 170, { oneWay: true });
+    addPlat(lv, 2880, 532, 90, { bouncy: true, h: 40, bounceVy: -1150 });
+    // Crystal 3 (power): sealed in a pocket at the cave's back — cracked wall
+    // on the left (power-smash it, as learned earlier), solid rock on the
+    // right so the pocket can't be entered from the far side.
+    addWallBreak(lv, 3620, 572, 4);
+    lv.solids.push({ x: 3720, y: 350, w: 56, h: 222, pile: true });
     const mGate = new MissionGate(4480, 524);
     lv.solids.push(mGate.solid);
     lv.mission = new Mission('goldenkey',
       mGate,
-      new SequencePuzzle(
-        [new PuzzleSwitch(3260, 572, 'fire'), new PuzzleSwitch(3420, 572, 'ice'), new PuzzleSwitch(3580, 572, 'power')],
-        ['fire', 'ice', 'power'],
-        { x: 3420, y: 424, ceilY: 350 }),
-      new MissionItem('key'),
-      { cx: 3130, floorY: 572, dropY: 330 });
+      new CollectionPuzzle([
+        new MissionToken(3108, 468, 'ice', 'crystal'),
+        new MissionToken(2915, 268, 'fire', 'crystal'),
+        new MissionToken(3696, 520, 'power', 'crystal')
+      ], new Shrine(3300, 572, { theme: 'stone' })),
+      new MissionItem('key'));
     lv.decor.pines = []; lv.decor.peaks = true;
     for (let x = 120; x < lv.w; x += rand(300, 650)) lv.decor.pines.push({ x, s: rand(0.8, 1.4) });
   }
@@ -459,7 +470,7 @@ function buildLevel(n) {
     spider(lv, 1350, 460, 'hang', { webTop: 0 });
     spider(lv, 3050, 460, 'hang', { webTop: 0 });
     pick(lv, 700, G - 90, 'rainbow');
-    pick(lv, 2150, G - 80, 'ice');
+    pick(lv, 2560, G - 80, 'ice');
     pick(lv, 2950, G - 80, 'rainbow');
     pick(lv, 1475, 360, 'heart');
     pick(lv, 4600, G - 80, 'heart');
@@ -477,17 +488,22 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(4200, G));
     lv.hints.push({ x: 260, y: G - 190, icon: 'arrows' });
     lv.hints.push({ x: 850, y: G - 220, icon: 'up' }); // "jump!" — over the fire
-    // ---- Dino Key adventure mission: egg shrine on the terrace, ancient gate below
+    // ---- Dino Key adventure mission (collection): the Dinosaur Nest Shrine
+    // sits on the terrace with three empty nest bowls; the three lost eggs
+    // are scattered along the jungle. Egg 2 needs the giant bouncy mushroom;
+    // egg 3 bobs right in the shrine guard's flame path — time it!
+    addPlat(lv, 1950, 350, 180, { oneWay: true }); // canopy leaf
+    addPlat(lv, 2000, 580, 120, { bouncy: true, h: 40, bounceVy: -1150 }); // GIANT bouncy mushroom
     const jGate = new MissionGate(4300, G, { theme: 'jungle' });
     lv.solids.push(jGate.solid);
     lv.mission = new Mission('dinokey',
       jGate,
-      new SequencePuzzle(
-        [new PuzzleSwitch(3660, 430, 'rainbow', 'egg'), new PuzzleSwitch(3810, 430, 'power', 'egg'), new PuzzleSwitch(3960, 430, 'fire', 'egg')],
-        ['rainbow', 'power', 'fire'],
-        { x: 3810, y: 250, style: 'stone', groundY: 430 }),
-      new MissionItem('dinokey'),
-      { cx: 4090, floorY: 430, dropY: 60 });
+      new CollectionPuzzle([
+        new MissionToken(1725, 452, 'rainbow', 'egg'),
+        new MissionToken(2040, 296, 'power', 'egg'),
+        new MissionToken(3380, 386, 'fire', 'egg')
+      ], new Shrine(3800, 430, { theme: 'nest' })),
+      new MissionItem('dinokey'));
     // the secret valley's golden star
     lv.goalStar = { x: 5600, y: 500 };
     lv.decor.ferns = []; lv.decor.jflowers = []; lv.decor.shroomsJ = []; lv.decor.prints = [];
@@ -905,7 +921,7 @@ function drawSolids(ctx, lv, cam, t) {
     const vis = { x: Math.max(s.x, cam.x - 60), w: Math.min(s.x + s.w, cam.x + W + 60) - Math.max(s.x, cam.x - 60) };
     if (s.bouncy) {
       const sq = 1 + Math.sin(t * 6) * 0.05;
-      if (th === 'forest') { // pink booster mushroom
+      if (th === 'forest' || th === 'jungle') { // pink booster mushroom
         const mcx = s.x + s.w / 2;
         ctx.fillStyle = '#fff';
         rr(ctx, mcx - 13, s.y + 12, 26, s.h - 8, 8); ctx.fill();

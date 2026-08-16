@@ -50,7 +50,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `PuzzleSwitch`, `SequencePuzzle`) |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather` |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -64,13 +64,13 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 | 1 | Block Meadow | meadow | tutorial, fire block | star gate |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | star gate |
-| 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + 🔥❄️⭐ switch-sequence puzzle in the cave) | star gate |
+| 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
 | 7 | Monster Truck Rally | dirt | `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
-| 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient stone gate + 3-egg sequence shrine on a terrace), friendly dinos (longnecks/trike/T-Rex) | golden star in the Secret Dino Valley → party |
+| 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | golden star in the Secret Dino Valley → party |
 
 Progression: gates advance 1→5; beating each boss/finale unlocks the next
 bonus world (zombie→6, magma→7, rally→8, coronation→9, maze star→10) and party
@@ -90,22 +90,29 @@ everywhere via `drawBoy`/`drawHead`).
   respawn via `bossKind`. Arena respawn: death during a boss respawns
   *inside* the sealed arena at `arenaL+20` (never at the outside checkpoint —
   that was a real shipped bug).
-- **Adventure missions**: `lv.mission` (built in `buildLevel`, classes at the
-  end of entities.js). `Mission` lifecycle `'puzzle'→'reward'→'carrying'→'done'`;
-  `MissionGate` pushes its own solid into `lv.solids` and clears it with the
-  same `solid.broken = true` trick as smashed walls; `MissionItem` follows the
-  player once touched (survives respawns — mission state lives on the level
-  object, so it resets only when the level restarts); `SequencePuzzle` +
-  `PuzzleSwitch` are the step-plates-in-order puzzle. Gates only check that
-  the mission reached `'carrying'`, so future missions may earn their item
-  differently (other puzzle types, rhythm pads, favors). No text, ever: the
-  door hints with a key thought-bubble; wrong presses boing + wobble + instant
-  reset, zero damage. Keep mission areas enemy-free (jump spiders chase from
-  430px — don't place them near puzzles or gates). Theming is config, not new
-  systems: `MissionGate` takes `{theme:'wood'|'jungle'}` (size, art, bump sfx,
-  key style, celebration colors), `PuzzleSwitch` takes a `skin`
-  (`'plate'`|`'egg'`), the sign takes `style:'stone'` + `groundY`, and
-  `MissionItem` kinds `'key'`/`'dinokey'` pick the `drawKey` style.
+- **Adventure missions (distributed collection)**: `lv.mission` (built in
+  `buildLevel`, classes at the end of entities.js). `Mission` lifecycle
+  `'puzzle'→'reward'→'carrying'→'done'`; `MissionGate` pushes its own solid
+  into `lv.solids`, clears it with the smashed-wall `solid.broken = true`
+  trick, and only checks the mission reached `'carrying'`. The objective is a
+  `CollectionPuzzle`: scattered `MissionToken`s (skins `'crystal'`/`'egg'`,
+  kind = POW color; `MissionToken.drawIcon` reused for sockets + progress
+  toast) + a `Shrine` (chest with ghost-silhouette sockets; themes
+  `'stone'`/`'nest'`). Any collection order; zero wrong inputs; collected
+  tokens survive death/respawn (mission state lives on the level object).
+  Return-with-all-three runs a ~3s ceremony → chest opens →
+  `mission.item.revealAt(...)`. Difficulty = *reach*, not logic: token 1 easy
+  grab, token 2 high ledge via a bouncer, token 3 behind a learned mechanic
+  (power-smash wall / fire-dino timing) — and seal mechanic-gated pockets on
+  the far side so they can't be sneaked into (that was a real caught bug).
+  Wordless progress: toast over the hero after each pickup. Keep mission areas
+  enemy-free (jump spiders chase from 430px). Theming is config: gate
+  `{theme:'wood'|'jungle'}`, shrine `{theme:'stone'|'nest'}`, item kinds
+  `'key'`/`'dinokey'` pick the `drawKey` style.
+- **Bouncers**: any solid with `bouncy: true`; `bounceVy` sets launch power
+  (default -980 ≈ 2× jump, mission ledges -1150 ≈ 3×). Themed skins are
+  automatic (spring block; mushroom in forest/jungle). Land targets should be
+  wide `oneWay` platforms — never precision.
 - **FireBreather** (`kind='firedino'`, lives in `lv.spiders` so all enemy
   plumbing just works): deterministic cycle idle 1.6s → inhale 1.1s (cheeks
   puff = telegraph, `inhale` sfx) → flame 1.1s. The flame box hugs the ground
@@ -133,7 +140,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 161 checks; must print
+  goal path) and version/changelog/docs sync checks. 169 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

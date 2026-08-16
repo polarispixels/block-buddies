@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.4.0</span>
+  <span class="badge">v1.5.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -199,45 +199,56 @@ Boarding happens by walking or driving into a <code>ParkedTruck</code> / <code>P
 <code>game.bossPlan</code> maps each stage to its required power; wrong hits show a hint bubble and do no harm.
 Boss power-block pickups respawn via <code>bossKind</code>. The arena seals behind a rock wall during the fight.</p>
 
-<h3>Adventure missions (since v1.4.0)</h3>
-<p>A small reusable framework for the loop <em>discover obstacle → understand requirement →
-complete a challenge → earn a mission item → bring it back → unlock → celebrate</em>. Classes live at
-the end of <code>js/entities.js</code>; a level opts in by setting <code>lv.mission</code> in
-<code>buildLevel</code>. The state machine is one field, not scattered booleans:</p>
+<h3>Adventure missions: distributed collection (since v1.5.0)</h3>
+<p>Both missions follow one pattern: <em>discover the locked gate → find the Shrine showing three
+empty sockets → explore and collect three scattered tokens (any order, each a different simple
+challenge) → return to the Shrine → ceremony opens the chest → mission key appears → carry it to the
+gate</em>. Classes live at the end of <code>js/entities.js</code>; a level opts in by setting
+<code>lv.mission</code> in <code>buildLevel</code>. The mission state machine is one field:</p>
 <pre><code>Mission.state:  'puzzle' → 'reward' → 'carrying' → 'done'
-                 solve it   chest+item  item follows  gate opened
-                            revealed    the player    for good</code></pre>
+                 collect     key waits   key follows   gate opened
+                 all tokens  at shrine   the player    for good</code></pre>
 <ul>
-  <li><strong><code>MissionGate</code></strong> — blocks the path with its own solid (pushed into
-  <code>lv.solids</code>; removed on unlock via the same <code>solid.broken = true</code> trick smashed
-  walls use). Bumping it while locked: CLUNK (<code>thud</code>), a shake, a worried face, and a
-  <em>key thought-bubble</em> — the wordless "I need a key." When the player arrives
-  <em>carrying</em> the item, the gate reacts surprised, animates the item into its lock, and swings
-  open with fanfare + confetti. It only checks <code>mission.state === 'carrying'</code> — it does not
-  care <em>how</em> the item was earned, so future missions can use different challenges (other
-  puzzle types, rhythm pads, helping a character).</li>
-  <li><strong><code>MissionItem</code></strong> — hidden → revealed (bobbing in a glow halo) →
-  touched → <em>follows the player</em> with sparkles: constant, wordless "I have it." It snaps
-  across respawn teleports, so dying never loses it. The follow presentation is one small state —
-  easy to swap later.</li>
-  <li><strong><code>PuzzleSwitch</code> + <code>SequencePuzzle</code></strong> — step-on floor plates
-  wearing power-block icons, plus a hanging sign that shows the required order at all times
-  (earned steps brighten and get a star badge). Correct step: DING (<code>collect</code>), the plate
-  lights and its block hops. Wrong step: BONK (<code>boing</code>), everything wobbles comically,
-  instant reset, zero damage, unlimited retries. Re-stepping an already-correct plate is a friendly
-  no-op, never a reset.</li>
+  <li><strong><code>MissionGate</code></strong> — blocks the path with its own solid (removed on
+  unlock via the same <code>solid.broken = true</code> trick smashed walls use). Bumping it while
+  locked: CLUNK/stone-grind, a shake, a worried face, and a thought-bubble showing the key it wants.
+  It only checks <code>mission.state === 'carrying'</code> — it never asks <em>how</em> the item was
+  earned.</li>
+  <li><strong><code>CollectionPuzzle</code></strong> — the objective: an array of
+  <code>MissionToken</code>s plus a <code>Shrine</code>. Tokens collect in <strong>any order</strong>;
+  there are no wrong inputs, no resets, no sequences to memorize. When <code>count()</code> equals the
+  token total and the player comes near the shrine, a short ceremony runs: tokens fly into sockets one
+  at a time (ding per socket), the shrine shakes, the chest opens, and
+  <code>mission.item.revealAt(...)</code> is called. Collected tokens persist through deaths and
+  checkpoint respawns (mission state lives on the level object; it resets only when the level
+  restarts).</li>
+  <li><strong><code>MissionToken</code></strong> — one collectible piece. <code>kind</code> is a POW
+  color key; <code>skin</code> picks artwork (<code>'crystal'</code> gems for Mountain,
+  <code>'egg'</code> for the Jungle). <code>MissionToken.drawIcon</code> renders the same icon at any
+  size for tokens, shrine sockets, and the progress toast. After every pickup a wordless toast pops
+  over the hero — three icons, collected ones bright with a star, missing ones dim. The final pickup
+  gets a stronger fanfare.</li>
+  <li><strong><code>Shrine</code></strong> — the landmark: a glowing treasure chest that has been
+  there all along, plus three sockets showing <em>ghost silhouettes</em> of the missing tokens
+  (collected-but-not-yet-placed ones pulse). Themes: <code>'stone'</code> (Mountain crystal pedestal)
+  and <code>'nest'</code> (Jungle nest bowls, vines draped over the chest until it opens, and a
+  one-second gag where a placed egg cracks and a little eye peeks out).</li>
 </ul>
-<p><strong>Theming is configuration, not new systems</strong> (this is how Dino Jungle reuses the
-Mountain kit): <code>MissionGate</code> takes <code>{theme: 'wood' | 'jungle'}</code> — size, artwork,
-bump sound (thud vs. stone grind), open animation (swing vs. rising slab), hint-key style, and
-celebration colors all follow the theme. <code>PuzzleSwitch</code> takes a <code>skin</code>
-(<code>'plate'</code> or <code>'egg'</code>), the clue sign takes <code>style: 'stone'</code> +
-<code>groundY</code> for a carved tablet on a post, and <code>MissionItem</code> kinds
-(<code>'key'</code>, <code>'dinokey'</code>) pick the <code>drawKey</code> style. A new mission is
-level geometry + one <code>new Mission(...)</code> + theme options.</p>
-<p class="callout">Mission state lives on the level object, so it survives death/checkpoint respawns
-and resets only when the level restarts — same rules as collected pickups. Keep mission areas
-enemy-free: jump spiders chase from 430&nbsp;px away, so don't place them near a puzzle or gate.</p>
+<p><strong>Design intent per token</strong> — difficulty comes from <em>reaching things</em>, never
+from logic: token 1 is a visible easy grab ("I see it, I can get it"), token 2 is visible but too
+high — a nearby <strong>bouncer</strong> launches the player up ("how do I get up there?"), token 3
+is gated behind a mechanic the player already learned ("I know what to do") — Mountain: a cracked
+wall power-smashed open (the pocket is sealed solid on its far side so it can't be sneaked into);
+Jungle: an egg bobbing in the shrine guard's flame path, taken by timing the fire cycle (or freezing/
+befriending the guard — all fair).</p>
+
+<h3>Bouncers (reusable launch pads)</h3>
+<p>Any solid with <code>bouncy: true</code> is a bouncer; <code>bounceVy</code> sets launch strength
+(default −980 ≈ 2× jump height; the mission ledges use −1150 ≈ 3×). Add one with
+<code>addPlat(lv, x, y, w, {bouncy: true, h: 40, bounceVy: -1150})</code>. Skins follow the level
+theme automatically: pink spring block everywhere, pink booster mushroom in forest/jungle. Overshoot
+generously and give wide landing platforms (<code>oneWay: true</code> so the player sails up through
+them) — bouncing should never need precision.</p>
 
 <h3>Fire-breather hazard (since v1.4.0)</h3>
 <p><code>FireBreather</code> (<code>js/entities.js</code>, <code>kind = 'firedino'</code>) is a
@@ -315,9 +326,9 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 <h3>4 · Mountain World <small>(theme <code>mountain</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Snowy alpine terraces: parallax peaks, falling snow, pine trees, a rocky cave overhang. 4800&nbsp;px wide, climbing ground tiers (620 → 572 → 524).</dd>
-  <dt>Objective</dt><dd>Climb the terraces, use ⭐ power blocks to <strong>smash two breakable walls</strong>, complete the <strong>Golden Key mission</strong> to open the locked door, reach the star gate.</dd>
+  <dt>Objective</dt><dd>Climb the terraces, use ⭐ power blocks to smash breakable walls, collect the <strong>three Mountain Crystals</strong> for the shrine to earn the Golden Key, open the locked door, reach the star gate.</dd>
   <dt>Enemies</dt><dd>5 walking, 1 jumping, and 2 <strong>hanging spiders</strong> (new: dangle on webs under the high ledge and drop on you). The puzzle cave and door approach are deliberately enemy-free.</dd>
-  <dt>New here</dt><dd>The ⭐ <strong>power block / super mode</strong> (6&nbsp;s of speed, big jumps, shielding, wall-smashing), breakable cracked walls with worried faces — and the game's first <strong>adventure mission</strong>: a big googly-eyed locked door (bump it → CLUNK + key thought-bubble) between the smashable wall and the gate. The cave under the overhang is a puzzle chamber: three floor plates (🔥 ❄️ ⭐) beneath a hanging sign showing the order. Solving drops a chest that opens into a huge Golden Key; it follows the hero to the door, flies into the lock, and the door swings open forever (a candy waits in the doorway).</dd>
+  <dt>New here</dt><dd>The ⭐ <strong>power block / super mode</strong> (6&nbsp;s of speed, big jumps, shielding, wall-smashing), breakable cracked walls with worried faces — and the game's first <strong>adventure mission</strong>: a big googly-eyed locked door (bump it → CLUNK + key thought-bubble) between the smashable wall and the gate. The cave under the overhang holds the <strong>crystal Shrine</strong> — a chest with three empty sockets showing ghost crystals. The three Mountain Crystals are scattered nearby: ice on a block pile at the cave mouth (easy hops), fire on a high ledge reached by a <strong>spring-block launch</strong>, power sealed in a pocket behind a cracked wall (its glow sparkles over the top — smash through with the power block). Bring all three back and the ceremony opens the chest into a huge Golden Key; it follows the hero to the door, flies into the lock, and the door swings open forever (a candy waits in the doorway).</dd>
   <dt>Pickups</dt><dd>Power ×2, ice ×2, heart ×1, candy, and the mission's Golden Key.</dd>
   <dt>Cameos</dt><dd>Ice blocks from level 2; the sequence-puzzle icons are the fire/ice/power blocks from levels 1–4; the reward chest is Zombie Cave's treasure chest making an early appearance. The super-mode ram introduced here is later required against King Magma (level 6).</dd>
 </dl>
@@ -392,9 +403,9 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 <h3>10 · Dino Jungle <small>(theme <code>jungle</code>)</small> — bonus</h3>
 <dl>
   <dt>Biome</dt><dd>Goofy prehistoric jungle: teal-to-green sky, two parallax canopy layers, swaying hanging vines, drifting mist, giant ferns, tropical flowers with faces, prehistoric mushrooms, dino footprints, a distant smoking volcano with a sleepy face — and past the gate, a <strong>Secret Dino Valley</strong> with a waterfall, a rainbow, and giant flowers. 5800&nbsp;px wide, ground at y=620 with an elevated shrine terrace at y=430.</dd>
-  <dt>Objective</dt><dd>Cross the jungle (jumping the fire-breathers' flames), discover the Ancient Jungle Gate, solve the three-egg shrine to earn the <strong>Dino Key</strong>, open the gate, and touch the golden star in the Secret Dino Valley.</dd>
+  <dt>Objective</dt><dd>Cross the jungle (jumping the fire-breathers' flames), discover the Ancient Jungle Gate, find the three lost dinosaur eggs and return them to the Nest Shrine to earn the <strong>Dino Key</strong>, open the gate, and touch the golden star in the Secret Dino Valley.</dd>
   <dt>Enemies</dt><dd>5 <strong>fire-breathing dinos</strong> (new — see below) in four escalating encounters: a lone tutorial dino on open ground, one beside platforms, a staggered-timing pair, and one guarding the shrine terrace. Plus 2 vine spiders (hang spiders dangling from the canopy).</dd>
-  <dt>New here</dt><dd>The <strong><code>FireBreather</code></strong>: a squat orange dino whose cycle is idle → <em>inhale (cheeks puff huge — the unmissable "fire is coming!" telegraph)</em> → a low horizontal flame stream. The flame hugs the ground so <em>jumping over it</em> is the natural answer; touching it costs one heart with a gentle shove, standard invulnerability applies. Ice freezes him (pausing the fire), rainbow befriends him for good, and fireballs just make him burp. Also new: an <em>environmental</em> take on the sequence puzzle — three giant dino eggs on pedestals (egg-skinned <code>PuzzleSwitch</code>es) under a carved stone tablet showing 🌈→⭐→🔥; the correct final egg <em>hatches a baby dino</em>. Friendly dinosaurs everywhere: two long-necks that bend their heads toward the hero and blow hearts, a baby triceratops that wanders, sniffs flowers, and hops excitedly when approached, and a goofy T-Rex in the valley with comically tiny arms who stomps, roars… and then sneezes.</dd>
+  <dt>New here</dt><dd>The <strong><code>FireBreather</code></strong>: a squat orange dino whose cycle is idle → <em>inhale (cheeks puff huge — the unmissable "fire is coming!" telegraph)</em> → a low horizontal flame stream. The flame hugs the ground so <em>jumping over it</em> is the natural answer; touching it costs one heart with a gentle shove, standard invulnerability applies. Ice freezes him (pausing the fire), rainbow befriends him for good, and fireballs just make him burp. Also new: the <strong>Three Lost Dinosaur Eggs</strong> — the terrace holds the Dinosaur Nest Shrine (a vine-wrapped chest with three empty nest bowls showing ghost eggs), and the eggs are scattered along the jungle: one on a low leaf platform, one high in the canopy reached by a <strong>giant bouncy mushroom</strong>, and one bobbing right in the shrine guard's flame path (time the fire cycle — or freeze/befriend the guard). Returning with all three runs the nest ceremony, complete with a one-second gag where an egg cracks and a baby eye peeks out. Friendly dinosaurs everywhere: two long-necks that bend their heads toward the hero and blow hearts, a baby triceratops that wanders, sniffs flowers, and hops excitedly when approached, and a goofy T-Rex in the valley with comically tiny arms who stomps, roars… and then sneezes.</dd>
   <dt>Ending</dt><dd>The Ancient Jungle Gate (mossy stone, dino carvings, flanking statues, huge golden keyhole) grinds and shakes when bumped and thinks of a <em>green dino-head key</em>. Bringing the Dino Key makes the stone slab rise into the lintel under falling leaves; the valley's golden star then starts the <strong>SECRET DINO VALLEY</strong> party (befriending every remaining creature) → party exit returns to the title.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2 (befriending a fire-breather is a valid strategy!), ice ×1, heart ×2, candy arcs tracing the jump path over every flame.</dd>
   <dt>Cameos</dt><dd>The mission grammar from Mountain World (locked thing → find item → return) with every piece re-themed via configuration; the hang spider reappears as a vine spider; the sequence-puzzle symbols are the familiar power blocks; the golden goal star from Space Maze ends the level; leaf platforms reuse Unicorn Forest's branch drawing.</dd>
@@ -426,7 +437,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 161 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 169 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -449,9 +460,16 @@ losable without punishment (checkpoint + retry), and it should end in a celebrat
   should stop, push <code>gate.solid</code> into <code>lv.solids</code>, then set
   <code>lv.mission = new Mission(id, gate, puzzle, item, rewardSpot)</code>. That's the whole hookup —
   <code>game.js</code> already updates and draws <code>lv.mission</code>.</li>
-  <li>Reuse or extend the challenge: <code>SequencePuzzle</code> + <code>PuzzleSwitch</code> for
-  step-in-order puzzles; anything else just needs to end with
-  <code>mission.item.revealAt(x, y)</code> — the gate only cares that the item reaches the player.</li>
+  <li>Reuse the collection objective: scatter <code>MissionToken</code>s (pick a <code>skin</code> or
+  add one — e.g. shells), place a <code>Shrine</code>, and wire them with
+  <code>new CollectionPuzzle(tokens, shrine)</code>. Example: <em>find 3 magical shells → underwater
+  shrine opens → pearl appears → bring it to the giant clam</em> is exactly
+  <code>new Mission('pearl', clamGate, new CollectionPuzzle(shellTokens, seaShrine), new
+  MissionItem('pearl'))</code> plus artwork. A completely different challenge type just needs to set
+  <code>puzzle.done</code> and call <code>mission.item.revealAt(x, y)</code>.</li>
+  <li>Give each token a different <em>reach</em> challenge (easy / bouncer height / learned mechanic),
+  never sequence-memory or timers; seal mechanic-gated pockets on their far side so they can't be
+  sneaked into.</li>
   <li>Theme the gate/item visuals (a clam wanting a pearl, a sleepy cloud wanting crystals…) but keep
   the grammar: locked thing shows a picture of what it needs; the earned item follows the player.</li>
   <li>Keep the challenge area enemy-free, show the clue continuously, make wrong attempts funny and
@@ -468,7 +486,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.4.0 · built for Jack ·
+  Block Buddies v1.5.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

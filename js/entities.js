@@ -29,7 +29,7 @@ function moveEntity(e, lv, dt) {
     if (s.oneWay) {
       if (e.vy > 0 && prevB <= s.y + 12) {
         e.y = s.y - e.h;
-        if (s.bouncy) { e.vy = -980; res.bounced = true; }
+        if (s.bouncy) { e.vy = s.bounceVy || -980; res.bounced = true; }
         else { e.vy = 0; res.ground = true; res.groundS = s; }
       }
       continue;
@@ -37,7 +37,7 @@ function moveEntity(e, lv, dt) {
     if (s.breakable && e.isPlayer && e.superT > 0) { game.smashWall(s); res.smashed = true; continue; }
     if (e.vy > 0) {
       e.y = s.y - e.h;
-      if (s.bouncy) { e.vy = -980; res.bounced = true; }
+      if (s.bouncy) { e.vy = s.bounceVy || -980; res.bounced = true; }
       else { e.vy = 0; res.ground = true; res.groundS = s; }
     } else if (e.vy < 0) {
       e.y = s.y + s.h; e.vy = 0; res.head = true;
@@ -2380,189 +2380,254 @@ class MissionItem {
   }
 }
 
-class PuzzleSwitch {
-  constructor(cx, groundY, kind, skin = 'plate') { // 'plate' (stone floor plate) | 'egg' (dino egg on a pedestal)
-    this.cx = cx; this.groundY = groundY; this.kind = kind; this.skin = skin;
-    this.w = skin === 'egg' ? 120 : 96;
-    this.lit = false; this.stood = false; this.hatched = false;
-    this.wobbleT = 0; this.popT = 0; this.t = rand(9);
+class MissionToken {
+  // A collectible puzzle piece (Mountain crystal / Jungle dino egg) scattered
+  // through the level. kind picks its color/icon (a POW key); skin picks the
+  // artwork ('crystal' | 'egg'). Collect all of a CollectionPuzzle's tokens in
+  // ANY order, then return to the Shrine.
+  constructor(cx, cy, kind, skin) {
+    this.kind = kind; this.skin = skin;
+    this.w = 46; this.h = 52;
+    this.x = cx - this.w / 2; this.baseY = cy; this.y = cy - this.h / 2;
+    this.taken = false; this.t = rand(9);
   }
-  playerOn(pl) {
-    return pl.onGround && Math.abs(pl.cx - this.cx) < this.w / 2 + 14 && Math.abs(pl.y + pl.h - this.groundY) < 10;
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  static drawIcon(ctx, x, y, s, kind, skin, t = 0, ghost = false) {
+    ctx.save();
+    ctx.globalAlpha *= ghost ? 0.35 : 1;
+    if (skin === 'egg') {
+      ctx.fillStyle = '#fff6e0';
+      ctx.beginPath(); ctx.ellipse(x, y, s * 0.42, s * 0.55, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c9b88a'; ctx.lineWidth = Math.max(2, s * 0.07); ctx.stroke();
+      ctx.fillStyle = POW[kind].c;
+      for (const [ox, oy, r] of [[-0.16, -0.2, 0.13], [0.17, 0.05, 0.14], [-0.08, 0.28, 0.11]]) {
+        ctx.beginPath(); ctx.arc(x + ox * s, y + oy * s, r * s, 0, TAU); ctx.fill();
+      }
+    } else { // crystal: a chunky gem
+      ctx.fillStyle = POW[kind].c;
+      ctx.strokeStyle = 'rgba(40,25,50,0.5)'; ctx.lineWidth = Math.max(2, s * 0.07); ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y - s * 0.55); ctx.lineTo(x + s * 0.42, y - s * 0.1);
+      ctx.lineTo(x, y + s * 0.55); ctx.lineTo(x - s * 0.42, y - s * 0.1);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.05, y - s * 0.42); ctx.lineTo(x + s * 0.2, y - s * 0.14); ctx.lineTo(x - s * 0.16, y - s * 0.05);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
-  update(dt, pl, puzzle, active) {
+  update(dt, pl, puzzle) {
+    if (this.taken) return;
     this.t += dt;
-    this.wobbleT = Math.max(0, this.wobbleT - dt);
-    this.popT = Math.max(0, this.popT - dt);
-    const on = this.playerOn(pl);
-    if (on && !this.stood && active) puzzle.press(this);
-    this.stood = on;
+    this.y = this.baseY - this.h / 2 + Math.sin(this.t * 2.6) * 8;
+    if (chance(0.12)) Particles.burst(this.cx + rand(-20, 20), this.cy + rand(-20, 20), 1, { colors: [POW[this.kind].c, '#fff'], type: 'sparkle', sp1: 20, grav: -50, l1: 0.8, s1: 8, up: 0 });
+    if (overlaps(this, pl)) {
+      this.taken = true;
+      Particles.burst(this.cx, this.cy, 16, { colors: [POW[this.kind].c, '#ffe156', '#fff'], type: 'star', sp1: 260, l1: 0.8, s1: 11, grav: 200 });
+      pl.setMood('grin', 1.2);
+      puzzle.onCollect(this);
+    }
   }
   draw(ctx) {
-    if (this.skin === 'egg') { this.drawEgg(ctx); return; }
-    const t = this.t, g = this.groundY;
-    const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 26) * 0.22 * this.wobbleT : 0;
-    const down = this.stood ? 6 : 0;
-    if (this.lit) {
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 4);
-      ctx.fillStyle = POW[this.kind].c;
-      ctx.beginPath(); ctx.ellipse(this.cx, g - 6, 64, 22, 0, 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-    ctx.fillStyle = this.lit ? '#d8dae8' : '#9a9cb0';
-    rr(ctx, this.cx - this.w / 2, g - 16 + down, this.w, 22 - down, 8); ctx.fill();
-    ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 3;
-    rr(ctx, this.cx - this.w / 2, g - 16 + down, this.w, 22 - down, 8); ctx.stroke();
-    const bs = 46;
-    const by = g - 16 + down - bs - 6 - (this.lit ? 8 + Math.sin(t * 3) * 4 : 0) - this.popT * 30;
+    if (this.taken) return;
     ctx.save();
-    ctx.translate(this.cx, by + bs / 2);
-    ctx.rotate(wob);
-    drawBlock(ctx, -bs / 2, -bs / 2, bs, this.kind, t, { wobble: this.lit, seed: this.cx });
+    ctx.globalAlpha = 0.3 + 0.12 * Math.sin(this.t * 3);
+    ctx.fillStyle = POW[this.kind].c;
+    ctx.beginPath(); ctx.arc(this.cx, this.cy, 42, 0, TAU); ctx.fill();
     ctx.restore();
-  }
-  drawEgg(ctx) {
-    const t = this.t, g = this.groundY;
-    const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 26) * 0.18 * this.wobbleT : 0;
-    const squish = this.stood ? 0.93 : 1;
-    const bounce = this.lit ? Math.abs(Math.sin(t * 4)) * 5 : 0;
-    const pop = this.popT * 24;
-    const ecy = g - 24 - 38 * squish - bounce - pop;
-    if (this.lit) {
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 4);
-      ctx.fillStyle = POW[this.kind].c;
-      ctx.beginPath(); ctx.ellipse(this.cx, ecy, 52, 60, 0, 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-    // stone pedestal
-    ctx.fillStyle = this.lit ? '#c8d4b4' : '#a8b494';
-    rr(ctx, this.cx - 50, g - 24, 100, 28, 7); ctx.fill();
-    ctx.strokeStyle = '#6a7a5a'; ctx.lineWidth = 3;
-    rr(ctx, this.cx - 50, g - 24, 100, 28, 7); ctx.stroke();
-    // the egg
-    ctx.save();
-    ctx.translate(this.cx, g - 24);
-    ctx.rotate(wob);
-    ctx.translate(-this.cx, -(g - 24));
-    ctx.fillStyle = '#fff6e0';
-    ctx.beginPath(); ctx.ellipse(this.cx, ecy, 28, 38 * squish, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#c9b88a'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = POW[this.kind].c; // colored spots = the egg's identity
-    for (const [ox, oy, r2] of [[-10, -14, 7], [11, 2, 8], [-6, 16, 6], [10, -22, 5]]) {
-      ctx.beginPath(); ctx.arc(this.cx + ox, ecy + oy * squish, r2, 0, TAU); ctx.fill();
-    }
-    if (this.lit) { // crack lines: it's waking up!
-      ctx.strokeStyle = '#a08a5a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(this.cx - 14, ecy - 22); ctx.lineTo(this.cx - 6, ecy - 14); ctx.lineTo(this.cx - 12, ecy - 6);
-      ctx.moveTo(this.cx + 8, ecy - 26); ctx.lineTo(this.cx + 14, ecy - 18);
-      ctx.stroke();
-    }
-    if (this.hatched) { // a baby dino pokes out of the top
-      const hb = Math.sin(t * 5) * 3;
-      ctx.fillStyle = '#57c25c';
-      ctx.beginPath(); ctx.arc(this.cx, ecy - 40 + hb, 13, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(this.cx + 11, ecy - 37 + hb, 7, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      drawFace(ctx, this.cx - 2, ecy - 41 + hb, 13, 'grin', t, 91);
-      // shell cap
-      ctx.fillStyle = '#fff6e0';
-      ctx.beginPath(); ctx.arc(this.cx - 2, ecy - 52 + hb, 8, Math.PI, TAU); ctx.fill();
-      ctx.strokeStyle = '#c9b88a'; ctx.stroke();
-    }
-    ctx.restore();
-    // floating symbol block above the egg
-    const bs = 30;
-    const by = ecy - 66 - Math.sin(t * 2.5) * 4 - (this.lit ? 6 : 0);
-    drawBlock(ctx, this.cx - bs / 2, by - bs / 2, bs, this.kind, t, { wobble: this.lit, seed: this.cx });
+    MissionToken.drawIcon(ctx, this.cx, this.cy, 44, this.kind, this.skin, this.t);
   }
 }
 
-class SequencePuzzle {
-  constructor(switches, seq, sign) { // sign: {x, y, ceilY} — the always-visible clue board
-    this.switches = switches; this.seq = seq; this.sign = sign;
-    this.progress = 0; this.done = false; this.resetT = 0;
+class Shrine {
+  // The mission landmark: a treasure chest that has been here all along, plus
+  // three sockets showing GHOST silhouettes of the missing tokens. Sockets fill
+  // one at a time during the activation ceremony. Themes: 'stone' (Mountain
+  // crystal pedestal) | 'nest' (Jungle dino nest with vines on the chest).
+  constructor(cx, groundY, opts = {}) {
+    this.cx = cx; this.groundY = groundY;
+    this.theme = opts.theme || 'stone';
+    this.t = rand(9);
+    this.chest = new Chest(cx, groundY);
+    this.chest.y = this.chest.targetY;
+    this.chest.landed = true;
+    this.lit = 0;   // sockets filled during activation
+    this.gagT = 0;  // nest: baby-eye peek timer
   }
-  press(sw) {
-    if (this.done || this.resetT > 0) return;
-    if (sw.lit) { AudioSys.sfx('candy'); sw.popT = 0.25; return; } // re-stepping a correct plate: friendly, no reset
-    if (sw.kind === this.seq[this.progress]) {
-      sw.lit = true; sw.popT = 0.4; this.progress++;
-      AudioSys.sfx('collect');
-      Particles.burst(sw.cx, sw.groundY - 60, 10, { colors: ['#ffe156', '#fff', POW[sw.kind].c], type: 'star', sp1: 220, l1: 0.8, s1: 10, grav: 240 });
-      if (sw.skin === 'egg') AudioSys.sfx('hiccup'); // little dino chirp from inside
-      if (this.progress >= this.seq.length) {
-        this.done = true;
-        for (const s of this.switches) s.popT = 0.6;
-        const eggs = this.switches.filter(s => s.skin === 'egg');
-        if (eggs.length) eggs[0].hatched = true; // one egg hatches to celebrate
-      }
+  socketPos(i) {
+    return { x: this.cx + (i - 1) * 58, y: this.chest.y - 64 };
+  }
+  update(dt) {
+    this.t += dt;
+    this.gagT = Math.max(0, this.gagT - dt);
+    this.chest.update(dt);
+  }
+  draw(ctx, tokens) {
+    const t = this.t, g = this.groundY;
+    // base
+    if (this.theme === 'nest') {
+      ctx.fillStyle = '#8a9a7a';
+      rr(ctx, this.cx - 110, g - 16, 220, 20, 8); ctx.fill();
+      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 3;
+      rr(ctx, this.cx - 110, g - 16, 220, 20, 8); ctx.stroke();
     } else {
-      AudioSys.sfx('boing'); // funny, harmless — wobble everything and let them retry
-      this.resetT = 0.7;
-      for (const s of this.switches) s.wobbleT = 0.8;
-      Particles.burst(sw.cx, sw.groundY - 40, 8, { colors: ['#b8bac8', '#fff'], type: 'circle', sp1: 170, l1: 0.5, s1: 8, grav: 260 });
+      ctx.fillStyle = '#8d8fa0';
+      rr(ctx, this.cx - 105, g - 14, 210, 18, 7); ctx.fill();
+      ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 3;
+      rr(ctx, this.cx - 105, g - 14, 210, 18, 7); ctx.stroke();
+    }
+    this.chest.draw(ctx);
+    // vines over a still-locked jungle chest
+    if (this.theme === 'nest' && !this.chest.open) {
+      ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      for (const vx of [-46, 0, 44]) {
+        const wob = Math.sin(t * 1.5 + vx) * 3;
+        ctx.beginPath();
+        ctx.moveTo(this.chest.cx + vx - 18, this.chest.y - 4);
+        ctx.quadraticCurveTo(this.chest.cx + vx + wob, this.chest.y + 50, this.chest.cx + vx + 14, this.chest.y + this.chest.h + 2);
+        ctx.stroke();
+      }
+    }
+    // socket panel above the chest: ghost silhouettes of what's missing
+    for (let i = 0; i < tokens.length; i++) {
+      const sp = this.socketPos(i), tk = tokens[i];
+      const placed = i < this.lit;
+      if (this.theme === 'nest') { // stone nest bowls
+        ctx.fillStyle = placed ? '#c8d4b4' : '#a8b494';
+        ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 16, 26, 12, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#6a7a5a'; ctx.lineWidth = 3; ctx.stroke();
+      } else { // stone sockets
+        ctx.fillStyle = placed ? '#d8dae8' : '#75778a';
+        rr(ctx, sp.x - 24, sp.y - 24, 48, 48, 10); ctx.fill();
+        ctx.strokeStyle = '#4a4c5c'; ctx.lineWidth = 3;
+        rr(ctx, sp.x - 24, sp.y - 24, 48, 48, 10); ctx.stroke();
+      }
+      if (placed) {
+        ctx.save();
+        ctx.globalAlpha = 0.4 + 0.2 * Math.sin(t * 4 + i);
+        ctx.fillStyle = POW[tk.kind].c;
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 34, 0, TAU); ctx.fill();
+        ctx.restore();
+        MissionToken.drawIcon(ctx, sp.x, sp.y, 36, tk.kind, tk.skin, t);
+        ctx.fillStyle = '#ffe156';
+        starPath(ctx, sp.x + 20, sp.y - 20, 8, 3.5);
+        ctx.fill();
+      } else {
+        // ghost of the missing piece; pulses brighter once it's been collected
+        ctx.save();
+        if (tk.taken) ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 5 + i);
+        MissionToken.drawIcon(ctx, sp.x, sp.y, 36, tk.kind, tk.skin, t, !tk.taken);
+        ctx.restore();
+      }
+      // the gag: one nest egg cracks and a little eye peeks out
+      if (this.theme === 'nest' && placed && i === 1 && this.gagT > 0) {
+        ctx.strokeStyle = '#a08a5a'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sp.x - 8, sp.y - 8); ctx.lineTo(sp.x - 2, sp.y - 2); ctx.lineTo(sp.x - 8, sp.y + 4);
+        ctx.stroke();
+        if (this.gagT > 0.35) {
+          ctx.fillStyle = '#3a2a3a';
+          ctx.beginPath(); ctx.arc(sp.x - 4, sp.y - 1, 2.6, 0, TAU); ctx.fill();
+        }
+      }
     }
   }
-  update(dt, pl, active) {
-    if (this.resetT > 0) {
-      this.resetT -= dt;
-      if (this.resetT <= 0) { this.progress = 0; for (const s of this.switches) s.lit = false; }
+}
+
+class CollectionPuzzle {
+  // The distributed adventure objective: find every MissionToken anywhere in
+  // the level (any order), then come back to the Shrine. Tokens stay collected
+  // through deaths/checkpoints (mission state lives on the level object).
+  // Timeline on return: tokens fly into sockets one by one -> shrine shakes ->
+  // chest opens -> the mission item is revealed. No wrong inputs exist.
+  constructor(tokens, shrine) {
+    this.tokens = tokens; this.shrine = shrine;
+    this.done = false;
+    this.state = 'collect'; // -> 'activating' -> 'done'
+    this.actT = 0; this.toastT = 0;
+    this.flyFrom = null;
+  }
+  count() { return this.tokens.filter(tk => tk.taken).length; }
+  onCollect(token) {
+    this.toastT = 2.6;
+    const left = this.tokens.length - this.count();
+    AudioSys.sfx(left === 0 ? 'powerup' : 'collect');
+    if (left === 0) AudioSys.sfx('heart'); // "you got ALL of them!"
+  }
+  update(dt, pl, active, mission) {
+    this.shrine.update(dt);
+    this.toastT = Math.max(0, this.toastT - dt);
+    for (const tk of this.tokens) tk.update(dt, pl, this);
+    if (this.state === 'collect' && this.count() === this.tokens.length &&
+        Math.abs(pl.cx - this.shrine.cx) < 250 && Math.abs(pl.cy - this.shrine.groundY) < 300) {
+      this.state = 'activating'; this.actT = 0;
+      this.flyFrom = { x: pl.cx, y: pl.y - 20 };
+      AudioSys.sfx('fanfare');
     }
-    for (const s of this.switches) s.update(dt, pl, this, active);
+    if (this.state === 'activating') {
+      const prev = this.actT;
+      this.actT += dt;
+      for (let i = 0; i < this.tokens.length; i++) {
+        const tt = 0.55 + i * 0.55;
+        if (prev < tt && this.actT >= tt) {
+          this.shrine.lit = i + 1;
+          AudioSys.sfx(this.shrine.theme === 'nest' ? 'hiccup' : 'collect');
+          const sp = this.shrine.socketPos(i);
+          Particles.burst(sp.x, sp.y, 10, { colors: [POW[this.tokens[i].kind].c, '#fff'], type: 'star', sp1: 200, l1: 0.7, s1: 9, grav: 180 });
+          if (this.shrine.theme === 'nest' && i === 1) this.shrine.gagT = 1.4;
+        }
+      }
+      if (prev < 2.2 && this.actT >= 2.2) {
+        game.shake = Math.max(game.shake, 0.3);
+        AudioSys.sfx(this.shrine.theme === 'nest' ? 'grind' : 'rumble');
+      }
+      if (prev < 2.8 && this.actT >= 2.8) {
+        this.shrine.chest.open = true;
+        AudioSys.sfx('chest');
+        mission.item.revealAt(this.shrine.cx, this.shrine.chest.y - 70);
+        this.done = true;
+        this.state = 'done';
+      }
+    }
   }
   draw(ctx, t) {
-    const sg = this.sign, n = this.seq.length;
-    const bw = n * 44 + (n - 1) * 30 + 36, bh = 66;
-    if (sg.style === 'stone') {
-      // ancient carved tablet on a mossy stone post
-      ctx.fillStyle = '#8a9a7a';
-      rr(ctx, sg.x - 12, sg.y, 24, sg.groundY - sg.y, 6); ctx.fill();
-      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 3;
-      rr(ctx, sg.x - 12, sg.y, 24, sg.groundY - sg.y, 6); ctx.stroke();
-      ctx.fillStyle = '#a8b494';
-      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
-      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 4;
-      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
-      ctx.fillStyle = '#57b84a'; // moss on top
-      for (const [mx, mr] of [[-bw * 0.3, 13], [bw * 0.15, 17], [bw * 0.38, 10]]) {
-        ctx.beginPath(); ctx.ellipse(sg.x + mx, sg.y - bh / 2, mr, 7, 0, Math.PI, TAU); ctx.fill();
+    this.shrine.draw(ctx, this.tokens);
+    for (const tk of this.tokens) tk.draw(ctx);
+    // tokens flying home during the ceremony
+    if (this.state === 'activating' && this.flyFrom) {
+      for (let i = 0; i < this.tokens.length; i++) {
+        const tt = 0.55 + i * 0.55;
+        if (this.actT >= tt || this.actT < tt - 0.55) continue;
+        const k = clamp((this.actT - (tt - 0.55)) / 0.55, 0, 1);
+        const e = k * k * (3 - 2 * k);
+        const sp = this.shrine.socketPos(i);
+        const fx = lerp(this.flyFrom.x, sp.x, e);
+        const fy = lerp(this.flyFrom.y, sp.y, e) - Math.sin(k * Math.PI) * 70;
+        MissionToken.drawIcon(ctx, fx, fy, 40, this.tokens[i].kind, this.tokens[i].skin, t);
       }
-    } else {
-      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(sg.x - bw / 2 + 18, sg.y - bh / 2); ctx.lineTo(sg.x - bw / 2 + 18, sg.ceilY);
-      ctx.moveTo(sg.x + bw / 2 - 18, sg.y - bh / 2); ctx.lineTo(sg.x + bw / 2 - 18, sg.ceilY);
-      ctx.stroke();
-      ctx.fillStyle = '#b0743e';
-      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
-      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
-      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
     }
-    let ix = sg.x - bw / 2 + 18;
-    for (let i = 0; i < n; i++) {
-      const got = i < this.progress || this.done;
+    // wordless progress toast above the hero after each pickup
+    if (this.toastT > 0 && game.player) {
+      const pl = game.player;
       ctx.save();
-      ctx.globalAlpha = got ? 1 : 0.55;
-      drawBlock(ctx, ix, sg.y - 22, 44, this.seq[i], t, { wobble: got, seed: i * 7 });
+      ctx.globalAlpha = Math.min(1, this.toastT * 2);
+      const bx = pl.cx, by = pl.y - 58 + Math.sin(t * 5) * 3;
+      ctx.fillStyle = '#fff';
+      rr(ctx, bx - 66, by - 26, 132, 52, 18); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      rr(ctx, bx - 66, by - 26, 132, 52, 18); ctx.stroke();
+      for (let i = 0; i < this.tokens.length; i++) {
+        const tk = this.tokens[i];
+        ctx.save();
+        ctx.globalAlpha *= tk.taken ? 1 : 0.3;
+        MissionToken.drawIcon(ctx, bx + (i - 1) * 40, by, 30, tk.kind, tk.skin, t);
+        ctx.restore();
+        if (tk.taken) { ctx.fillStyle = '#ffe156'; starPath(ctx, bx + (i - 1) * 40 + 13, by - 13, 6, 2.6); ctx.fill(); }
+      }
       ctx.restore();
-      if (got) {
-        ctx.fillStyle = '#ffe156';
-        starPath(ctx, ix + 40, sg.y - 20, 9, 4);
-        ctx.fill();
-      }
-      ix += 44;
-      if (i < n - 1) {
-        ctx.strokeStyle = '#ffe9c0'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(ix + 7, sg.y - 12); ctx.lineTo(ix + 21, sg.y); ctx.lineTo(ix + 7, sg.y + 12);
-        ctx.stroke();
-        ix += 30;
-      }
     }
-    for (const s of this.switches) s.draw(ctx); // switches in front of the sign post
   }
 }
 
@@ -2784,35 +2849,14 @@ class MissionGate {
 }
 
 class Mission {
-  constructor(id, gate, puzzle, item, rewardSpot) { // rewardSpot: {cx, floorY, dropY}
+  constructor(id, gate, puzzle, item) {
     this.id = id;
-    this.state = 'puzzle'; // -> 'reward' -> 'carrying' -> 'done'
+    this.state = 'puzzle'; // -> 'reward' (item revealed) -> 'carrying' -> 'done'
     this.gate = gate; this.puzzle = puzzle; this.item = item;
-    this.rewardSpot = rewardSpot;
-    this.chest = null; this.chestWait = 0;
   }
   update(dt, pl) {
-    this.puzzle.update(dt, pl, this.state === 'puzzle');
-    if (this.state === 'puzzle' && this.puzzle.done) {
-      this.state = 'reward';
-      AudioSys.sfx('fanfare');
-      game.shake = Math.max(game.shake, 0.2);
-      for (const s of this.puzzle.switches)
-        Particles.burst(s.cx, s.groundY - 70, 10, { colors: RAINBOW, type: 'confetti', sp1: 240, l1: 1.3, s1: 10, grav: 260, up: 170 });
-      this.chest = new Chest(this.rewardSpot.cx, this.rewardSpot.floorY);
-      this.chest.y = this.rewardSpot.dropY;
-    }
-    if (this.chest) {
-      this.chest.update(dt);
-      if (this.chest.landed && !this.chest.open) {
-        this.chestWait += dt;
-        if (this.chestWait > 0.5) {
-          this.chest.open = true;
-          AudioSys.sfx('chest');
-          this.item.revealAt(this.chest.cx, this.chest.y - 70);
-        }
-      }
-    }
+    this.puzzle.update(dt, pl, this.state === 'puzzle', this);
+    if (this.state === 'puzzle' && this.puzzle.done) this.state = 'reward';
     this.item.update(dt, pl);
     if (this.state === 'reward' && this.item.state === 'follow') this.state = 'carrying';
     this.gate.update(dt, pl, this);
@@ -2821,7 +2865,6 @@ class Mission {
   draw(ctx, t) {
     this.gate.draw(ctx);
     this.puzzle.draw(ctx, t);
-    if (this.chest) this.chest.draw(ctx);
     this.item.draw(ctx);
   }
 }

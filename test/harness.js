@@ -244,7 +244,7 @@ check('cloud catch returns to play near lastSafe', G().state === 'play' && Math.
 vm.runInContext('game.startLevel(4)', sandbox);
 frames(150);
 const wallsBefore = vm.runInContext('game.level.solids.filter(s=>s.breakable&&!s.broken).length', sandbox);
-check('level 4 has breakable walls', wallsBefore === 2);
+check('level 4 has breakable walls', wallsBefore === 3); // two on the path + the crystal pocket
 vm.runInContext('game.player.superT=6; game.player.x=2500; game.player.y=572-95;', sandbox);
 frames(90, { ArrowRight: 1 });
 const wallsAfter = vm.runInContext('game.level.solids.filter(s=>s.breakable&&!s.broken).length', sandbox);
@@ -262,29 +262,49 @@ put(4340, 524 - 94);
 frames(50, { ArrowRight: 1 });
 check('locked door blocks the player', G().player.x + G().player.w <= MIS().gate.solid.x + 2 && G().state === 'play');
 check('door bump gives key hint, costs nothing', MIS().gate.hintT > 0 && G().player.hearts === 3);
-// wrong switch: funny reset, no harm
-put(3580 - 28, 572 - 94);
-frames(8);
-check('wrong switch resets sequence harmlessly', MIS().puzzle.progress === 0 && MIS().puzzle.resetT > 0 && G().player.hearts === 3);
-frames(80); // reset settles
-// correct sequence with a re-step in the middle
-put(3260 - 28, 572 - 94); frames(8);
-check('first correct switch lights up', MIS().puzzle.progress === 1);
-put(3140, 572 - 94); frames(8); // step off (clear of every plate)
-put(3260 - 28, 572 - 94); frames(8); // re-step the lit plate
-check('re-stepping a lit switch does not reset', MIS().puzzle.progress === 1);
-put(3420 - 28, 572 - 94); frames(8);
-put(3580 - 28, 572 - 94); frames(8);
-check('full sequence completes the puzzle', MIS().puzzle.done && MIS().state !== 'puzzle');
-frames(180); // chest falls, opens, key pops out
-check('chest opened and golden key waits', MIS().chest && MIS().chest.open && MIS().item.state === 'waiting');
+// distributed collection: three crystals, any order, each its own challenge
+const TOK = i => vm.runInContext(`game.level.mission.puzzle.tokens[${i}]`, sandbox);
+check('shrine chest waits closed with three empty sockets', MIS().puzzle.shrine.chest.open === false && MIS().puzzle.count() === 0);
+// the spring block launches far higher than any jump — straight to the ledge crystal
+put(2925, 532 - 94);
+let minY = 1e9;
+for (let i = 0; i < 70; i++) { frames(1); minY = Math.min(minY, G().player.y); }
+check('spring block launches the hero to the high ledge', minY < 320);
+check('bounce route collects the fire crystal first (any order works)', TOK(1).taken === true && MIS().puzzle.count() === 1);
+// dying must not un-collect anything
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(30);
+check('death does not un-collect crystals', G().state === 'play' && MIS().puzzle.count() === 1 && TOK(1).taken);
+// the easy one: a couple of hops up the block pile at the cave mouth
+put(3108 - 28, 468 - 60);
+frames(6);
+check('cave-mouth crystal is an easy grab', TOK(0).taken && MIS().puzzle.count() === 2);
+// the last one is sealed behind a cracked wall — power smash required
+put(3540, 572 - 94);
+frames(40, { ArrowRight: 1 });
+check('cracked wall seals the last crystal away', G().player.x + G().player.w <= 3622 && MIS().puzzle.count() === 2);
+put(3820, 572 - 94);
+frames(30, { ArrowLeft: 1 });
+check('crystal pocket cannot be sneaked into from the far side', MIS().puzzle.count() === 2);
+put(3540, 572 - 94);
+vm.runInContext('game.player.superT = 3', sandbox);
+frames(30, { ArrowRight: 1 });
+check('power smash frees the last crystal', MIS().puzzle.count() === 3);
+// return to the shrine: sockets fill, chest opens, key appears
+put(3300, 572 - 94);
+frames(20);
+check('returning to the shrine starts the ceremony', MIS().puzzle.state !== 'collect');
+frames(200);
+check('sockets fill and the chest opens into the golden key', MIS().puzzle.done && MIS().puzzle.shrine.lit === 3 && MIS().puzzle.shrine.chest.open && MIS().item.state === 'waiting');
 put(MIS().item.x, MIS().item.y);
 frames(8);
 check('touching the key starts follow mode', MIS().item.state === 'follow' && MIS().state === 'carrying');
 put(3900, 524 - 94);
 frames(60);
 check('key floats along with the player', Math.abs(MIS().item.cx - G().player.cx) < 200 && Math.abs(MIS().item.cy - G().player.cy) < 200);
-// dying must not lose the key
+// dying must not lose the key either
 vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
 frames(60); // past the 0.8s dead-screen delay
 check('death with key -> dead state', G().state === 'dead');
@@ -578,22 +598,40 @@ put2(4160, 620 - 94);
 frames(50, { ArrowRight: 1 });
 check('ancient gate blocks the path', G().player.x + G().player.w <= MIS2().gate.solid.x + 2);
 check('gate shows its dino-key wish', MIS2().gate.hintT > 0 && MIS2().gate.keyStyle === 'dino');
-// the egg shrine (terrace at y=430)
-put2(3960 - 28, 430 - 94);
-frames(8);
-check('wrong egg wobbles and resets', MIS2().puzzle.progress === 0 && MIS2().puzzle.resetT > 0);
-frames(80);
-put2(3660 - 28, 430 - 94); frames(8);
-check('first egg (rainbow) lights up', MIS2().puzzle.progress === 1);
-put2(3532, 430 - 94); frames(8); // step clear of every egg zone
-put2(3660 - 28, 430 - 94); frames(8);
-check('re-touching a lit egg does not reset', MIS2().puzzle.progress === 1);
-put2(3810 - 28, 430 - 94); frames(8);
-put2(3960 - 28, 430 - 94); frames(8);
-check('three eggs in order complete the shrine', MIS2().puzzle.done && MIS2().state !== 'puzzle');
-check('an egg hatches a baby dino', MIS2().puzzle.switches[0].hatched === true);
+// the three lost dinosaur eggs: scattered, any order
+const TOK2 = i => vm.runInContext(`game.level.mission.puzzle.tokens[${i}]`, sandbox);
+check('nest shrine waits with three empty bowls', MIS2().puzzle.shrine.chest.open === false && MIS2().puzzle.count() === 0);
+check('third egg bobs in the shrine guard flame path', (function () {
+  const fb = vm.runInContext("(function(){const g = game.spiders.filter(s => s.kind === 'firedino'); return g[g.length - 1].flameBox();})()", sandbox);
+  const tk = TOK2(2);
+  return tk.x + tk.w > fb.x && tk.x < fb.x + fb.w;
+})());
+// giant mushroom bounce reaches the canopy egg
+put2(2042, 580 - 94);
+let minY2 = 1e9;
+for (let i = 0; i < 70; i++) { frames(1); minY2 = Math.min(minY2, G().player.y); }
+check('giant mushroom launches the hero to the canopy', minY2 < 300);
+check('canopy egg collected mid-bounce', TOK2(1).taken && MIS2().puzzle.count() === 1);
+// dying keeps collected eggs
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(30);
+check('death does not un-collect eggs', G().state === 'play' && MIS2().puzzle.count() === 1);
+put2(1725 - 28, 452 - 60);
+frames(6);
+check('low platform egg is an easy grab', TOK2(0).taken && MIS2().puzzle.count() === 2);
+// freeze the guard and slip in for the flame-guarded egg
+vm.runInContext("(function(){const g = game.spiders.filter(s => s.kind === 'firedino'); g[g.length - 1].hit('ice');})()", sandbox);
+put2(3380 - 28, 386 - 60);
+frames(6);
+check('flame-guarded egg collected unharmed past the frozen guard', TOK2(2).taken && MIS2().puzzle.count() === 3 && G().player.hearts === 3);
+// return to the nest: ceremony (with the egg-eye gag), vines part, key appears
+put2(3800, 430 - 94);
+frames(20);
+check('nest ceremony begins', MIS2().puzzle.state !== 'collect');
 frames(200);
-check('chest opens into the DINO KEY', MIS2().chest && MIS2().chest.open && MIS2().item.state === 'waiting' && MIS2().item.kind === 'dinokey');
+check('eggs settle and the chest opens into the DINO KEY', MIS2().puzzle.done && MIS2().puzzle.shrine.lit === 3 && MIS2().puzzle.shrine.chest.open && MIS2().item.state === 'waiting' && MIS2().item.kind === 'dinokey');
 put2(MIS2().item.x, MIS2().item.y);
 frames(8);
 check('dino key follows the hero', MIS2().item.state === 'follow' && MIS2().state === 'carrying');
