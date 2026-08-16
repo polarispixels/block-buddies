@@ -136,17 +136,21 @@ class Player {
     if (lv.water) {
       const ay = (keys.ArrowUp ? -1 : 0) + (keys.ArrowDown ? 1 : 0);
       this.vx += ax * 1400 * dt;
-      this.vy += ay * 1400 * dt + 26 * dt;
-      const dr = Math.exp(-2.4 * dt);
+      this.vy += ay * 1400 * dt + (lv.space ? 0 : 26 * dt); // weightless in space
+      const dr = Math.exp(-(lv.space ? 1.7 : 2.4) * dt); // drifts further out there
       this.vx *= dr; this.vy *= dr;
-      const mx = spd * 0.85;
+      const mx = spd * (lv.space ? 0.95 : 0.85);
       this.vx = clamp(this.vx, -mx, mx); this.vy = clamp(this.vy, -mx, mx);
       if (ax) this.facing = ax;
       this.duck = false;
       this.bubbleT -= dt;
       if (this.bubbleT <= 0) {
-        this.bubbleT = 0.25;
-        Particles.burst(this.cx - this.facing * 20, this.y + 20, 1, { color: 'rgba(255,255,255,0.7)', type: 'bubble', sp1: 40, grav: -240, l0: 0.7, l1: 1.4, up: 0, s1: 9 });
+        this.bubbleT = lv.space ? 0.14 : 0.25;
+        if (lv.space) {
+          Particles.burst(this.cx - this.facing * 22, this.cy + 4, 1, { colors: ['#7fd8ff', '#fff'], type: 'sparkle', sp1: 55, grav: 0, l0: 0.4, l1: 0.9, up: 0, s1: 8 });
+        } else {
+          Particles.burst(this.cx - this.facing * 20, this.y + 20, 1, { color: 'rgba(255,255,255,0.7)', type: 'bubble', sp1: 40, grav: -240, l0: 0.7, l1: 1.4, up: 0, s1: 9 });
+        }
       }
       moveEntity(this, lv, dt);
       this.spin += this.vx * dt / 30;
@@ -460,6 +464,16 @@ class Player {
     const wx = this.cx, wy = this.y + this.h - 30;
     this.drawWheel(ctx, wx, wy, 30);
     this.drawBoy(ctx, wx, this.y + (this.duck ? 24 : 6), this.mood);
+    // space helmet bubble
+    if (game.level && game.level.space) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(190,232,255,0.22)';
+      ctx.beginPath(); ctx.arc(wx, this.y + 16, 28, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(wx, this.y + 16, 28, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(wx - 9, this.y + 7, 9, -2.6, -1.2); ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
   }
   drawSitting(ctx, x, y) { // used on the lose screen: boy on the ground, surprised
@@ -946,7 +960,8 @@ class Spider {
   constructor(x, y, kind = 'walk', opt = {}) {
     this.kind = kind;
     this.w = kind === 'tornado' ? 62 : 58;
-    this.h = kind === 'tornado' ? 84 : 44;
+    this.h = kind === 'tornado' ? 84 : kind === 'alien' ? 58 : 44;
+    this.axis = opt.axis || 'x';
     this.x = x - this.w / 2; this.y = y - this.h;
     this.x0 = this.x; this.y0 = this.y;
     this.vx = 0; this.vy = 0;
@@ -1116,6 +1131,27 @@ class Spider {
       if (chance(7 * dt)) {
         Particles.burst(this.cx + rand(-20, 20), this.y + this.h - rand(0, 30), 1, { colors: ['#c9a96a', '#b08a55'], sp1: 60, grav: -60, l1: 0.5, s1: 9, up: 10 });
       }
+    } else if (this.kind === 'alien') {
+      // saucer patrol: some drift sideways, some up-and-down; all curious about you
+      const dx = pl.cx - this.cx, dy = pl.cy - this.cy;
+      const near = Math.abs(dx) < 320 && Math.abs(dy) < 320;
+      if (this.axis === 'y') {
+        this.vy = this.dir * 95;
+        this.vx = near ? clamp(dx, -48, 48) : Math.sin(this.t * 2) * 14;
+      } else {
+        this.vx = this.dir * 95;
+        this.vy = (near ? clamp(dy, -48, 48) : 0) + Math.sin(this.t * 3) * 14;
+      }
+      const r = moveEntity(this, lv, dt);
+      if (this.axis === 'y') {
+        if (r.ground || r.head) this.dir *= -1;
+        if (this.y < this.y0 - this.range) this.dir = 1;
+        if (this.y > this.y0 + this.range) this.dir = -1;
+      } else {
+        if (r.wall) this.dir *= -1;
+        if (this.x < this.x0 - this.range) this.dir = 1;
+        if (this.x > this.x0 + this.range) this.dir = -1;
+      }
     } else if (this.kind === 'swim') {
       this.y = clamp(this.y0 + Math.sin(this.t * 1.6) * 34, 50, lv.h - this.h - 10);
       const dx = pl.cx - this.cx, dy = pl.cy - this.cy;
@@ -1260,9 +1296,70 @@ class Spider {
     }
     ctx.restore();
   }
+  drawAlien(ctx) {
+    const t = this.t, friend = this.state === 'friend';
+    const cx = this.cx;
+    ctx.save();
+    if (this.state === 'flying') { ctx.translate(cx, this.cy); ctx.rotate(t * 14); ctx.translate(-cx, -this.cy); }
+    ctx.translate(0, Math.sin(t * 3 + this.x0) * 3);
+    const sy = this.y + this.h - 16; // saucer center line
+    // glass dome
+    ctx.fillStyle = 'rgba(190,232,255,0.3)';
+    ctx.beginPath(); ctx.arc(cx, sy - 16, 24, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, sy - 16, 24, Math.PI, TAU); ctx.stroke();
+    // alien head
+    ctx.fillStyle = friend ? '#a8f090' : '#7fe06a';
+    ctx.beginPath(); ctx.ellipse(cx, sy - 20, 15, 17, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#3f8c35'; ctx.lineWidth = 2; ctx.stroke();
+    // antenna with glowing bobble
+    ctx.strokeStyle = '#3f8c35'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, sy - 36); ctx.lineTo(cx + Math.sin(t * 5) * 4, sy - 46); ctx.stroke();
+    ctx.fillStyle = friend ? '#ff8fb0' : '#ffe156';
+    ctx.beginPath(); ctx.arc(cx + Math.sin(t * 5) * 4, sy - 48, 4.5, 0, TAU); ctx.fill();
+    if (friend) {
+      drawFace(ctx, cx, sy - 20, 24, 'happy', t, this.x0, this.dir, 0);
+      ctx.fillStyle = 'rgba(255,120,150,0.5)';
+      ctx.beginPath(); ctx.arc(cx - 10, sy - 14, 3.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 10, sy - 14, 3.5, 0, TAU); ctx.fill();
+    } else {
+      // classic big almond eyes (goofy, not scary)
+      ctx.fillStyle = '#2a2438';
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + sd * 7, sy - 22, 5, 8.5, sd * 0.45, 0, TAU);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(cx - 6, sy - 25, 1.8, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 8, sy - 25, 1.8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#2a2438'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, sy - 11, 4, 0.2, Math.PI - 0.2); ctx.stroke();
+    }
+    // saucer
+    ctx.fillStyle = '#b9b3cf';
+    ctx.beginPath(); ctx.ellipse(cx, sy, 30, 11, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#7a72a0'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#8a82b5';
+    ctx.beginPath(); ctx.ellipse(cx, sy + 5, 18, 6, 0, 0, TAU); ctx.fill();
+    // running lights
+    for (let i = -1; i <= 1; i++) {
+      ctx.fillStyle = friend ? RAINBOW[(i + 1 + Math.floor(t * 4)) % RAINBOW.length]
+        : (Math.floor(t * 4 + i) % 2 ? '#ffe156' : '#ff6b35');
+      ctx.beginPath(); ctx.arc(cx + i * 16, sy + 3, 3, 0, TAU); ctx.fill();
+    }
+    if (this.state === 'frozen') {
+      ctx.fillStyle = 'rgba(160,225,255,0.55)';
+      rr(ctx, this.x - 8, this.y - 10, this.w + 16, this.h + 18, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,245,255,0.9)'; ctx.lineWidth = 3;
+      rr(ctx, this.x - 8, this.y - 10, this.w + 16, this.h + 18, 8); ctx.stroke();
+    }
+    ctx.restore();
+  }
   draw(ctx) {
     if (this.dead) return;
     if (this.kind === 'tornado') { this.drawTornado(ctx); return; }
+    if (this.kind === 'alien') { this.drawAlien(ctx); return; }
     const t = this.t, friend = this.state === 'friend';
     const cx = this.cx, cy = this.cy;
     ctx.save();

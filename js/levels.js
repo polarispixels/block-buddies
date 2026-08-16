@@ -8,7 +8,8 @@ const LEVEL_META = {
   5: { name: 'ZOMBIE CAVE', theme: 'cave', music: 'cave' },
   6: { name: 'LAVA WORLD', theme: 'lava', music: 'lava' },
   7: { name: 'MONSTER TRUCK RALLY', theme: 'dirt', music: 'dirt' },
-  8: { name: 'UNICORN FOREST', theme: 'forest', music: 'forest' }
+  8: { name: 'UNICORN FOREST', theme: 'forest', music: 'forest' },
+  9: { name: 'SPACE MAZE', theme: 'space', music: 'space' }
 };
 
 function newLevel(n) {
@@ -20,6 +21,7 @@ function newLevel(n) {
     decor: {}, lights: [], lava: null,
     ramps: null, turbos: null, finishX: null,
     centipedes: [], castleX: null,
+    space: false, mazeGrid: null, goalStar: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -361,7 +363,90 @@ function buildLevel(n) {
     for (let i = 0; i < 10; i++) lv.decor.butterflies.push({ x: rand(200, 5000), y: rand(300, 900), c: randi(0, 3), sp: rand(20, 50) * (chance(0.5) ? 1 : -1) });
   }
 
+  if (n === 9) { // ---------------- SPACE MAZE (bonus)
+    const CELL = 130;
+    const grid = buildSpaceMaze();
+    lv.mazeGrid = grid;
+    lv.w = 44 * CELL; lv.h = 19 * CELL;
+    lv.water = true; lv.space = true; // weightless = swim controls
+    lv.playerStart = { x: 250, y: 10.4 * CELL };
+    // maze walls -> solids (merge horizontal runs)
+    for (let r = 0; r < 19; r++) {
+      let c = 0;
+      while (c < 44) {
+        if (grid[r][c] === '#') {
+          let c2 = c;
+          while (c2 + 1 < 44 && grid[r][c2 + 1] === '#') c2++;
+          lv.solids.push({ x: c * CELL, y: r * CELL, w: (c2 - c + 1) * CELL, h: CELL, pile: true });
+          c = c2 + 1;
+        } else c++;
+      }
+    }
+    const P = (c, r) => [c * CELL + CELL / 2, r * CELL + CELL / 2];
+    // candy breadcrumbs along the main route to the star
+    const trail = [
+      [3, 10], [6, 11], [6, 13], [6, 15], [7, 17], [9, 16], [10, 15], [11, 14],
+      [12, 13], [13, 12], [14, 11], [14, 9], [15, 8], [17, 7], [18, 6], [19, 5],
+      [20, 6], [21, 7], [24, 8], [26, 9], [27, 10], [29, 11], [30, 9], [31, 8],
+      [33, 7], [33, 6], [34, 5], [36, 4], [37, 3], [38, 1], [40, 2], [41, 3],
+      [41, 5], [40, 6], [41, 8]
+    ];
+    for (const [c, r] of trail) { const [x, y] = P(c, r); pick(lv, x, y, 'candy'); }
+    // rewards hiding in dead ends
+    for (const [c, r, kind] of [
+      [7, 1, 'heart'], [21, 1, 'heart'], [26, 17, 'heart'], [39, 16, 'heart'],
+      [12, 1, 'fire'], [17, 13, 'fire'], [3, 6, 'fire'],
+      [30, 1, 'rainbow'], [25, 13, 'rainbow'], [9, 4, 'rainbow']
+    ]) { const [x, y] = P(c, r); pick(lv, x, y, kind); }
+    for (const [c, r] of [[10, 1], [22, 16], [38, 17], [3, 14], [31, 5]]) {
+      const [x, y] = P(c, r); pick(lv, x - 30, y, 'candy'); pick(lv, x + 30, y, 'candy');
+    }
+    // saucer patrols: some sideways, some up-and-down
+    for (const [c, r, axis, range] of [
+      [3, 8, 'x', 200], [16, 7, 'x', 300], [18, 10, 'x', 320], [24, 7, 'x', 280],
+      [28, 10, 'x', 300], [18, 14, 'x', 300], [34, 4, 'x', 300], [40, 4, 'x', 160],
+      [16, 3, 'y', 220], [28, 12, 'y', 220], [6, 13, 'y', 350], [40, 8, 'y', 260]
+    ]) {
+      const [x, y] = P(c, r);
+      spider(lv, x, y + 29, 'alien', { axis, range });
+    }
+    // checkpoints at maze crossroads
+    lv.checks.push(new Checkpoint(P(11, 6)[0], 7 * CELL));
+    lv.checks.push(new Checkpoint(P(23, 9)[0], 10 * CELL));
+    lv.checks.push(new Checkpoint(P(37, 12)[0], 13 * CELL));
+    // THE GOLDEN STAR
+    lv.goalStar = { x: P(41, 9)[0], y: P(41, 9)[1] };
+    lv.hints.push({ x: 420, y: 9 * CELL, icon: 'updown' });
+  }
+
   return lv;
+}
+function buildSpaceMaze() {
+  const COLS = 44, ROWS = 19;
+  const g = [];
+  for (let r = 0; r < ROWS; r++) g.push(new Array(COLS).fill('.'));
+  for (let c = 0; c < COLS; c++) { g[0][c] = '#'; g[ROWS - 1][c] = '#'; }
+  for (let r = 0; r < ROWS; r++) { g[r][0] = '#'; g[r][COLS - 1] = '#'; }
+  for (let r = 1; r <= 17; r++) if (r !== 10 && r !== 11) g[r][5] = '#';
+  const bands = [
+    [1, 2, [10, 18, 26, 34]],
+    [4, 5, [8, 14, 22, 30, 38]],
+    [7, 8, [12, 20, 28, 36]],
+    [10, 11, [10, 16, 24, 32, 38]],
+    [13, 14, [8, 14, 22, 30, 36]],
+    [16, 17, [12, 20, 28, 34]]
+  ];
+  for (const [r1, r2, walls] of bands) for (const wc of walls) { g[r1][wc] = '#'; g[r2][wc] = '#'; }
+  const wallRows = [
+    [3, [6, 7, 16, 17, 24, 25, 28, 29, 36, 37, 40, 41]],
+    [6, [6, 7, 10, 11, 18, 19, 20, 21, 26, 27, 32, 33, 40, 41]],
+    [9, [8, 9, 14, 15, 22, 23, 26, 27, 30, 31, 34, 35]],
+    [12, [6, 7, 12, 13, 20, 21, 28, 29, 34, 35, 36, 37]],
+    [15, [6, 7, 10, 11, 16, 17, 24, 25, 32, 33, 38, 39]]
+  ];
+  for (const [wr, gaps] of wallRows) for (let c = 6; c <= 42; c++) g[wr][c] = gaps.includes(c) ? '.' : '#';
+  for (let r = 7; r <= 11; r++) for (let c = 39; c <= 42; c++) g[r][c] = '.';
+  return g;
 }
 function inLava(lv, cx) {
   if (!lv.lava) return false;
@@ -391,6 +476,9 @@ function drawBG(ctx, lv, cam, t) {
   } else if (th === 'forest') {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#9fdcb0'); g.addColorStop(0.6, '#c8ecc0'); g.addColorStop(1, '#e8f7d0');
+  } else if (th === 'space') {
+    g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0a0a1e'); g.addColorStop(1, '#201646');
   } else {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#171029'); g.addColorStop(1, '#2c1e4a');
@@ -576,6 +664,45 @@ function drawBG(ctx, lv, cam, t) {
     ctx.restore();
     // floating magic motes
     if (chance(0.25)) Particles.burst(cam.x + rand(0, W), cam.y + rand(100, 700), 1, { colors: RAINBOW.concat(['#fff']), type: 'sparkle', sp1: 15, grav: -20, l0: 1.5, l1: 3, up: 0, s0: 4, s1: 8 });
+  } else if (th === 'space') {
+    // twinkling starfield, two parallax layers
+    for (const [par, n2, s2] of [[0.08, 60, 1.6], [0.2, 40, 2.6]]) {
+      for (let i = 0; i < n2; i++) {
+        const sx = (((i * 379 + 83) - cam.x * par) % (W + 20) + W + 20) % (W + 20) - 10;
+        const sy = (((i * 631 + 47) - cam.y * par) % (H + 20) + H + 20) % (H + 20) - 10;
+        const tw = 0.55 + 0.45 * Math.sin(t * 2 + i * 1.7);
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.35 + 0.5 * tw) + ')';
+        ctx.beginPath(); ctx.arc(sx, sy, s2 * (0.6 + tw * 0.5), 0, TAU); ctx.fill();
+      }
+    }
+    // nebula wisps
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    for (const [nx, ny, nr, nc] of [[300, 180, 190, '#b06cf0'], [950, 480, 230, '#4aa3ff'], [620, 620, 160, '#ff5fa2']]) {
+      ctx.fillStyle = nc;
+      ctx.beginPath();
+      ctx.ellipse(nx - cam.x * 0.05, ny - cam.y * 0.05, nr, nr * 0.55, 0.4, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    // ringed planet (with a face, obviously)
+    const px2 = 1020 - cam.x * 0.04, py2 = 150 - cam.y * 0.03;
+    ctx.fillStyle = '#ffb35c';
+    ctx.beginPath(); ctx.arc(px2, py2, 52, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#ffd9a0'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.ellipse(px2, py2 + 6, 84, 22, -0.25, 0, TAU); ctx.stroke();
+    drawFace(ctx, px2, py2 - 4, 46, 'sleepy', t, 61);
+    // little red planet
+    const rx2 = 220 - cam.x * 0.06, ry2 = 520 - cam.y * 0.04;
+    ctx.fillStyle = '#e86a5a';
+    ctx.beginPath(); ctx.arc(rx2, ry2, 26, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c04a3f';
+    ctx.beginPath(); ctx.arc(rx2 - 8, ry2 - 5, 6, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx2 + 9, ry2 + 8, 4, 0, TAU); ctx.fill();
+    // shooting star sometimes
+    if (chance(0.008)) {
+      Particles.burst(cam.x + rand(0, W), cam.y + rand(0, 300), 1, { colors: ['#fff'], type: 'sparkle', sp0: 500, sp1: 700, a0: 2.6, a1: 2.9, grav: 0, l0: 0.5, l1: 0.8, s1: 10, up: 0 });
+    }
   } else if (th === 'cave') {
     // stalactites silhouettes
     ctx.fillStyle = '#241640';
@@ -696,6 +823,7 @@ function drawSolids(ctx, lv, cam, t) {
     else if (th === 'lava') { fill = '#43222e'; topFill = '#ff7a2b'; line = 'rgba(20,8,12,0.45)'; }
     else if (th === 'dirt') { fill = '#a8672f'; topFill = '#c9924a'; line = 'rgba(90,50,20,0.3)'; }
     else if (th === 'forest') { fill = '#7a5230'; topFill = '#57b84a'; line = 'rgba(60,35,15,0.3)'; }
+    else if (th === 'space') { fill = '#3d3766'; topFill = '#7fd8ff'; line = 'rgba(15,12,35,0.5)'; }
     else { fill = '#b07845'; topFill = '#5ecb4a'; line = 'rgba(90,50,20,0.25)'; }
     if (s.plat && th !== 'cave') { fill = '#c98f4e'; }
     ctx.fillStyle = fill;
@@ -851,6 +979,25 @@ function drawSolids(ctx, lv, cam, t) {
         Particles.burst(L.x + rand(10, L.w - 10), top, 1, { colors: ['#ffe156', '#ff9f43'], type: 'circle', sp1: 30, grav: -220, l1: 0.7, s1: 8, up: 0 });
       }
     }
+  }
+  // THE GOLDEN STAR (maze goal)
+  if (lv.goalStar) {
+    const gs = lv.goalStar;
+    ctx.save();
+    ctx.globalAlpha = 0.3 + 0.15 * Math.sin(t * 3);
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(gs.x, gs.y, 105, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(gs.x, gs.y);
+    ctx.rotate(Math.sin(t * 1.2) * 0.15);
+    ctx.fillStyle = '#ffd24a';
+    starPath(ctx, 0, 0, 62, 28);
+    ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 5; ctx.stroke();
+    drawFace(ctx, 0, 4, 44, 'grin', t, 93);
+    ctx.restore();
+    if (chance(0.2)) Particles.burst(gs.x + rand(-70, 70), gs.y + rand(-70, 70), 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 30, grav: 0, l1: 0.9, s1: 9, up: 0 });
   }
   // theme decorations
   drawDecor(ctx, lv, cam, t);
