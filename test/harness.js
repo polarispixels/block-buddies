@@ -541,6 +541,29 @@ tap('Digit3');
 frames(5);
 check('digit key starts that level from title', G().level.n === 3 && G().state === 'intro');
 
+// ---------------- secret title combos (keyboard only) ----------------
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+for (let i = 0; i < 5; i++) { tap('ArrowUp'); frames(2); }
+check('Up×5 combo unlocks all worlds', G().unlocked === 9 && sandbox.localStorage.getItem('ffbg_unlocked') === '9' && G().selLevel === 9);
+for (let i = 0; i < 4; i++) { tap('ArrowDown'); frames(2); }
+frames(90); // > 1.2s gap — the streak must expire
+tap('ArrowDown');
+frames(2);
+check('slow Down presses do not reset the game', G().unlocked === 9);
+frames(90); // let that stray press's streak window expire
+vm.runInContext("game.royal = true; game.setCharacter('girl')", sandbox);
+for (let i = 0; i < 5; i++) { tap('ArrowDown'); frames(2); }
+check('Down×5 combo resets progress and clears storage', G().unlocked === 1 && G().royal === false &&
+  G().character === 'boy' && G().selLevel === 1 &&
+  sandbox.localStorage.getItem('ffbg_unlocked') === null &&
+  sandbox.localStorage.getItem('ffbg_char') === null &&
+  sandbox.localStorage.getItem('ffbg_royal') === null);
+check('touch-synthesized presses cannot fire combos', (function () {
+  for (let i = 0; i < 6; i++) { vm.runInContext("TouchUI.press('ArrowUp')", sandbox); frames(2); vm.runInContext("keys.ArrowUp = false", sandbox); }
+  return G().unlocked === 1;
+})());
+
 // long soak: run each level 12 simulated seconds with chaotic input
 for (let n = 1; n <= 5; n++) {
   vm.runInContext(`game.startLevel(${n})`, sandbox);

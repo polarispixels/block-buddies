@@ -41,6 +41,7 @@ const game = {
   chest: null, endPhase: null, partyT: 0,
   titleT: 0, titleBoyX: 300, titleBoyD: 1,
   titlePlayer: null, titleSpider: null,
+  combo: { up: 0, down: 0, t: 0 }, titleMsg: null,
   deathPos: null
 };
 
@@ -63,6 +64,31 @@ game.setCharacter = function (who) {
   AudioSys.sfx('switch');
   const px2 = PORTRAITS.find(p => p.who === who);
   if (px2) Particles.burst(px2.x, px2.y, 10, { colors: ['#ffe156', '#ff8fb0', '#fff'], type: 'star', sp1: 220, l1: 0.6, s1: 9, grav: 200 });
+};
+game.unlockAll = function () { // secret combo: Up×5 fast on the title (keyboard only)
+  game.unlocked = 9;
+  game.selLevel = 9;
+  try { localStorage.setItem('ffbg_unlocked', '9'); } catch (e) {}
+  game.titleMsg = { text: 'ALL WORLDS OPEN!', t: 2.5 };
+  AudioSys.sfx('fanfare');
+  for (let i = 1; i <= 9; i++) {
+    const m = medalPos(i);
+    Particles.burst(m.x, m.y, 8, { colors: RAINBOW, type: 'confetti', sp1: 220, l0: 0.8, l1: 1.6, s1: 10, grav: 250, up: 180 });
+  }
+};
+game.resetProgress = function () { // secret combo: Down×5 fast on the title (keyboard only)
+  try {
+    localStorage.removeItem('ffbg_unlocked');
+    localStorage.removeItem('ffbg_char');
+    localStorage.removeItem('ffbg_royal');
+  } catch (e) {}
+  game.unlocked = 1;
+  game.selLevel = 1;
+  game.royal = false;
+  game.character = 'boy'; // direct set — setCharacter would re-save to the storage we just cleared
+  game.titleMsg = { text: 'BRAND NEW GAME!', t: 2.5 };
+  AudioSys.sfx('poof');
+  Particles.burst(W / 2, 400, 26, { colors: ['#fff', '#ffe156', '#7fd8ff'], type: 'star', sp1: 320, l1: 1, s1: 12, grav: 150 });
 };
 game.titleTap = function (p) {
   for (const pt of PORTRAITS) {
@@ -502,6 +528,18 @@ function updateTitle(dt) {
   ts.t += dt; ts.danceT = 1;
   // Up/Down (or tapping a portrait) switches the hero
   if (justP.ArrowUp || justP.ArrowDown) game.setCharacter(game.character === 'boy' ? 'girl' : 'boy');
+  // secret keyboard combos (justK = physical keys only, so touch can't trigger):
+  // Up ×5 fast = unlock all worlds; Down ×5 fast = wipe progress, fresh game
+  game.combo.t = Math.max(0, game.combo.t - dt);
+  if (justK.ArrowUp || justK.ArrowDown) {
+    if (game.combo.t <= 0) { game.combo.up = 0; game.combo.down = 0; }
+    game.combo.t = 1.2; // max gap between presses in the streak
+    if (justK.ArrowUp) { game.combo.up++; game.combo.down = 0; }
+    else { game.combo.down++; game.combo.up = 0; }
+    if (game.combo.up >= 5) { game.combo.up = 0; game.combo.t = 0; game.unlockAll(); }
+    else if (game.combo.down >= 5) { game.combo.down = 0; game.combo.t = 0; game.resetProgress(); }
+  }
+  if (game.titleMsg && (game.titleMsg.t -= dt) <= 0) game.titleMsg = null;
   // Left/Right (or tapping a medallion) picks the level to play
   if (justP.ArrowLeft && game.selLevel > 1) { game.selLevel--; AudioSys.sfx('candy'); }
   if (justP.ArrowRight && game.selLevel < game.unlocked) { game.selLevel++; AudioSys.sfx('candy'); }
@@ -1040,6 +1078,13 @@ function renderTitle() {
       ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(m.x, my - 7, 7, Math.PI, TAU); ctx.stroke();
     }
+  }
+  // combo feedback banner (unlock-all / reset)
+  if (game.titleMsg) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, game.titleMsg.t * 1.5);
+    outlineText(ctx, game.titleMsg.text, W / 2, 398 - Math.sin(t * 5) * 4, 54, '#ffe156', '#5a4a86');
+    ctx.restore();
   }
   // tiny version stamp (also handy for verifying live deploys)
   outlineText(ctx, 'v' + GAME_VERSION, 46, H - 14, 15, 'rgba(255,255,255,0.8)', '#5a4a86');

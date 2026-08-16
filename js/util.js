@@ -1,6 +1,6 @@
 'use strict';
 // ---------------------------------------------------------------- basics
-const GAME_VERSION = '1.1.0'; // SEMVER — bump with every release (see docs/index.html + CHANGELOG.md)
+const GAME_VERSION = '1.2.0'; // SEMVER — bump with every release (see docs/index.html + CHANGELOG.md)
 const W = 1280, H = 720, TAU = Math.PI * 2;
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -271,16 +271,21 @@ function drawCrown(ctx, cx, y, s) { // y = base of the crown band
 }
 
 // ---------------------------------------------------------------- input
-const keys = {}, justP = {};
+// justK mirrors justP but only for a real keyboard — TouchUI.press never sets
+// it, so touch mashing can't fire the secret title combos (reset/unlock-all).
+const keys = {}, justP = {}, justK = {};
 const GAMEKEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'];
 window.addEventListener('keydown', e => {
   if (GAMEKEYS.includes(e.code)) e.preventDefault();
-  if (!keys[e.code]) justP[e.code] = true;
+  if (!keys[e.code]) { justP[e.code] = true; justK[e.code] = true; }
   keys[e.code] = true;
   if (typeof AudioSys !== 'undefined') AudioSys.unlock();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-function endFrameInput() { for (const k in justP) delete justP[k]; }
+function endFrameInput() {
+  for (const k in justP) delete justP[k];
+  for (const k in justK) delete justK[k];
+}
 
 // ---------------------------------------------------------------- touch controls
 // Appears automatically on the first touch. Two-thumb landscape layout:

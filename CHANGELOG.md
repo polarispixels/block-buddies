@@ -8,6 +8,19 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.2.0] - 2026-08-16
+
+### Added
+- Secret title-screen keyboard combos (physical keyboard only — touch-synthesized
+  presses are excluded via the new `justK` map, so a child mashing touch buttons
+  can never trigger them):
+  - **Up ×5 quickly** → unlock all nine worlds ("ALL WORLDS OPEN!", fanfare,
+    confetti over the medallions)
+  - **Down ×5 quickly** → clear all saved progress (`ffbg_unlocked`, `ffbg_char`,
+    `ffbg_royal`) and reset to a brand-new game ("BRAND NEW GAME!")
+  - Presses must be ≤1.2 s apart to count as a streak.
+- Four harness checks: both combos, streak expiry, and touch-press immunity.
+
 ## [1.1.0] - 2026-08-16
 
 Renamed the game: **Block Buddies: The Adventures of Jack-Jack and Becca**
