@@ -8,6 +8,17 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.8.3] - 2026-08-16
+
+### Fixed
+- **Completed mini-game doors kept swallowing the hero** (found by Ryan): doors
+  like the Secret Ascent's sit right on normal walking routes, so after
+  finishing the mini-game you kept falling back into it by accident. Completed
+  doors now go DORMANT: they shrink into a quiet trophy marker with the gold
+  star, and walking over them never re-enters. Replaying is deliberate — stand
+  on the marker (a wordless Space hint pops up) and press Space/★. The bubble
+  door's inviting bubble stream also stops once its secret is found.
+
 ## [1.8.2] - 2026-08-16
 
 ### Fixed

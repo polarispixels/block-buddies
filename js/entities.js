@@ -3460,29 +3460,45 @@ class SubDoor {
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
+  done() { return !!(game.miniDone && game.miniDone[this.sub]); }
   update(dt) {
     this.t += dt;
+    const done = this.done();
     const over = overlaps(this, game.player);
     if (over && this.armed && game.state === 'play' && !game.cut && !game.endPhase) {
-      this.armed = false;
-      game.enterSub(this.sub);
-      return;
+      // a COMPLETED door goes dormant: walking over it never swallows you
+      // again (that was a real playtest complaint on the cave-roof route).
+      // Replay is deliberate: stand on the trophy marker and press Space/★.
+      if (!done || justP.Space) {
+        this.armed = false;
+        game.enterSub(this.sub);
+        return;
+      }
     }
     if (!over && Math.abs(game.player.cx - this.cx) > this.w) this.armed = true;
-    if (chance(0.1)) {
+    if (chance(done ? 0.025 : 0.1)) {
       const cols = this.style === 'rainbow' ? RAINBOW
         : this.style === 'cave' ? ['#ffe156', '#d0a0ff']
         : this.style === 'crack' ? ['#ff9f43', '#ffe156']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
-    // the bubble door's clue: a strange stream of bubbles rises out of the cave
-    if (this.style === 'bubble' && chance(0.4)) {
+    // the bubble door's clue: a strange stream of bubbles rises out of the
+    // cave — the invitation stops once the secret has been found
+    if (this.style === 'bubble' && !done && chance(0.4)) {
       Particles.burst(this.cx + rand(-14, 14), this.y + 30, 1, { color: 'rgba(255,255,255,0.75)', type: 'bubble', sp1: 25, grav: -170, l0: 2, l1: 3.4, up: 0, s1: 10 });
     }
   }
   draw(ctx) {
     const t = this.t, cx = this.cx, g = this.groundY;
+    const done = this.done();
+    ctx.save();
+    if (done) { // dormant trophy marker: smaller, quieter, clearly "finished"
+      ctx.globalAlpha *= 0.8;
+      ctx.translate(cx, g);
+      ctx.scale(0.72, 0.72);
+      ctx.translate(-cx, -g);
+    }
     ctx.save();
     if (this.style === 'rainbow') {
       // a shimmering rainbow ring standing on the ground
@@ -3578,12 +3594,18 @@ class SubDoor {
       ctx.restore();
     }
     ctx.restore();
-    // completed badge
-    if (game.miniDone && game.miniDone[this.sub]) {
+    ctx.restore(); // undo the dormant shrink
+    // completed badge over the (smaller) door
+    if (done) {
+      const by = g - this.h * 0.72 - 18 + Math.sin(t * 3) * 3;
       ctx.fillStyle = '#ffd24a';
-      starPath(ctx, cx, this.y - 20 + Math.sin(t * 3) * 3, 13, 6);
+      starPath(ctx, cx, by, 13, 6);
       ctx.fill();
       ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke();
+      // standing on the trophy shows the wordless "press Space to replay" hint
+      if (game.state === 'play' && game.player && overlaps(this, game.player)) {
+        drawSpacebar(ctx, cx, by - 52, 110, t);
+      }
     }
   }
 }

@@ -834,6 +834,19 @@ frames(320);
 tap('Space');
 frames(5);
 check('returning lands back in Cloud World, same level object', G().level.n === 3 && G().level.marker === 42 && G().state === 'play');
+// completed doors go DORMANT (found by Ryan: doors on normal walking routes
+// kept swallowing the hero after the mini-game was already done)
+put(2300, 560 - 94);
+frames(45, { ArrowRight: 1 }); // stroll straight across the completed door
+check('walking over a completed door never re-enters', G().level.n === 3 && G().player.x > 2480);
+put(2480 - 28, 560 - 94);
+frames(10); // stand on the trophy marker
+tap('Space');
+frames(5);
+check('standing on the trophy + Space replays on purpose', G().level.n === 'cloudclimb');
+vm.runInContext('game.exitSub()', sandbox);
+frames(5);
+check('manual exit restores the host world', G().level.n === 3 && G().state === 'play');
 
 // ---------------- mini-game: UNICORN SKY FLIGHT ----------------
 vm.runInContext('game.startLevel(8)', sandbox);

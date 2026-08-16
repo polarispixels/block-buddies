@@ -125,7 +125,9 @@ everywhere via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble;
-  re-arms only after horizontal separation so exit never re-enters). `game.enterSub(id)` stashes the whole
+  re-arms only after horizontal separation so exit never re-enters; once
+  COMPLETED a door goes dormant — shrunken trophy w/ gold star, walk-over
+  never enters, replay = stand on it + Space). `game.enterSub(id)` stashes the whole
   host state incl. the Player INSTANCE and live level object; `exitSub()`
   restores it verbatim (mission progress survives, no physics/camera leaks).
   Sub finales use `lv.goalStar` -> `game.subWin()` -> party -> Space exits
@@ -163,7 +165,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 262 checks; must print
+  goal path) and version/changelog/docs sync checks. 265 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).
