@@ -32,7 +32,13 @@ function addGround(lv, x, w, top) {
   lv.solids.push({ x, y: top, w, h: lv.h - top + 400, ground: true, top });
 }
 function addPlat(lv, x, y, w, opts = {}) {
-  lv.solids.push({ x, y, w, h: opts.h || 36, oneWay: opts.oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, plat: true });
+  // Floating platforms are ONE-WAY by default: walk beneath them freely, jump
+  // up through them, land on top. Thick slabs (h >= 60, e.g. Cloud World's
+  // islands) stay solid, as does anything passing opts.solid — a solid
+  // platform that looks like a walk-through one is just a nuisance.
+  const h = opts.h || 36;
+  const oneWay = opts.solid ? false : (opts.oneWay || h < 60);
+  lv.solids.push({ x, y, w, h, oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, plat: true });
 }
 function addBlockPile(lv, x, top, cols, rows) {
   lv.solids.push({ x, y: top - rows * 48, w: cols * 48, h: rows * 48, pile: true });

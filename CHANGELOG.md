@@ -8,6 +8,23 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.6.3] - 2026-08-16
+
+### Fixed
+- **Floating platforms are now one-way by default, game-wide.** Thin platforms
+  used to be a mix: some one-way, some solid — visually identical, but the
+  solid ones blocked walking underneath (like the Mountain ledge that trapped
+  candy under it and shoved players around). `addPlat` now makes every thin
+  floating platform one-way (walk beneath freely, jump up through, land on
+  top) across Meadow, Underwater, Cloud, Mountain, Lava, and the Jungle. Thick
+  structural slabs (h ≥ 60, e.g. Cloud World's islands) stay solid, and
+  `opts.solid` can force it. Spring pads are one-way too — mounting them from
+  above now never bonks your head on the underside.
+- Harness: walk-under-the-ledge and jump-up-through regression checks
+  ( checks total). Also caught and fixed a test bug where the harness
+  player spawned on the respawning power block and silently super-smashed
+  walls across the level.
+
 ## [1.6.2] - 2026-08-16
 
 ### Fixed

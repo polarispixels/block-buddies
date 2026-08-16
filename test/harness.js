@@ -265,6 +265,17 @@ check('door bump gives key hint, costs nothing', MIS().gate.hintT > 0 && G().pla
 // distributed collection: three crystals, any order, each its own challenge
 const TOK = i => vm.runInContext(`game.level.mission.puzzle.tokens[${i}]`, sandbox);
 check('shrine chest waits closed with three empty sockets', MIS().puzzle.shrine.chest.open === false && MIS().puzzle.count() === 0);
+// floating platforms are one-way: walk beneath them, jump up through them
+// (befriend the hang spiders first so the geometry check stays deterministic)
+vm.runInContext("for (const sp of game.spiders) if (sp.befriend) sp.befriend();", sandbox);
+put(2060, 524 - 94); // clear of the power block at x=2000
+frames(85, { ArrowRight: 1 });
+check('candy under the ledge platform is walkable', G().player.x > 2360 && Math.abs(G().player.y - (524 - 94)) < 4);
+put(2230, 524 - 94);
+frames(3);
+tap('ArrowUp');
+frames(70);
+check('jumping up through the ledge lands on top', Math.abs(G().player.y + 94 - 410) < 4);
 // the raised spring never interrupts ground travel...
 put(2400, 524 - 94);
 frames(40, { ArrowRight: 1 });
