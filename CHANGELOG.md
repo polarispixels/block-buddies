@@ -8,6 +8,52 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.8.0] - 2026-08-16
+
+### Added
+- **Monster Truck: Build Your Truck** — the Rally now opens with the monster truck
+  broken: slumped on the dirt with no wheels, an empty engine bay, a drooping
+  exhaust, a sad face, and the occasional cough. A sign shows ghost silhouettes of
+  the three missing parts (`TruckBuild` + new `MissionToken` skins
+  `wheels`/`engine`/`core`): the giant wheels wait on a block pile (easy hops),
+  the engine hangs from a crane lowered by a big yellow floor switch (cause and
+  effect, no words), and the power core is sealed behind a cracked wall on a high
+  ledge (the learned power-smash; a respawning power block waits nearby). Return
+  with all three for the assembly ceremony — BOOM wheels, clunk engine, bzzt
+  lights — VROOOOOM, and the race begins exactly as before. Parts survive death;
+  any collection order works.
+- **Secret Volcano Escape** (Lava World) — a glowing cracked volcanic wall before
+  the first lava pool hides a vertical climb through the inside of a volcano
+  (1600×3000): slowly **rising lava** that pauses whenever it nears the hero,
+  backs off at checkpoints and respawns, and only ever costs the lava-pool heart
+  + mercy bounce; **steam vents** — timed bouncers that idle, bubble a warning,
+  then erupt and launch you sky-high; two rejoining route choices; and a finale
+  where a super vent blasts the hero out of the crater onto the sunny rim (golden
+  star, candy hoard).
+- **Secret Bubble Maze** (Underwater World) — a strange stream of bubbles rises
+  from a seaweed-framed sea cave on the seafloor. Inside: five landmark chambers
+  (starfish, giant clam, coral garden, treasure vault) connected by **bubble
+  currents** (strong directional assistance that never overrides steering), and
+  one explicit puzzle: three color-coded bubble valves seal the treasure shaft,
+  popped by touching the three matching giant shell switches scattered one per
+  chamber. Open them all and the current lifts you straight to the GIANT PEARL.
+  No enemies, no timing, no way to die.
+- New `SubDoor` styles: `crack` (glowing volcanic fissures) and `bubble`
+  (bubble-breathing sea cave) — both leave visual evidence, per the secret-design
+  rules now documented in docs.
+- One tiny new easter egg, somewhere in the Rally. We don't say where.
+- Harness grows to 253 checks: full truck-assembly walk (blocked ride, crane
+  switch, sealed pocket, death persistence, ceremony, race regression), volcano
+  escape (rising-lava pacing/mercy/reset, vent launch, summit, host-state
+  restore), bubble maze (current ride + steering, valve blocking, switch/valve
+  matching, pearl finale, host-state restore).
+
+### Changed
+- Rally opening rearranged for an enemy-free build zone (first walker removed,
+  arrows hint moved to the spawn); Lava World's first walker patrols short of the
+  new secret door; underwater weeds/corals now root on the actual ground height
+  so they render correctly in the maze's chambers.
+
 ## [1.7.1] - 2026-08-16
 
 ### Fixed

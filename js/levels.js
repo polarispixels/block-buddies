@@ -14,7 +14,9 @@ const LEVEL_META = {
   // sublevels / mini-games (string ids — not in the title picker)
   cloudclimb: { name: 'CLOUD CLIMB', theme: 'cloud', music: 'cloud' },
   ascent: { name: 'SECRET ASCENT', theme: 'mountain', music: 'mountain' },
-  skyflight: { name: 'SKY FLIGHT', theme: 'cloud', music: 'forest' }
+  skyflight: { name: 'SKY FLIGHT', theme: 'cloud', music: 'forest' },
+  volcanoescape: { name: 'VOLCANO ESCAPE', theme: 'lava', music: 'cave' },
+  bubblemaze: { name: 'BUBBLE MAZE', theme: 'water', music: 'water' }
 };
 
 function newLevel(n) {
@@ -28,6 +30,8 @@ function newLevel(n) {
     centipedes: [], castleX: null,
     space: false, mazeGrid: null, goalStar: null, mission: null,
     subDoors: [], flight: false,
+    truckBuild: null, vents: null, risingLava: null,
+    currents: null, shellSwitches: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -127,6 +131,9 @@ function buildLevel(n) {
     spider(lv, 3650, 1060, 'swim', { range: 150 });
     lv.checks.push(new Checkpoint(1600, 1130));
     lv.checks.push(new Checkpoint(3000, 1130));
+    // the SECRET BUBBLE MAZE: a seaweed-framed cave on the seafloor breathing
+    // a strange stream of bubbles — "where do those bubbles come from?"
+    lv.subDoors.push(new SubDoor(3130, 1130, 'bubblemaze', 'bubble'));
     lv.gate = new Gate(4060, 1060);
     lv.decor.weeds = []; lv.decor.corals = []; lv.decor.fish = [];
     for (let x = 40; x < lv.w; x += rand(120, 260)) lv.decor.weeds.push({ x, h: rand(60, 150), seed: rand(9) });
@@ -304,8 +311,11 @@ function buildLevel(n) {
     candyArc(lv, 1860, 2130, 400, G - 70, 5);
     candyArc(lv, 2940, 3210, 400, G - 70, 5);
     candyRow(lv, 3550, 3900, G - 60, 4);
+    // the SECRET VOLCANO ESCAPE: a glowing cracked wall right before the
+    // first lava pool — visual evidence, no wall-hugging needed
+    lv.subDoors.push(new SubDoor(830, G, 'volcanoescape', 'crack'));
     // clusters close together = chain-reaction fireworks
-    spider(lv, 700, G, 'walk', { range: 130 });
+    spider(lv, 600, G, 'walk', { range: 80 }); // patrols short of the secret door
     spider(lv, 1400, G, 'walk', { range: 90 });
     spider(lv, 1540, G, 'walk', { range: 90 });
     spider(lv, 1750, G, 'jump');
@@ -339,8 +349,34 @@ function buildLevel(n) {
     ];
     lv.turbos = [{ x: 5430, w: 130 }];
     lv.finishX = 6420;
-    lv.pickups.push(new ParkedTruck(300, G));
-    pick(lv, 650, G - 90, 'fire');
+    // ---- BUILD YOUR TRUCK: the rally now opens with a broken monster truck.
+    // Three parts wait along the opening stretch (enemy-free): giant wheels on
+    // a little block pile (easy hops), the engine hanging from a crane that a
+    // big yellow floor switch lowers (cause and effect), and the power core
+    // sealed behind a cracked wall on a high ledge (the learned power-smash).
+    // Bring all three back -> assembly ceremony -> the real truck appears.
+    addBlockPile(lv, 640, G, 2, 1); // wheels perch
+    // power core ledge: hop up via the side pile, smash the wall, grab the
+    // core; a tall block column seals the pocket's far side (no sneaking in)
+    addBlockPile(lv, 800, G, 1, 2);
+    addPlat(lv, 850, 450, 240); // high enough that no ground jump reaches it
+    lv.solids.push({ x: 890, y: 450 - 96, w: 52, h: 96, breakable: true });
+    lv.solids.push({ x: 1042, y: 306, w: 48, h: 144, pile: true });
+    // the smashing power (respawns like the mountain ones — no soft-lock)
+    const pw7 = new Pickup(560, G - 84, 'power');
+    pw7.bossKind = 'power';
+    lv.pickups.push(pw7);
+    lv.truckBuild = new TruckBuild(430, G, [
+      new MissionToken(688, G - 82, 'ice', 'wheels'),
+      new MissionToken(1250, 350, 'fire', 'engine'),
+      new MissionToken(990, 408, 'power', 'core')
+    ], {
+      crane: { x: 1250, topY: 350, lowY: G - 64 },
+      plate: { x: 1108 }
+    });
+    // easter egg: don't tell anyone what's parked behind the starting line
+    lv.decor.dinoTruck = { x: 42 };
+    pick(lv, 1440, G - 90, 'fire');
     pick(lv, 2550, G - 80, 'ice');
     pick(lv, 3450, G - 70, 'heart');
     pick(lv, 4250, G - 80, 'rainbow');
@@ -353,8 +389,7 @@ function buildLevel(n) {
     candyArc(lv, 4180, 4560, 340, 540, 5);
     candyArc(lv, 5090, 5450, 300, 540, 5);
     candyArc(lv, 6050, 6700, 130, 480, 8);
-    spider(lv, 1050, G, 'walk', { range: 180 });
-    spider(lv, 2050, G, 'walk', { range: 150 });
+    spider(lv, 2050, G, 'walk', { range: 150 }); // the build zone stays enemy-free
     spider(lv, 2250, G, 'tornado', { range: 220 });
     spider(lv, 3700, G, 'tornado', { range: 250 });
     spider(lv, 3900, G, 'jump');
@@ -364,7 +399,7 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(1850, G));
     lv.checks.push(new Checkpoint(3450, G));
     lv.checks.push(new Checkpoint(5350, G));
-    lv.hints.push({ x: 480, y: G - 220, icon: 'arrows' });
+    lv.hints.push({ x: 130, y: G - 220, icon: 'arrows' });
     lv.decor.mesas = true;
     lv.decor.flags = [];
     for (let x = 700; x < 6200; x += rand(500, 900)) lv.decor.flags.push({ x, c: randi(0, 3) });
@@ -684,6 +719,126 @@ function buildLevel(n) {
     for (let i = 0; i < 20; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(150, lv.h - 300), s: rand(0.6, 1.4) });
     for (let i = 0; i < 4; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(800, 3400), sp: rand(40, 80) });
     for (let i = 0; i < 6; i++) lv.decor.balloons.push({ x: rand(60, 1220), y: rand(600, 3600), c: randi(0, 3), sp: rand(8, 20) });
+  }
+
+  if (n === 'volcanoescape') { // ---------------- SECRET VOLCANO ESCAPE (vertical + rising lava)
+    lv.w = 1600; lv.h = 3000;
+    lv.playerStart = { x: 100, y: 2800 };
+    addGround(lv, 0, 1600, 2940);
+    lv.vents = [];
+    const vent = (x, y, opt = {}) => {
+      const v = { x, y, w: 96, h: 40, oneWay: true, vent: true, ventT: opt.offset || 0, bounceVy: opt.pow || -1400 };
+      lv.solids.push(v); lv.vents.push(v);
+    };
+    // teach: rocky steps up-right to the first rest terrace
+    addPlat(lv, 140, 2810, 230);
+    addPlat(lv, 470, 2690, 230);
+    addPlat(lv, 800, 2570, 230);
+    addPlat(lv, 1130, 2450, 400, { h: 60, solid: true }); // terrace A
+    lv.checks.push(new Checkpoint(1310, 2450));
+    candyArc(lv, 200, 1000, 2540, 2870, 6);
+    // the first steam vent: stand on it, wait for the rumble, ride the blast
+    vent(1180, 2410, { offset: 1.5 });
+    addPlat(lv, 1020, 1830, 360); // wide one-way catch ledge straight above
+    pick(lv, 1228, 2240, 'candy'); pick(lv, 1228, 2040, 'candy'); // flight markers
+    // climb on up-left
+    addPlat(lv, 700, 1710, 220);
+    addPlat(lv, 380, 1590, 220);
+    addPlat(lv, 80, 1470, 420, { h: 60, solid: true }); // terrace B
+    lv.checks.push(new Checkpoint(240, 1470));
+    candyRow(lv, 760, 860, 1660, 2);
+    // ROUTE CHOICE: the vent express (left, straight up) or the long rock
+    // ladder (right, more candy + a heart). Wrong is impossible — they rejoin.
+    vent(120, 1430, { offset: 0.6 });
+    addPlat(lv, 60, 850, 300); // vent-express catch ledge
+    pick(lv, 168, 1280, 'candy'); pick(lv, 168, 1060, 'candy');
+    addPlat(lv, 560, 1350, 200);
+    addPlat(lv, 860, 1230, 200);
+    addPlat(lv, 1160, 1110, 220);
+    addPlat(lv, 1340, 980, 240, { h: 60, solid: true }); // eastern candy ledge
+    candyRow(lv, 1390, 1540, 930, 3);
+    pick(lv, 1450, 870, 'heart');
+    addPlat(lv, 1080, 900, 200);
+    addPlat(lv, 760, 860, 220);
+    addPlat(lv, 430, 830, 220);
+    candyArc(lv, 620, 1260, 1030, 1300, 5);
+    // terrace C, right under the crater throat
+    addPlat(lv, 140, 720, 460, { h: 60, solid: true });
+    lv.checks.push(new Checkpoint(300, 720));
+    // the crater: rock walls funnel into a narrow throat; the SUPER vent
+    // blasts the hero out the top of the volcano onto the sunny rim
+    lv.solids.push({ x: 0, y: 460, w: 340, h: 260, pile: true });
+    lv.solids.push({ x: 560, y: 460, w: 1040, h: 260, pile: true });
+    vent(400, 680, { pow: -1500, offset: 0.2 });
+    lv.goalStar = { x: 1000, y: 370 };
+    lv.decor.lavaTreasure = { x: 168, y: 460 }; // the summit candy hoard
+    candyRow(lv, 640, 900, 410, 3);
+    // slowly rising lava: pure excitement, zero panic — it pauses whenever it
+    // gets close beneath the hero and drops back at every checkpoint
+    lv.risingLava = { y: 3090, y0: 3090, speed: 30, minY: 900, lastCp: null };
+    lv.decor.rocks = [];
+    for (let x = 150; x < 1500; x += rand(300, 550)) lv.decor.rocks.push({ x, s: rand(0.7, 1.3) });
+  }
+
+  if (n === 'bubblemaze') { // ---------------- SECRET BUBBLE MAZE (spatial reasoning)
+    lv.w = 2600; lv.h = 2000; lv.water = true;
+    lv.playerStart = { x: 150, y: 1650 };
+    addGround(lv, 0, 2600, 1900);
+    // cave shell + chamber walls. Rooms: START (bottom-left), CLAM (bottom-
+    // right), STARFISH (top-left), CORAL (top-right), TREASURE (top-middle,
+    // entered only through the triple-valve shaft under its floor).
+    lv.solids.push({ x: 0, y: 0, w: 2600, h: 140, pile: true }); // roof
+    // mid shelf, with the two travel shafts S1 (up) and S2 (down)
+    lv.solids.push({ x: 0, y: 1150, w: 350, h: 130, pile: true });
+    lv.solids.push({ x: 550, y: 1150, w: 1500, h: 130, pile: true });
+    lv.solids.push({ x: 2250, y: 1150, w: 350, h: 130, pile: true });
+    // bottom divider between START and CLAM, with a side passage
+    lv.solids.push({ x: 1200, y: 1280, w: 130, h: 270, pile: true });
+    lv.solids.push({ x: 1200, y: 1750, w: 130, h: 150, pile: true });
+    // the treasure box: side walls + floor with the valve shaft gap
+    lv.solids.push({ x: 900, y: 140, w: 130, h: 560, pile: true });
+    lv.solids.push({ x: 1570, y: 140, w: 130, h: 560, pile: true });
+    lv.solids.push({ x: 1030, y: 700, w: 200, h: 130, pile: true });
+    lv.solids.push({ x: 1370, y: 700, w: 200, h: 130, pile: true });
+    // three bubble valves seal the shaft — each pops from its shell switch
+    for (const [vy, kind] of [[702, 'ice'], [748, 'fire'], [794, 'rainbow']]) {
+      lv.solids.push({ x: 1230, y: vy, w: 140, h: 26, valve: true, kind });
+    }
+    // bubble currents: strong directional assistance, steering stays free
+    lv.currents = [
+      { x: 350, y: 1020, w: 200, h: 480, dir: 'up' },    // S1: START -> STARFISH
+      { x: 2050, y: 1020, w: 200, h: 480, dir: 'down' }, // S2: CORAL -> CLAM
+      // mid-corridor conveyor, split around the treasure shaft so a calm
+      // pocket sits right beneath it (the shaft current takes over there)
+      { x: 950, y: 880, w: 240, h: 140, dir: 'right' },
+      { x: 1410, y: 880, w: 240, h: 140, dir: 'right' },
+      { x: 1230, y: 420, w: 140, h: 580, dir: 'up' }     // the treasure shaft
+    ];
+    // three shell switches, color-matched to the valves, one per chamber
+    lv.shellSwitches = [
+      { x: 150, y: 1150 - 54, w: 88, h: 54, kind: 'ice', on: false },     // starfish room
+      { x: 2320, y: 1900 - 54, w: 88, h: 54, kind: 'fire', on: false },   // clam room
+      { x: 2320, y: 1150 - 54, w: 88, h: 54, kind: 'rainbow', on: false } // coral room
+    ];
+    // strong landmarks so nobody gets lost
+    lv.decor.bigStarfish = { x: 430, y: 1150 };
+    lv.decor.bigClam = { x: 1800, y: 1900 };
+    lv.decor.coralGarden = { x: 1860, y: 1150 };
+    lv.decor.pearlShrine = { x: 1460, y: 700 }; // beside the shaft, not over it
+    lv.goalStar = { x: 1300, y: 420 };
+    // candy trails sketch the loop; a heart hides in the clam room
+    candyRow(lv, 220, 420, 1780, 3);
+    pick(lv, 450, 1420, 'candy'); pick(lv, 450, 1240, 'candy'); pick(lv, 450, 1040, 'candy');
+    candyRow(lv, 620, 840, 1080, 3);
+    candyRow(lv, 1050, 1550, 960, 4);
+    pick(lv, 2150, 1300, 'candy'); pick(lv, 2150, 1480, 'candy');
+    candyRow(lv, 1500, 1900, 1820, 4);
+    pick(lv, 2470, 1750, 'heart');
+    candyRow(lv, 2280, 2500, 1080, 3);
+    lv.checks.push(new Checkpoint(450, 1900));
+    lv.decor.weeds = []; lv.decor.fish = [];
+    for (let x = 60; x < 2560; x += rand(160, 320)) lv.decor.weeds.push({ x, h: rand(50, 120), seed: rand(9) });
+    for (let i = 0; i < 8; i++) lv.decor.fish.push({ x: rand(100, 2500), y: rand(300, 1700), s: rand(0.6, 1.1), sp: rand(25, 60) * (chance(0.5) ? 1 : -1), c: randi(0, 3) });
   }
 
   return lv;
@@ -1085,6 +1240,61 @@ function drawSolids(ctx, lv, cam, t) {
     if (s.x + s.w < cam.x - 40 || s.x > cam.x + W + 40) continue;
     if (s.y > cam.y + H + 40) continue;
     const vis = { x: Math.max(s.x, cam.x - 60), w: Math.min(s.x + s.w, cam.x + W + 60) - Math.max(s.x, cam.x - 60) };
+    if (s.vent) { // steam vent: idle rock nozzle -> bubbling warning -> blast
+      const ph = s.ventT || 0;
+      const erupt = ph >= 2.4, warn = ph >= 1.7 && !erupt;
+      const mx = s.x + s.w / 2;
+      if (erupt) { // the blast column
+        const k = (ph - 2.4) / 0.8;
+        const hgt = 360 * Math.sin(Math.min(1, k * 1.4) * Math.PI * 0.5);
+        for (let i = 0; i < 7; i++) {
+          const yy = s.y - 6 - (i / 6) * hgt;
+          ctx.save();
+          ctx.globalAlpha = 0.85 - i * 0.09;
+          ctx.fillStyle = ['#ffe156', '#ff9f43', '#fff'][i % 3];
+          ctx.beginPath();
+          ctx.arc(mx + Math.sin(t * 18 + i * 1.7) * (4 + i * 2), yy, 16 + i * 2.5, 0, TAU);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      // the nozzle: a squat volcanic mound with a glowing mouth
+      const wob = warn ? Math.sin(t * 26) * 2 : 0;
+      ctx.fillStyle = '#2e1620';
+      ctx.beginPath();
+      ctx.moveTo(s.x - 8, s.y + s.h);
+      ctx.quadraticCurveTo(s.x + 4 + wob, s.y + 4, s.x + 22, s.y + 2);
+      ctx.lineTo(s.x + s.w - 22, s.y + 2);
+      ctx.quadraticCurveTo(s.x + s.w - 4 - wob, s.y + 4, s.x + s.w + 8, s.y + s.h);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#571d14'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = erupt ? '#ffe156' : 'rgba(255,138,43,' + (warn ? 0.9 : 0.5 + 0.2 * Math.sin(t * 3 + s.x)) + ')';
+      ctx.beginPath(); ctx.ellipse(mx, s.y + 4, s.w / 2 - 24, 6 + (warn ? 2 : 0), 0, 0, TAU); ctx.fill();
+      if (warn && chance(0.35)) { // bubbling warning — THE telegraph
+        Particles.burst(mx + rand(-18, 18), s.y + 2, 1, { colors: ['#ff9f43', '#ffe156'], type: 'circle', sp1: 40, grav: -140, l1: 0.5, s1: 8, up: 0 });
+      }
+      drawFace(ctx, mx, s.y + s.h - 14, 20, erupt ? 'surprised' : warn ? 'grin' : 'sleepy', t, s.x);
+      continue;
+    }
+    if (s.valve) { // bubble valve: a shimmering membrane sealing the shaft
+      const p = POW[s.kind] || POW.none;
+      ctx.save();
+      ctx.globalAlpha = 0.6 + 0.15 * Math.sin(t * 3 + s.y);
+      ctx.fillStyle = p.c;
+      rr(ctx, s.x, s.y + Math.sin(t * 2 + s.y) * 2, s.w, s.h, s.h / 2); ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 3;
+      rr(ctx, s.x, s.y + Math.sin(t * 2 + s.y) * 2, s.w, s.h, s.h / 2); ctx.stroke();
+      // little trapped bubbles straining against it
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(s.x + 24 + i * 46, s.y + s.h + 8 + Math.sin(t * 5 + i * 2) * 3, 5 + i, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+      continue;
+    }
     if (s.bouncy) {
       const sq = 1 + Math.sin(t * 6) * 0.05;
       if (th === 'forest' || th === 'jungle') { // pink booster mushroom
@@ -1347,6 +1557,107 @@ function drawSolids(ctx, lv, cam, t) {
       }
     }
   }
+  // rising lava (Volcano Escape): a level-wide molten floor creeping upward
+  if (lv.risingLava) {
+    const top = lv.risingLava.y;
+    if (top < cam.y + H + 80) {
+      ctx.save();
+      ctx.globalAlpha = 0.4 + Math.sin(t * 3) * 0.12;
+      ctx.fillStyle = '#ff9f43';
+      rr(ctx, cam.x - 20, top - 18, W + 40, 34, 12); ctx.fill();
+      ctx.restore();
+      const g3 = ctx.createLinearGradient(0, top, 0, top + 260);
+      g3.addColorStop(0, '#ffe14d'); g3.addColorStop(0.4, '#ff8a2b'); g3.addColorStop(1, '#c2451a');
+      ctx.fillStyle = g3;
+      ctx.fillRect(cam.x - 20, top, W + 40, cam.y + H + 100 - top);
+      ctx.fillStyle = '#ffe156';
+      for (let bx = Math.floor(cam.x / 26) * 26; bx < cam.x + W + 26; bx += 26) {
+        ctx.beginPath();
+        ctx.arc(bx, top + Math.sin(t * 4 + bx) * 3, 9, Math.PI, TAU);
+        ctx.fill();
+      }
+      if (chance(0.25)) {
+        Particles.burst(cam.x + rand(40, W - 40), top, 1, { colors: ['#ffe156', '#ff9f43'], type: 'circle', sp1: 40, grav: -220, l1: 0.7, s1: 9, up: 0 });
+      }
+    }
+  }
+  // bubble currents (Bubble Maze): readable direction, streaming bubbles
+  if (lv.currents) {
+    for (const cu of lv.currents) {
+      if (cu.on === false) continue;
+      if (cu.x + cu.w < cam.x - 60 || cu.x > cam.x + W + 60) continue;
+      if (cu.y + cu.h < cam.y - 60 || cu.y > cam.y + H + 60) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.14;
+      ctx.fillStyle = '#bfe8ff';
+      rr(ctx, cu.x, cu.y, cu.w, cu.h, 18); ctx.fill();
+      ctx.restore();
+      // marching chevrons show which way it pushes
+      const horiz = cu.dir === 'left' || cu.dir === 'right';
+      const sign = (cu.dir === 'left' || cu.dir === 'up') ? -1 : 1;
+      const len = horiz ? cu.w : cu.h;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (let k = 0; k < len; k += 70) {
+        let off = (k + t * 110) % len;
+        if (sign < 0) off = len - off;
+        const px2 = horiz ? cu.x + off : cu.x + cu.w / 2;
+        const py2 = horiz ? cu.y + cu.h / 2 : cu.y + off;
+        ctx.beginPath();
+        if (horiz) {
+          ctx.moveTo(px2 - sign * 9, py2 - 11); ctx.lineTo(px2 + sign * 9, py2); ctx.lineTo(px2 - sign * 9, py2 + 11);
+        } else {
+          ctx.moveTo(px2 - 11, py2 - sign * 9); ctx.lineTo(px2, py2 + sign * 9); ctx.lineTo(px2 + 11, py2 - sign * 9);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      // streaming bubbles carried along the current
+      if (chance(0.35)) {
+        const bx = cu.x + rand(10, cu.w - 10), by = cu.y + rand(10, cu.h - 10);
+        const spX = horiz ? sign * 160 : 0, spY = horiz ? 0 : sign * 160;
+        Particles.add({ x: bx, y: by, vx: spX, vy: spY, life: rand(0.6, 1.1), size: rand(5, 10), color: 'rgba(255,255,255,0.7)', type: 'bubble', grav: 0, spin: 0 });
+      }
+    }
+  }
+  // shell switches (Bubble Maze): giant color-coded scallops
+  if (lv.shellSwitches) {
+    for (const sw of lv.shellSwitches) {
+      if (sw.x + sw.w < cam.x - 80 || sw.x > cam.x + W + 80) continue;
+      const p = POW[sw.kind] || POW.none;
+      const mx = sw.x + sw.w / 2, base = sw.y + sw.h;
+      ctx.save();
+      if (!sw.on) { // beckoning glow
+        ctx.globalAlpha = 0.3 + 0.15 * Math.sin(t * 3 + sw.x);
+        ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(mx, base - 24, 56, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // shell: fan of ribs
+      ctx.fillStyle = sw.on ? p.glow : p.c;
+      ctx.beginPath();
+      ctx.moveTo(mx, base);
+      ctx.arc(mx, base, sw.w / 2, Math.PI, TAU);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 3.5; ctx.stroke();
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(mx, base);
+        ctx.lineTo(mx + i * sw.w * 0.16, base - sw.h * (1 - Math.abs(i) * 0.14));
+        ctx.stroke();
+      }
+      if (sw.on) { // pressed: pearl pops up + its color star floats above
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(mx, base - sw.h - 8, 9, 0, TAU); ctx.fill();
+        ctx.fillStyle = p.c;
+        starPath(ctx, mx, base - sw.h - 34 + Math.sin(t * 3) * 3, 12, 5.5);
+        ctx.fill();
+      } else {
+        drawFace(ctx, mx, base - 16, 20, 'happy', t, sw.x);
+      }
+      ctx.restore();
+    }
+  }
   // THE GOLDEN STAR (maze goal)
   if (lv.goalStar) {
     const gs = lv.goalStar;
@@ -1527,6 +1838,120 @@ function drawSubDecor(ctx, lv, cam, t, d, visible) {
     ctx.beginPath(); ctx.ellipse(e.x - 16, g - 25 - 14 * peek, 8, 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
     if (peek === 1) drawFace(ctx, e.x - 2, g - 29 - 14 * peek, 14, 'happy', t, 91);
   }
+  if (d.dinoTruck && visible(d.dinoTruck.x)) { // easter egg — sssh
+    const e = d.dinoTruck, g = 620;
+    const hop = Math.abs(Math.sin(t * 5)) * 3;
+    ctx.save();
+    ctx.translate(e.x, g - hop);
+    ctx.scale(0.42, 0.42);
+    drawTruckBody(ctx, -52, -96, 104, 96, t, { driving: false, facing: -1, spin: t * 2 });
+    ctx.restore();
+    // a very proud tiny dino at the wheel
+    const hx = e.x + 2, hy = g - 34 - hop;
+    ctx.fillStyle = '#57c25c';
+    ctx.beginPath(); ctx.arc(hx, hy, 9, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(hx - 8, hy + 2, 5, 3.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    drawFace(ctx, hx + 1, hy, 9, 'grin', t, 97);
+    if (chance(0.02)) Particles.burst(hx, hy - 14, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 30, grav: -60, l1: 0.9, s1: 7, up: 0 });
+  }
+  if (d.lavaTreasure && visible(d.lavaTreasure.x)) { // Volcano Escape summit hoard
+    const c = d.lavaTreasure, g = c.y;
+    ctx.save();
+    ctx.globalAlpha = 0.32 + 0.14 * Math.sin(t * 3);
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(c.x + 60, g - 55, 105, 0, TAU); ctx.fill();
+    ctx.restore();
+    // open golden chest
+    ctx.fillStyle = '#ffd24a';
+    rr(ctx, c.x, g - 62, 120, 62, 9); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4;
+    rr(ctx, c.x, g - 62, 120, 62, 9); ctx.stroke();
+    ctx.fillStyle = '#ffe27a';
+    rr(ctx, c.x - 8, g - 100, 136, 34, 12); ctx.fill();
+    ctx.strokeStyle = '#c8861b';
+    rr(ctx, c.x - 8, g - 100, 136, 34, 12); ctx.stroke();
+    for (let i = 0; i < 4; i++) drawCandy(ctx, c.x + 22 + i * 26, g - 66 - (i % 2) * 9, 14, i, t + i);
+    // candy spill down the rim
+    for (let i = 0; i < 5; i++) drawCandy(ctx, c.x + 130 + i * 30, g - 10 - (i % 3) * 8, 13, i, t + i * 2);
+  }
+  if (d.bigStarfish && visible(d.bigStarfish.x)) { // Bubble Maze landmark: STARFISH ROOM
+    const e = d.bigStarfish, g = e.y;
+    ctx.save();
+    ctx.translate(e.x, g - 52);
+    ctx.rotate(Math.sin(t * 1.2) * 0.08);
+    ctx.fillStyle = '#ff9f43';
+    starPath(ctx, 0, 0, 58, 27);
+    ctx.fill();
+    ctx.strokeStyle = '#d97a1a'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = '#ffce8a';
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * TAU / 5;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * 34, Math.sin(a) * 34, 5, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, 0, 4, 34, 'happy', t, 61);
+    ctx.restore();
+  }
+  if (d.bigClam && visible(d.bigClam.x)) { // landmark: CLAM ROOM
+    const e = d.bigClam, g = e.y;
+    const open = 0.35 + Math.max(0, Math.sin(t * 0.8)) * 0.35;
+    ctx.fillStyle = '#d88ab0';
+    ctx.beginPath(); ctx.ellipse(e.x, g - 18, 62, 26, 0, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#a85a80'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.save(); // top shell hinges open
+    ctx.translate(e.x - 58, g - 22);
+    ctx.rotate(-open);
+    ctx.fillStyle = '#f0a8c8';
+    ctx.beginPath(); ctx.ellipse(58, 0, 62, 30, 0, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#a85a80'; ctx.stroke();
+    for (let i = -2; i <= 2; i++) { // ribs
+      ctx.beginPath(); ctx.moveTo(58, 0); ctx.lineTo(58 + i * 22, -28 + Math.abs(i) * 5); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#fff'; // little pearl peeking out
+    ctx.beginPath(); ctx.arc(e.x + 8, g - 26, 11, 0, TAU); ctx.fill();
+    drawFace(ctx, e.x, g - 8, 24, 'grin', t, 62);
+    if (chance(0.04)) Particles.burst(e.x, g - 40, 1, { color: 'rgba(255,255,255,0.7)', type: 'bubble', sp1: 20, grav: -120, l1: 1.2, s1: 8, up: 0 });
+  }
+  if (d.coralGarden && visible(d.coralGarden.x)) { // landmark: CORAL ROOM
+    const e = d.coralGarden, g = e.y;
+    for (let i = 0; i < 4; i++) {
+      const cx2 = e.x + i * 52 - 78, s = 1 + (i % 2) * 0.4;
+      ctx.fillStyle = ['#ff8fb0', '#ff9f43', '#e86ad0', '#7fd8ff'][i];
+      for (let j = -1; j <= 1; j++) {
+        const sway = Math.sin(t * 1.4 + i + j) * 3;
+        rr(ctx, cx2 + j * 13 * s - 5 * s + sway, g - (52 - Math.abs(j) * 16) * s, 10 * s, (52 - Math.abs(j) * 16) * s, 5 * s);
+        ctx.fill();
+      }
+    }
+    drawFace(ctx, e.x - 26, g - 34, 18, 'happy', t, 63);
+  }
+  if (d.pearlShrine && visible(d.pearlShrine.x)) { // the BUBBLE MAZE treasure
+    const e = d.pearlShrine, g = e.y;
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 2.5);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(e.x, g - 90, 120, 0, TAU); ctx.fill();
+    ctx.restore();
+    // open shell pedestal
+    ctx.fillStyle = '#d88ab0';
+    ctx.beginPath(); ctx.ellipse(e.x, g - 14, 78, 26, 0, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#a85a80'; ctx.lineWidth = 4; ctx.stroke();
+    // THE GIANT PEARL
+    const pg = ctx.createRadialGradient(e.x - 16, g - 96, 8, e.x, g - 84, 62);
+    pg.addColorStop(0, '#ffffff'); pg.addColorStop(0.7, '#e8ecff'); pg.addColorStop(1, '#c0cbe8');
+    ctx.fillStyle = pg;
+    ctx.beginPath(); ctx.arc(e.x, g - 78, 56, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#9aa8d0'; ctx.lineWidth = 3; ctx.stroke();
+    drawFace(ctx, e.x, g - 74, 36, 'grin', t, 64);
+    // scattered gold coins
+    ctx.fillStyle = '#ffd24a';
+    for (const [ox, oy] of [[-96, -8], [-70, -16], [88, -10], [110, -6], [66, -18]]) {
+      ctx.beginPath(); ctx.ellipse(e.x + ox, g + oy, 12, 7, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    if (chance(0.15)) Particles.burst(e.x + rand(-50, 50), g - rand(40, 130), 1, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 25, grav: -40, l1: 0.9, s1: 8, up: 0 });
+  }
 }
 
 function drawDecor(ctx, lv, cam, t) {
@@ -1567,18 +1992,20 @@ function drawDecor(ctx, lv, cam, t) {
   } else if (th === 'water') {
     for (const wd of d.weeds || []) {
       if (!visible(wd.x)) continue;
+      const wg = groundTopAt(lv, wd.x) ?? 1130;
       ctx.strokeStyle = '#2e9c5a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(wd.x, 1130);
-      ctx.quadraticCurveTo(wd.x + Math.sin(t * 1.5 + wd.seed) * 18, 1130 - wd.h * 0.5, wd.x + Math.sin(t * 1.5 + wd.seed) * 30, 1130 - wd.h);
+      ctx.moveTo(wd.x, wg);
+      ctx.quadraticCurveTo(wd.x + Math.sin(t * 1.5 + wd.seed) * 18, wg - wd.h * 0.5, wd.x + Math.sin(t * 1.5 + wd.seed) * 30, wg - wd.h);
       ctx.stroke();
     }
     for (const co of d.corals || []) {
       if (!visible(co.x)) continue;
       const s = co.s;
+      const cg = groundTopAt(lv, co.x) ?? 1130;
       ctx.fillStyle = ['#ff8fb0', '#ff9f43', '#e86ad0'][co.c];
       for (let i = -1; i <= 1; i++) {
-        rr(ctx, co.x + i * 12 * s - 5 * s, 1130 - (44 - Math.abs(i) * 14) * s, 10 * s, (44 - Math.abs(i) * 14) * s, 5 * s);
+        rr(ctx, co.x + i * 12 * s - 5 * s, cg - (44 - Math.abs(i) * 14) * s, 10 * s, (44 - Math.abs(i) * 14) * s, 5 * s);
         ctx.fill();
       }
     }

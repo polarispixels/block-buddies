@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.7.1</span>
+  <span class="badge">v1.8.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -153,8 +153,8 @@ changelog lacks an entry for it, or if this page doesn't mention it.</p>
   <tr><td><code>js/util.js</code></td><td><code>GAME_VERSION</code>, constants (<code>W=1280</code>, <code>H=720</code>), drawing helpers (<code>rr</code>, <code>drawFace</code>, <code>drawBlock</code>, <code>drawCrown</code>, keycaps, candy), palettes (<code>POW</code>, <code>RAINBOW</code>), keyboard input (<code>keys</code>/<code>justP</code>), <code>TouchUI</code> (two-thumb layout + fullscreen button + title tap hook)</td></tr>
   <tr><td><code>js/audio.js</code></td><td><code>AudioSys</code>: procedural sound effects (one <code>sfx(name)</code> switch) and step-sequenced music (<code>SONGS</code> table, midi-note arrays per theme). Unlocked on first user input.</td></tr>
   <tr><td><code>js/particles.js</code></td><td><code>Particles</code> pool (star / sparkle / heart / block / confetti / candy / flame / bubble), <code>candyBurst</code></td></tr>
-  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>), <code>FireBreather</code>, the <code>Spino</code> boss, and <code>SubDoor</code> (mini-game entrances)</td></tr>
-  <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star), <code>drawDecor</code> (incl. castle, grandstand, royals)</td></tr>
+  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>, <code>TruckBuild</code>), <code>FireBreather</code>, the <code>Spino</code> boss, and <code>SubDoor</code> (mini-game entrances)</td></tr>
+  <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star, steam vents, rising lava, bubble currents, valves, shell switches), <code>drawDecor</code> (incl. castle, grandstand, royals, mini-game landmarks)</td></tr>
   <tr><td><code>js/game.js</code></td><td>The <code>game</code> state machine, boss and ending flows, cutscenes (<code>updateCut</code>), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop</td></tr>
 </table></div>
 <h3>Conventions</h3>
@@ -315,6 +315,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd><strong>4-direction swimming</strong> (<code>lv.water</code>: ▲▼ ascend/descend, gravity off), the ❄️ ice block, and a physics gag: frozen swim-spiders float upward like ice cubes.</dd>
   <dt>Pickups</dt><dd>Ice ×2, heart ×1, candy.</dd>
   <dt>Cameos</dt><dd>Checkpoints, candy trails, star gate. The swim movement introduced here returns as zero-gravity flight in Space Maze (level 9).</dd>
+  <dt>Secret</dt><dd>A seaweed-framed cave on the seafloor breathes a strange <em>stream of bubbles</em> — swimming in discovers the <strong>Secret Bubble Maze</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -367,6 +368,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Ending</dt><dd>The befriended Magma triggers the volcano: rumble → <strong>CANDY VOLCANO</strong> eruption raining candy → party → unlocks Monster Truck Rally.</dd>
   <dt>Pickups</dt><dd>Fire ×2, ice ×1, heart ×2, candy; boss-stage blocks in the arena.</dd>
   <dt>Cameos</dt><dd>The pink spring block from Cloud World; block piles from Block Meadow; the boss plan reprises ice (2), super mode (4), and rainbow (3). Lava pools go on to reappear as hazards in the Truck Rally.</dd>
+  <dt>Secret</dt><dd>A glowing <em>cracked volcanic wall</em> right before the first lava pool opens into the <strong>Secret Volcano Escape</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -374,9 +376,9 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 <h3>7 · Monster Truck Rally <small>(theme <code>dirt</code>)</small> — bonus</h3>
 <dl>
   <dt>Biome</dt><dd>Desert rally course: smiling desert sun, flat-top mesas, drifting dust, pennant flags along the track, and a grandstand full of cheering fans at the finish. The longest world: 7200&nbsp;px.</dd>
-  <dt>Objective</dt><dd>Board the monster truck at the start line and race the course — six jump ramps (including THE giant 210&nbsp;px-tall ramp), a turbo pad, three lava pools to clear — and cross the finish line at x=6420.</dd>
+  <dt>Objective</dt><dd><strong>Build your truck first (since v1.8.0):</strong> the monster truck starts <em>broken</em> — slumped on the dirt, no wheels, empty engine bay, coughing sadly, with a sign showing ghost silhouettes of the three missing parts. Find the giant wheels (easy hops up a block pile), the engine (it hangs from a crane — step the big yellow floor switch to lower it), and the power core (sealed behind a cracked wall on a high ledge; the respawning power block nearby smashes it — the learned mechanic). Return with all three for the assembly ceremony: BOOM, wheels; clunk, engine; bzzt, lights on — VROOOOOM. Then board it and race the course — six jump ramps (including THE giant 210&nbsp;px-tall ramp), a turbo pad, three lava pools to clear — and cross the finish line at x=6420.</dd>
   <dt>Enemies</dt><dd>4 <strong>dirt tornadoes</strong> (new: tall wandering dust devils), 3 walking and 1 jumping spider.</dd>
-  <dt>New here</dt><dd>The <strong>truck vehicle</strong> (faster than the wheel, monster tires), ramps with automatic mid-air backflips, and the turbo pad (a burst of flame-trailing speed).</dd>
+  <dt>New here</dt><dd>The <strong>truck assembly mission</strong> (<code>TruckBuild</code>: MissionTokens with <code>'wheels'</code>/<code>'engine'</code>/<code>'core'</code> skins, a crane + floor switch, and a parts-attach ceremony that spawns the <code>ParkedTruck</code>), the <strong>truck vehicle</strong> itself (faster than the wheel, monster tires), ramps with automatic mid-air backflips, and the turbo pad (a burst of flame-trailing speed). A tiny easter egg is parked somewhere in this world — we don't say where.</dd>
   <dt>Ending</dt><dd>Finish line → grandstand celebration → <strong>CANDY TROPHY</strong> ("YOU WIN THE RACE!") → party → unlocks Unicorn Forest.</dd>
   <dt>Pickups</dt><dd>Fire, ice, rainbow, heart ×2, big candy arcs over every ramp.</dd>
   <dt>Cameos</dt><dd>Lava pools from Lava World are the track hazards; all three throwable powers appear together for the first time since the base game; walk/jump spiders patrol the infield.</dd>
@@ -425,8 +427,9 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 
 <h2 id="minigames">Mini-games &amp; sublevels (since v1.7.0)</h2>
 <p>A world is no longer one continuous strip: it can contain doors into <strong>sublevels</strong> —
-smaller gameplay spaces with their own layout, camera direction, and even movement model. Three exist
-so far, each entered through a themed <code>SubDoor</code> standing in its host world.</p>
+smaller gameplay spaces with their own layout, camera direction, and even movement model. Five exist
+so far, each entered through a themed <code>SubDoor</code> standing in its host world — plus the
+Rally's in-world truck-assembly mission, which shares the same collection grammar.</p>
 <h3>The transition system</h3>
 <ul>
   <li><strong>Sublevels are just levels with string ids</strong> — <code>LEVEL_META['cloudclimb']</code>,
@@ -435,7 +438,8 @@ so far, each entered through a themed <code>SubDoor</code> standing in its host 
   <li><strong><code>SubDoor(cx, groundY, subId, style)</code></strong> — pushed into
   <code>lv.subDoors</code>; walking into it calls <code>game.enterSub(subId)</code>. Styles:
   <code>'cloud'</code> swirl archway, <code>'cave'</code> sparkling dark opening,
-  <code>'rainbow'</code> shimmering ring. Doors re-arm only after the player moves a door-width away
+  <code>'rainbow'</code> shimmering ring, <code>'crack'</code> glowing cracked volcanic wall,
+  <code>'bubble'</code> seaweed sea-cave breathing a rising bubble stream (the clue). Doors re-arm only after the player moves a door-width away
   horizontally, so exiting (or jumping in place) never instantly re-enters; walk away and back to
   replay. A completed mini-game shows a gold star over its door.</li>
   <li><strong><code>game.enterSub(id)</code></strong> stashes the <em>entire</em> host state — the
@@ -475,6 +479,32 @@ and an altitude-planning pair of bars with openings on opposite sides. <strong>R
 (a new <code>Pickup</code> kind) fill a wordless five-star tally in the HUD; reaching the moon always
 succeeds, five stars earns "ALL THE STARS!". A sixth secret star floats far off-path beside a spider
 drifting on a balloon. The finale is THE MOON — big, golden, grinning.</p>
+<h3>Secret Volcano Escape <small>(glowing cracked wall in Lava World, before the first lava pool)</small></h3>
+<p>A vertical volcano-interior climb (1600 × 3000) with <strong>rising lava</strong> and <strong>steam
+vents</strong>. The lava (<code>lv.risingLava = {y, y0, speed, minY}</code>, updated in
+<code>updatePlay</code>) is a friendly menace, never a timer: it creeps at 30&nbsp;px/s, <em>pauses
+whenever it gets close beneath the hero</em>, drops far back at every checkpoint and every respawn,
+stops for good below the crater (<code>minY</code>), and touching it is just the lava-pool rule — one
+heart, a big mercy bounce, 2&nbsp;s of invulnerability. Steam vents (solids with <code>vent:
+true</code>, listed in <code>lv.vents</code>, cycled in <code>updatePlay</code>) are timed bouncers:
+3.2&nbsp;s loop of idle platform → bubbling warning (THE telegraph, with steam sfx) → eruption that
+launches anyone on it sky-high (−1400; the crater's finale vent is a −1500 SUPER). Two route-choice
+moments (vent express vs. candy ladder; both rejoin — wrong is impossible), three checkpoints on wide
+solid terraces, and a finale where the super vent blasts the hero out of the crater throat onto the
+sunny rim: golden star, candy hoard, party.</p>
+<h3>Secret Bubble Maze <small>(bubble-breathing sea cave on Underwater World's seafloor)</small></h3>
+<p>A spatial-reasoning cave (2600 × 2000, <code>lv.water</code>) of five landmark chambers — START,
+STARFISH, CLAM, CORAL, and the sealed TREASURE room — connected by <strong>bubble currents</strong>
+(<code>lv.currents</code>: rects with a direction; the push (1300) stays below swim thrust (1400), so
+they read as strong assistance, never rails — steering across them is always free). The circulation
+teaches itself: up-shaft from START to STARFISH, a mid-corridor conveyor toward CORAL (split around
+the treasure shaft so a calm pocket sits beneath it), a down-shaft to CLAM, and a side passage home —
+loops encourage experimenting, landmarks prevent getting lost. The one explicit think: the treasure
+shaft is sealed by <strong>three color-coded bubble valves</strong> (solids with <code>valve:
+true</code>, popped via the smashed-wall <code>broken</code> trick), and three matching
+<strong>shell switches</strong> (<code>lv.shellSwitches</code>) sit one per chamber; touch a shell
+and its color valve bursts. Open all three and the shaft current lifts you straight up to the GIANT
+PEARL and the golden star. No enemies, no timing, no way to die.</p>
 <h3>Adding a future mini-game</h3>
 <ol>
   <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
@@ -487,6 +517,23 @@ drifting on a balloon. The finale is THE MOON — big, golden, grinning.</p>
   <li>Keep falls cheap (wide ledges + checkpoints), teach the mechanic low, test the route choice, and
   hide one small delight off the path.</li>
 </ol>
+<h3>Making it a SECRET (design rules)</h3>
+<p>Secret discovery is now an intentional design pillar: the kids love realizing something exists
+beyond the obvious level. The rules that keep secrets fair for a five-year-old:</p>
+<ul>
+  <li><strong>Leave visual evidence</strong> — a glowing crack, a stream of bubbles vanishing into a
+  cave, a sparkle in a dark opening. The child should think "can I go in there?", try it, and be
+  right. Never require wall-hugging, invisible triggers, or button combinations.</li>
+  <li><strong>Reward curiosity, don't gate progress</strong> — the host world must stay fully
+  completable without the secret (the harness checks this), and missing a secret costs nothing.</li>
+  <li><strong>Reset state hard at the boundary</strong> — put every special mechanic
+  (<code>risingLava</code>, <code>vents</code>, <code>currents</code>, <code>shellSwitches</code>,
+  <code>flight</code>…) on the <em>sublevel's</em> level object only; <code>enterSub/exitSub</code>
+  swap whole level+player state, so nothing can leak. Add a harness check that the host's fields are
+  still <code>null</code> after returning.</li>
+  <li><strong>Make the reveal memorable</strong> — burst out of a crater, meet a giant pearl; the
+  secret itself is the reward, plus a gold star on its door forever.</li>
+</ul>
 
 <h2 id="progression">Progression &amp; persistence</h2>
 <ul>
@@ -506,7 +553,7 @@ Presses must be ≤1.2&nbsp;s apart:</p>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
   <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code></td></tr>
   <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
-  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight</code>) — a gold star appears over a completed door</td></tr>
+  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze</code>) — a gold star appears over a completed door</td></tr>
   <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the level-8 coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
 </table></div>
 <p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
@@ -514,7 +561,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 216 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 253 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -563,7 +610,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.7.1 · built for Jack ·
+  Block Buddies v1.8.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

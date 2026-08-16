@@ -67,7 +67,7 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
-| 7 | Monster Truck Rally | dirt | `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
+| 7 | Monster Truck Rally | dirt | Build-Your-Truck opening (find wheels/engine/core, assembly ceremony) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
 | 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
@@ -123,9 +123,9 @@ everywhere via `drawBoy`/`drawHead`).
   fire makes him burp harmlessly. Reuse it anywhere a timed jump-over hazard
   is wanted.
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
-  ('cloudclimb', 'ascent', 'skyflight'), entered via `SubDoor` in
-  `lv.subDoors` (styles cloud/cave/rainbow; re-arms only after horizontal
-  separation so exit never re-enters). `game.enterSub(id)` stashes the whole
+  ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze'), entered
+  via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble;
+  re-arms only after horizontal separation so exit never re-enters). `game.enterSub(id)` stashes the whole
   host state incl. the Player INSTANCE and live level object; `exitSub()`
   restores it verbatim (mission progress survives, no physics/camera leaks).
   Sub finales use `lv.goalStar` -> `game.subWin()` -> party -> Space exits
@@ -133,7 +133,16 @@ everywhere via `drawBoy`/`drawHead`).
   door). `lv.flight` = hold-Up flight physics (Sky Flight). Bouncer variants:
   gold star spring = super (`bounceVy` <= -1300 draws gold), blue arrow =
   side launch (`bounceVx` + a 1.3s airborne momentum window `launchT` on the
-  wheel). Vertical/diagonal camera is automatic when `lv.h > H`.
+  wheel). Vertical/diagonal camera is automatic when `lv.h > H`. Secret-area
+  mechanics live ONLY on the sublevel object so exitSub can't leak them:
+  `lv.risingLava` (creeping lava that pauses near the hero, drops back at
+  checkpoints/respawns), `lv.vents` (timed eruption bouncers: idle → bubble
+  warning → blast, cycled in updatePlay), `lv.currents` (directional water
+  push at 1300 < swim thrust 1400 so steering stays free, applied in the
+  Player water branch), `lv.shellSwitches` + valve solids (color-matched,
+  popped via `solid.broken`). Rally's `lv.truckBuild` (TruckBuild,
+  entities.js) reuses MissionToken with skins 'wheels'/'engine'/'core'; its
+  assembly ceremony spawns the ParkedTruck that starts the race.
 - **Cutscenes**: `game.cut = {name, t}` handled in `updateCut` (bossintro,
   magmaintro, rumble, chestfall, eruption, coronation). Player input frozen.
 - **Endings**: `game.endPhase` phases → `'party'` (big text per level in
@@ -154,7 +163,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 216 checks; must print
+  goal path) and version/changelog/docs sync checks. 253 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

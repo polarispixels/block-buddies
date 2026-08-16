@@ -96,6 +96,15 @@ class Player {
     Particles.burst(this.cx, this.cy, 22, { colors: ['#f8b53c', '#d98f1f', '#ffe156', '#fff'], type: 'block', sp1: 360, l1: 1, s1: 12, grav: 800 });
   }
   checkHazards(lv) {
+    // rising lava (Volcano Escape): same rule as pools — one heart, then a big
+    // mercy bounce upward and 2s of invulnerability to climb clear
+    if (lv.risingLava && this.y + this.h > lv.risingLava.y) {
+      if (this.inv <= 0) this.damage(1);
+      this.vy = -940;
+      this.setMood('surprised', 1);
+      AudioSys.sfx('steam');
+      Particles.burst(this.cx, this.y + this.h, 12, { colors: ['#ff9f43', '#ffe156', '#fff'], type: 'flame', sp1: 220, grav: -80, l1: 0.6, s1: 11 });
+    }
     // lava is HOT: bounce out with a yelp (invulnerability prevents a drain)
     if (lv.lava && this.y + this.h > 648) {
       for (const L of lv.lava) {
@@ -137,6 +146,19 @@ class Player {
       const ay = (keys.ArrowUp ? -1 : 0) + (keys.ArrowDown ? 1 : 0);
       this.vx += ax * 1400 * dt;
       this.vy += ay * 1400 * dt + (lv.space ? 0 : 26 * dt); // weightless in space
+      // bubble currents (Bubble Maze): strong directional assistance, never a
+      // rail — the push (1300) stays below swim thrust (1400), so a determined
+      // swimmer can fight it and steering across it is fully free
+      if (lv.currents) {
+        for (const cu of lv.currents) {
+          if (cu.on === false || !overlaps(this, cu)) continue;
+          const f = cu.strength || 1300;
+          if (cu.dir === 'up') this.vy -= f * dt;
+          else if (cu.dir === 'down') this.vy += f * dt;
+          else if (cu.dir === 'left') this.vx -= f * dt;
+          else this.vx += f * dt;
+        }
+      }
       const dr = Math.exp(-(lv.space ? 1.7 : 2.4) * dt); // drifts further out there
       this.vx *= dr; this.vy *= dr;
       const mx = spd * (lv.space ? 0.95 : 0.85);
@@ -2374,8 +2396,10 @@ class Chest {
 //   Mission        — lifecycle: 'puzzle' -> 'reward' -> 'carrying' -> 'done'
 //   MissionGate    — blocks the path until the mission item is brought to it
 //   MissionItem    — the earned thing; floats along behind the player once taken
-//   PuzzleSwitch   — a step-on floor plate wearing a power-block icon
-//   SequencePuzzle — step the plates in the shown order; wrong = funny reset
+//   MissionToken   — a collectible puzzle piece (crystal/egg/truck part skins)
+//   Shrine         — chest + ghost-silhouette sockets (CollectionPuzzle's home)
+//   CollectionPuzzle — gather every token (any order), return, ceremony
+//   TruckBuild     — Rally variant: the "shrine" is the broken monster truck
 // The gate only cares that its mission reaches 'carrying' — future missions
 // can earn their item any other way (different puzzles, rhythm pads, favors).
 // Mission state lives on the level object, so it survives death/respawn and
@@ -2453,6 +2477,49 @@ class MissionToken {
       for (const [ox, oy, r] of [[-0.16, -0.2, 0.13], [0.17, 0.05, 0.14], [-0.08, 0.28, 0.11]]) {
         ctx.beginPath(); ctx.arc(x + ox * s, y + oy * s, r * s, 0, TAU); ctx.fill();
       }
+    } else if (skin === 'wheels') { // monster-truck tire pair (one component)
+      for (const ox of [-0.16, 0.16]) {
+        ctx.fillStyle = '#2e2430';
+        ctx.beginPath(); ctx.arc(x + ox * s, y, s * 0.4, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#1a1420'; ctx.lineWidth = Math.max(2, s * 0.05);
+        ctx.beginPath(); ctx.arc(x + ox * s, y, s * 0.4, 0, TAU); ctx.stroke();
+        ctx.fillStyle = '#4a3a50';
+        for (let i = 0; i < 6; i++) {
+          const a = t * 1.5 + i * TAU / 6 + ox;
+          ctx.beginPath(); ctx.arc(x + ox * s + Math.cos(a) * s * 0.32, y + Math.sin(a) * s * 0.32, s * 0.07, 0, TAU); ctx.fill();
+        }
+        ctx.fillStyle = '#c9c1d6';
+        ctx.beginPath(); ctx.arc(x + ox * s, y, s * 0.14, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#8a7fae';
+        starPath(ctx, x + ox * s, y, s * 0.11, s * 0.05, 5, t * 1.5);
+        ctx.fill();
+      }
+    } else if (skin === 'engine') { // chunky engine block with pistons
+      ctx.fillStyle = '#9a94b0';
+      rr(ctx, x - s * 0.42, y - s * 0.22, s * 0.84, s * 0.52, s * 0.1); ctx.fill();
+      ctx.strokeStyle = '#5f5a78'; ctx.lineWidth = Math.max(2, s * 0.06);
+      rr(ctx, x - s * 0.42, y - s * 0.22, s * 0.84, s * 0.52, s * 0.1); ctx.stroke();
+      ctx.fillStyle = '#c9c1d6';
+      for (let i = -1; i <= 1; i++) { // piston stacks
+        rr(ctx, x + i * s * 0.24 - s * 0.08, y - s * 0.46, s * 0.16, s * 0.26, s * 0.05); ctx.fill();
+      }
+      ctx.strokeStyle = '#5f5a78';
+      for (let i = -1; i <= 1; i++) { rr(ctx, x + i * s * 0.24 - s * 0.08, y - s * 0.46, s * 0.16, s * 0.26, s * 0.05); ctx.stroke(); }
+      ctx.fillStyle = POW[kind].c; // colored fan bolt
+      starPath(ctx, x, y + s * 0.05, s * 0.16, s * 0.07, 5, t * 3);
+      ctx.fill();
+    } else if (skin === 'core') { // glowing power core canister
+      ctx.fillStyle = POW[kind].c;
+      rr(ctx, x - s * 0.26, y - s * 0.42, s * 0.52, s * 0.84, s * 0.16); ctx.fill();
+      ctx.strokeStyle = POW[kind].c2; ctx.lineWidth = Math.max(2, s * 0.06);
+      rr(ctx, x - s * 0.26, y - s * 0.42, s * 0.52, s * 0.84, s * 0.16); ctx.stroke();
+      ctx.fillStyle = POW[kind].c2; // cap
+      rr(ctx, x - s * 0.14, y - s * 0.52, s * 0.28, s * 0.14, s * 0.05); ctx.fill();
+      ctx.fillStyle = '#fff'; // lightning bolt
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.05, y - s * 0.3); ctx.lineTo(x - s * 0.14, y + s * 0.06); ctx.lineTo(x - s * 0.01, y + s * 0.06);
+      ctx.lineTo(x - s * 0.06, y + s * 0.32); ctx.lineTo(x + s * 0.15, y - s * 0.04); ctx.lineTo(x + s * 0.02, y - s * 0.04);
+      ctx.closePath(); ctx.fill();
     } else { // crystal: a chunky gem
       ctx.fillStyle = POW[kind].c;
       ctx.strokeStyle = 'rgba(40,25,50,0.5)'; ctx.lineWidth = Math.max(2, s * 0.07); ctx.lineJoin = 'round';
@@ -3403,8 +3470,15 @@ class SubDoor {
     }
     if (!over && Math.abs(game.player.cx - this.cx) > this.w) this.armed = true;
     if (chance(0.1)) {
-      const cols = this.style === 'rainbow' ? RAINBOW : this.style === 'cave' ? ['#ffe156', '#d0a0ff'] : ['#fff', '#bfe8ff'];
+      const cols = this.style === 'rainbow' ? RAINBOW
+        : this.style === 'cave' ? ['#ffe156', '#d0a0ff']
+        : this.style === 'crack' ? ['#ff9f43', '#ffe156']
+        : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
+    }
+    // the bubble door's clue: a strange stream of bubbles rises out of the cave
+    if (this.style === 'bubble' && chance(0.4)) {
+      Particles.burst(this.cx + rand(-14, 14), this.y + 30, 1, { color: 'rgba(255,255,255,0.75)', type: 'bubble', sp1: 25, grav: -170, l0: 2, l1: 3.4, up: 0, s1: 10 });
     }
   }
   draw(ctx) {
@@ -3437,6 +3511,53 @@ class SubDoor {
       ctx.fillStyle = '#ffe156';
       starPath(ctx, cx, this.y + this.h * 0.5, 9, 4);
       ctx.fill();
+    } else if (this.style === 'crack') {
+      // cracked volcanic wall: glowing fissures around a dark opening
+      ctx.fillStyle = '#2e1620';
+      rr(ctx, this.x - 18, this.y - 14, this.w + 36, this.h + 14, 18); ctx.fill();
+      ctx.strokeStyle = '#571d14'; ctx.lineWidth = 4;
+      rr(ctx, this.x - 18, this.y - 14, this.w + 36, this.h + 14, 18); ctx.stroke();
+      ctx.fillStyle = '#160a12';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 - 10, this.h - 26, 0, Math.PI, TAU); ctx.fill();
+      // glowing zigzag cracks radiating from the opening
+      ctx.strokeStyle = 'rgba(255,138,43,' + (0.55 + 0.3 * Math.sin(t * 3)) + ')';
+      ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const [x0, y0, seg] of [[-40, -30, [[-16, -22], [-8, -40]]], [42, -44, [[14, -18], [26, -34]]], [-34, -78, [[-14, -10], [-26, -22]]], [38, -86, [[12, -12], [22, -6]]]]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + x0 * 0.6, g + y0);
+        let px2 = cx + x0 * 0.6, py2 = g + y0;
+        for (const [dx, dy] of seg) { px2 += dx * 0.7; py2 += dy * 0.6; ctx.lineTo(px2, py2); }
+        ctx.stroke();
+      }
+      // ember glow deep inside
+      ctx.save();
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4);
+      ctx.fillStyle = '#ff8a2b';
+      ctx.beginPath(); ctx.ellipse(cx, g - 16, 20, 10, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    } else if (this.style === 'bubble') {
+      // sea-cave mouth wrapped in seaweed, breathing a steady bubble stream
+      ctx.fillStyle = '#6a5a3a';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 + 12, this.h - 2, 0, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = '#4a3e28'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 + 12, this.h - 2, 0, Math.PI, TAU); ctx.stroke();
+      ctx.fillStyle = '#0a2a4a';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 - 8, this.h - 24, 0, Math.PI, TAU); ctx.fill();
+      // waving seaweed fronds framing the mouth
+      ctx.strokeStyle = '#2e9c5a'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      for (const ox of [-this.w / 2 - 6, -this.w / 4, this.w / 4, this.w / 2 + 6]) {
+        const wob = Math.sin(t * 1.6 + ox) * 12;
+        ctx.beginPath();
+        ctx.moveTo(cx + ox, g);
+        ctx.quadraticCurveTo(cx + ox + wob * 0.5, g - 50, cx + ox + wob, g - 90 - Math.abs(ox) * 0.3);
+        ctx.stroke();
+      }
+      // resident bubbles drifting in the mouth
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2.5;
+      for (let i = 0; i < 3; i++) {
+        const bph = (t * 0.5 + i * 0.33) % 1;
+        ctx.beginPath(); ctx.arc(cx + Math.sin(i * 4 + t) * 12, g - 14 - bph * (this.h - 40), 6 + i * 2, 0, TAU); ctx.stroke();
+      }
     } else { // cloud swirl archway
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       for (let i = 0; i < 7; i++) {
@@ -3464,5 +3585,275 @@ class SubDoor {
       ctx.fill();
       ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke();
     }
+  }
+}
+
+// ================================================================ truck build
+// Rally pre-race adventure: the monster truck is parked but BROKEN — no
+// wheels, empty engine bay, no power core. Three MissionTokens (skins
+// 'wheels'/'engine'/'core') are scattered along the opening stretch; a sign
+// beside the truck shows ghost silhouettes of what's missing. Bring all three
+// back and they attach one at a time (BOOM. wheels. clunk. engine. bzzt.
+// lights!) — then VROOOOOM: a ParkedTruck spawns and the rally begins as
+// always. Reuses the CollectionPuzzle beats: any order, wordless toast
+// progress, tokens survive death (state lives on the level object).
+// The engine hangs from a crane; the big yellow floor switch lowers it.
+class TruckBuild {
+  constructor(cx, groundY, tokens, opts = {}) {
+    this.cx = cx; this.groundY = groundY;
+    this.w = 104; this.h = 96;
+    this.x = cx - this.w / 2; this.y = groundY - this.h;
+    this.tokens = tokens; // [wheels, engine, core]
+    this.crane = opts.crane || null; // {x, topY, lowY, k}
+    this.plate = opts.plate || null; // {x, on} — the big floor switch
+    if (this.plate) { this.plate.w = 104; this.plate.h = 30; this.plate.y = groundY - 24; }
+    if (this.crane) this.crane.k = 0;
+    this.state = 'collect'; // -> 'building' -> 'done'
+    this.actT = 0; this.attached = 0;
+    this.toastT = 0; this.coughT = 1.2; this.wobbleT = 0;
+    this.flyFrom = null;
+    this.t = rand(9);
+  }
+  count() { return this.tokens.filter(tk => tk.taken).length; }
+  onCollect(token) {
+    this.toastT = 2.6;
+    const left = this.tokens.length - this.count();
+    AudioSys.sfx(left === 0 ? 'powerup' : 'collect');
+    if (left === 0) AudioSys.sfx('heart'); // every part found!
+  }
+  nearCam() { return Math.abs(this.cx - (game.cam.x + W / 2)) < W; }
+  update(dt, pl) {
+    this.t += dt;
+    this.toastT = Math.max(0, this.toastT - dt);
+    this.wobbleT = Math.max(0, this.wobbleT - dt);
+    for (const tk of this.tokens) tk.update(dt, pl, this);
+    // the big yellow switch lowers the crane (cause and effect, no words)
+    if (this.plate && !this.plate.on && overlaps(this.plate, pl)) {
+      this.plate.on = true;
+      AudioSys.sfx('switch');
+      AudioSys.sfx('grind');
+      game.shake = Math.max(game.shake, 0.15);
+      Particles.burst(this.plate.x + this.plate.w / 2, this.plate.y, 10, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 200, l1: 0.6, s1: 9 });
+    }
+    if (this.crane && this.plate && this.plate.on && this.crane.k < 1) {
+      const prevK = this.crane.k;
+      this.crane.k = Math.min(1, this.crane.k + dt / 1.7);
+      const e = this.crane.k * this.crane.k * (3 - 2 * this.crane.k);
+      const engineTok = this.tokens[1];
+      if (!engineTok.taken) engineTok.baseY = lerp(this.crane.topY, this.crane.lowY, e);
+      if (prevK < 1 && this.crane.k >= 1) AudioSys.sfx('thud');
+      if (chance(0.3)) Particles.burst(this.crane.x + rand(-8, 8), engineTok.cy - 40, 1, { colors: ['#c9c1d6'], type: 'sparkle', sp1: 20, grav: 60, l1: 0.4, s1: 6, up: 0 });
+    }
+    // the poor truck coughs and wobbles: "I'm not ready"
+    if (this.state === 'collect') {
+      this.coughT -= dt;
+      if (this.coughT <= 0 && Math.abs(pl.cx - this.cx) < 560) {
+        this.coughT = rand(2.6, 4.2);
+        this.wobbleT = 0.6;
+        if (this.nearCam()) AudioSys.sfx('hiccup');
+        Particles.burst(this.x + this.w - 8, this.y + 26, 4, { color: 'rgba(120,110,130,0.7)', sp1: 50, grav: -110, l1: 0.9, s1: 12, up: 10 });
+      }
+      if (this.count() === this.tokens.length && Math.abs(pl.cx - this.cx) < 240) {
+        this.state = 'building'; this.actT = 0;
+        this.flyFrom = { x: pl.cx, y: pl.y - 20 };
+        AudioSys.sfx('fanfare');
+      }
+    }
+    if (this.state === 'building') {
+      const prev = this.actT;
+      this.actT += dt;
+      const times = [0.7, 1.45, 2.2];
+      for (let i = 0; i < 3; i++) {
+        if (prev < times[i] && this.actT >= times[i]) {
+          this.attached = i + 1;
+          game.shake = Math.max(game.shake, 0.3);
+          if (i === 0) { // BOOM — the truck drops onto giant tires
+            AudioSys.sfx('thud');
+            Particles.burst(this.cx, this.groundY, 12, { colors: ['#c9a96a', '#b08a55'], sp1: 220, grav: 100, l1: 0.6, s1: 12, up: 30 });
+          } else if (i === 1) { // engine clunks into the bay
+            AudioSys.sfx('land'); AudioSys.sfx('grind');
+            Particles.burst(this.cx, this.y + 30, 8, { colors: ['#c9c1d6', '#fff'], type: 'star', sp1: 200, l1: 0.5, s1: 9 });
+          } else { // power core snaps in — lights ON
+            AudioSys.sfx('powerup');
+            Particles.burst(this.cx, this.y + 40, 14, { colors: ['#ffe14d', '#fff', '#ffa726'], type: 'star', sp1: 280, l1: 0.7, s1: 11 });
+          }
+        }
+      }
+      if (prev < 3.0 && this.actT >= 3.0) { // VROOOOOM!
+        AudioSys.sfx('rev');
+        AudioSys.sfx('launch');
+        AudioSys.sfx('cheer');
+        game.shake = Math.max(game.shake, 0.5);
+        Particles.burst(this.cx, this.y + 30, 20, { colors: RAINBOW, type: 'confetti', sp1: 360, l0: 1, l1: 2, s1: 11, grav: 300, up: 220 });
+        Particles.candyBurst(this.cx, this.y - 20, 8);
+        game.pickups.push(new ParkedTruck(this.x, this.groundY));
+        this.state = 'done';
+      }
+    }
+  }
+  draw(ctx, t) {
+    if (this.state === 'done') return;
+    const g = this.groundY, cx = this.cx;
+    // crane: mast + arm + cable holding the engine
+    if (this.crane) {
+      const cr = this.crane;
+      ctx.fillStyle = '#ffb62b';
+      rr(ctx, cr.x - 10, g - 330, 20, 330, 6); ctx.fill();
+      ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 3;
+      rr(ctx, cr.x - 10, g - 330, 20, 330, 6); ctx.stroke();
+      // lattice stripes
+      ctx.strokeStyle = 'rgba(194,131,26,0.6)'; ctx.lineWidth = 2.5;
+      for (let yy = g - 316; yy < g - 20; yy += 34) {
+        ctx.beginPath(); ctx.moveTo(cr.x - 9, yy); ctx.lineTo(cr.x + 9, yy + 16); ctx.stroke();
+      }
+      ctx.fillStyle = '#ffb62b';
+      rr(ctx, cr.x - 64, g - 342, 128, 18, 6); ctx.fill();
+      ctx.strokeStyle = '#c2831a';
+      rr(ctx, cr.x - 64, g - 342, 128, 18, 6); ctx.stroke();
+      const engineTok = this.tokens[1];
+      const hookY = engineTok.taken ? g - 300 : engineTok.cy - 30;
+      ctx.strokeStyle = '#5a4a3a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cr.x, g - 334); ctx.lineTo(cr.x, hookY); ctx.stroke();
+      ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cr.x, hookY + 8, 7, -0.4, Math.PI + 0.6); ctx.stroke();
+      drawFace(ctx, cr.x, g - 333, 15, this.plate && this.plate.on ? 'happy' : 'sleepy', t, 83);
+    }
+    // the big yellow floor switch
+    if (this.plate) {
+      const p = this.plate, down = p.on ? 8 : 0;
+      ctx.fillStyle = '#8a8a9a';
+      rr(ctx, p.x - 8, g - 14, p.w + 16, 14, 5); ctx.fill();
+      ctx.fillStyle = p.on ? '#57d357' : '#ffe156';
+      rr(ctx, p.x, p.y + down, p.w, p.h - down, 8); ctx.fill();
+      ctx.strokeStyle = p.on ? '#2f8a3c' : '#c8861b'; ctx.lineWidth = 3;
+      rr(ctx, p.x, p.y + down, p.w, p.h - down, 8); ctx.stroke();
+      // down-arrow icon: "step here"
+      ctx.fillStyle = p.on ? '#fff' : '#c8861b';
+      const mx = p.x + p.w / 2, my = p.y + down + (p.h - down) / 2;
+      ctx.beginPath();
+      ctx.moveTo(mx - 12, my - 5); ctx.lineTo(mx + 12, my - 5); ctx.lineTo(mx, my + 8);
+      ctx.closePath(); ctx.fill();
+    }
+    // parts sign: ghost silhouettes of everything still missing
+    const sx = cx - 150, sy = this.y - 46;
+    ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx, g); ctx.lineTo(sx, sy + 24); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    rr(ctx, sx - 84, sy - 32, 168, 62, 14); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 3.5;
+    rr(ctx, sx - 84, sy - 32, 168, 62, 14); ctx.stroke();
+    for (let i = 0; i < this.tokens.length; i++) {
+      const tk = this.tokens[i], px = sx + (i - 1) * 52, py = sy - 1;
+      const have = this.state === 'building' ? i < this.attached : tk.taken;
+      ctx.save();
+      if (!have) ctx.globalAlpha *= 1; // ghost handled by drawIcon
+      MissionToken.drawIcon(ctx, px, py, 34, tk.kind, tk.skin, t, !have);
+      ctx.restore();
+      if (have) { ctx.fillStyle = '#ffe156'; starPath(ctx, px + 15, py - 15, 7, 3); ctx.fill(); }
+    }
+    // the truck itself
+    const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 30) * 3 * this.wobbleT : 0;
+    ctx.save();
+    ctx.translate(wob, 0);
+    if (this.attached >= 1) {
+      // up on its giant tires; face brightens as parts arrive
+      drawTruckBody(ctx, this.x, this.y, this.w, this.h, t, { driving: false, facing: 1, mood: this.attached >= 3 ? 'grin' : 'surprised' });
+      if (this.attached >= 3) { // headlights ON
+        ctx.save();
+        ctx.globalAlpha = 0.55 + 0.2 * Math.sin(t * 6);
+        ctx.fillStyle = '#fff8c0';
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.w - 2, this.y + 40);
+        ctx.lineTo(this.x + this.w + 120, this.y + 22);
+        ctx.lineTo(this.x + this.w + 120, this.y + 74);
+        ctx.lineTo(this.x + this.w - 2, this.y + 58);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    } else {
+      this.drawBrokenTruck(ctx, t);
+    }
+    ctx.restore();
+    // parts flying home during assembly
+    if (this.state === 'building' && this.flyFrom) {
+      const times = [0.7, 1.45, 2.2];
+      const targets = [
+        { x: cx, y: g - 26 },          // wheels
+        { x: cx, y: this.y + 26 },     // engine
+        { x: cx - 14, y: this.y + 52 } // power core
+      ];
+      for (let i = 0; i < 3; i++) {
+        if (this.actT >= times[i] || this.actT < times[i] - 0.7) continue;
+        const k = clamp((this.actT - (times[i] - 0.7)) / 0.7, 0, 1);
+        const e = k * k * (3 - 2 * k);
+        const fx = lerp(this.flyFrom.x, targets[i].x, e);
+        const fy = lerp(this.flyFrom.y, targets[i].y, e) - Math.sin(k * Math.PI) * 80;
+        MissionToken.drawIcon(ctx, fx, fy, 42, this.tokens[i].kind, this.tokens[i].skin, t);
+      }
+    }
+    // wordless progress toast above the hero (same pattern as CollectionPuzzle)
+    if (this.toastT > 0 && game.player) {
+      const pl = game.player;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.toastT * 2);
+      const bx = pl.cx, by = pl.y - 58 + Math.sin(t * 5) * 3;
+      ctx.fillStyle = '#fff';
+      rr(ctx, bx - 66, by - 26, 132, 52, 18); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      rr(ctx, bx - 66, by - 26, 132, 52, 18); ctx.stroke();
+      for (let i = 0; i < this.tokens.length; i++) {
+        const tk = this.tokens[i];
+        ctx.save();
+        ctx.globalAlpha *= tk.taken ? 1 : 0.3;
+        MissionToken.drawIcon(ctx, bx + (i - 1) * 40, by, 28, tk.kind, tk.skin, t);
+        ctx.restore();
+        if (tk.taken) { ctx.fillStyle = '#ffe156'; starPath(ctx, bx + (i - 1) * 40 + 13, by - 13, 6, 2.6); ctx.fill(); }
+      }
+      ctx.restore();
+    }
+    for (const tk of this.tokens) tk.draw(ctx);
+  }
+  drawBrokenTruck(ctx, t) {
+    // the sad, wheel-less truck: body slumped on the dirt, hood open, bay empty
+    const x = this.x, w = this.w, g = this.groundY;
+    const y = g - 66; // slumped 30px lower than a healthy truck
+    // axle stubs where wheels should be
+    ctx.fillStyle = '#5f5a78';
+    for (const wx of [x + 26, x + w - 26]) {
+      ctx.beginPath(); ctx.arc(wx, g - 12, 9, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#3a3550'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(wx, g - 12, 9, 0, TAU); ctx.stroke();
+    }
+    // body (dusty red)
+    ctx.fillStyle = '#d6503a';
+    rr(ctx, x + 2, y + 12, w - 4, 44, 12); ctx.fill();
+    ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3.5;
+    rr(ctx, x + 2, y + 12, w - 4, 44, 12); ctx.stroke();
+    // sad face on the door
+    drawFace(ctx, x + w / 2, y + 36, 26, 'sad', t, 17, 1, 0);
+    // cab
+    ctx.fillStyle = '#d6503a';
+    rr(ctx, x + w * 0.28, y - 18, w * 0.5, 34, 9); ctx.fill();
+    ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3;
+    rr(ctx, x + w * 0.28, y - 18, w * 0.5, 34, 9); ctx.stroke();
+    ctx.fillStyle = '#9fc4d8';
+    rr(ctx, x + w * 0.33, y - 13, w * 0.4, 24, 6); ctx.fill();
+    // open hood: dark empty engine bay + propped lid
+    ctx.fillStyle = '#3a2030';
+    rr(ctx, x + w - 30, y + 2, 26, 22, 5); ctx.fill();
+    ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3;
+    ctx.save();
+    ctx.translate(x + w - 30, y + 4);
+    ctx.rotate(-0.9 + Math.sin(t * 2) * 0.05);
+    ctx.fillStyle = '#d6503a';
+    rr(ctx, 0, -6, 30, 8, 3); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // drooping exhaust pipe
+    ctx.fillStyle = '#8a8a9a';
+    ctx.save();
+    ctx.translate(x + 10, y + 6);
+    ctx.rotate(0.35);
+    rr(ctx, -4, -18, 9, 26, 3); ctx.fill();
+    ctx.restore();
   }
 }

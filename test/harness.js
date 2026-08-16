@@ -485,12 +485,54 @@ frames(5);
 check('magma party exit leads into level 7', G().level.n === 7 && (G().state === 'intro' || G().state === 'play'));
 check('level 7 unlocked & saved', G().unlocked === 7 && sandbox.localStorage.getItem('ffbg_unlocked') === '7');
 
-// ---------------- level 7: MONSTER TRUCK RALLY ----------------
+// ---------------- level 7: MONSTER TRUCK RALLY (now with BUILD YOUR TRUCK) ----------------
 frames(160);
 check('rally loaded and playing', G().state === 'play' && G().level.theme === 'dirt');
 check('starts on the block wheel', G().player.vehicle === 'wheel');
-frames(90, { ArrowRight: 1 });
-check('driving into the parked truck boards it', G().player.vehicle === 'truck');
+const TB = () => vm.runInContext('game.level.truckBuild', sandbox);
+check('the truck waits broken — no parts collected, no ride parked', TB() && TB().state === 'collect' && TB().count() === 0 &&
+  !vm.runInContext("game.pickups.some(p => p.constructor.name === 'ParkedTruck')", sandbox));
+put(340, 620 - 94);
+frames(35, { ArrowRight: 1 });
+check('walking through the broken truck cannot start the race', G().player.vehicle === 'wheel');
+// part 1: the giant wheels, an easy hop up the block pile
+put(660, 572 - 94);
+frames(6);
+check('wheel part is an easy grab', TB().tokens[0].taken && TB().count() === 1);
+// part 2: the engine hangs from the crane, out of jumping reach...
+check('engine hangs out of reach', TB().tokens[1].cy < 420);
+put(1140, 620 - 94);
+frames(10);
+check('stepping the big yellow switch starts the crane', TB().plate.on === true);
+frames(130); // crane lowers
+check('crane brings the engine down to grab height', TB().tokens[1].cy > 500);
+put(1230, 620 - 94);
+frames(8);
+check('lowered engine collected', TB().tokens[1].taken && TB().count() === 2);
+// dying mid-assembly must not lose parts (state lives on the level object)
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(30);
+check('death keeps the collected parts', G().state === 'play' && TB().count() === 2);
+// part 3: the power core, sealed behind a cracked wall on the high ledge
+vm.runInContext('game.player.superT = 0', sandbox); // drop any leftover super mode
+put(830, 450 - 94);
+frames(25, { ArrowRight: 1 });
+check('cracked wall seals the core pocket', G().player.x + G().player.w <= 892 && TB().count() === 2);
+vm.runInContext('game.player.superT = 3', sandbox);
+frames(30, { ArrowRight: 1 });
+check('power smash frees the core (learned mechanic)', TB().count() === 3);
+// bring everything home: the assembly ceremony
+put(560, 620 - 94);
+frames(20);
+check('returning with all parts starts the assembly', TB().state === 'building');
+frames(220);
+check('wheels, engine, power — VROOM, the truck is built', TB().state === 'done' &&
+  vm.runInContext("game.pickups.some(p => p.constructor.name === 'ParkedTruck' && !p.dead)", sandbox));
+put(330, 620 - 94);
+frames(30, { ArrowRight: 1 });
+check('the finished truck boards like always', G().player.vehicle === 'truck');
 frames(120, { ArrowRight: 1 });
 check('truck goes faster than the wheel', G().player.vx > 380);
 // ramp launch
@@ -811,6 +853,97 @@ check('flight exits back to the forest', G().level.n === 8 && G().state === 'pla
 frames(20, { ArrowUp: 1 });
 frames(70);
 check('no flight physics leak back in the forest', Math.abs(G().player.y + 94 - 1000) < 8 && G().player.vehicle !== 'unicorn');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
+// ---------------- mini-game: SECRET VOLCANO ESCAPE ----------------
+vm.runInContext('game.startLevel(6)', sandbox);
+frames(150);
+put(802, 620 - 94);
+frames(10);
+check('cracked wall leads into the SECRET VOLCANO ESCAPE', G().level.n === 'volcanoescape');
+frames(150);
+check('volcano escape plays with rising lava armed', G().state === 'play' && !!G().level.risingLava);
+check('vertical camera tracks the tall shaft', G().cam.y > 1000);
+const RL = () => vm.runInContext('game.level.risingLava', sandbox);
+// climbing pulls the lava after you...
+put(1310, 2450 - 94);
+frames(60);
+check('lava rises while the hero climbs', RL().y < 3070);
+// ...but it always pauses just beneath you — never a panic timer
+vm.runInContext('game.level.risingLava.y = game.player.y + game.player.h + 150', sandbox);
+frames(40);
+check('lava never chases right at your feet', RL().y - (G().player.y + G().player.h) >= 139);
+// dunking a toe: one heart, big mercy bounce, invulnerability to climb out
+vm.runInContext('game.player.hearts = 3; game.player.inv = 0; game.level.risingLava.y = game.player.y + game.player.h - 10', sandbox);
+frames(4);
+check('lava dip costs one heart and bounces you out', G().player.hearts === 2 && G().player.vy < -300);
+vm.runInContext('game.level.risingLava.y = 2600', sandbox);
+// the steam vent: wait for the blast, ride it to the catch ledge
+put(1204, 2410 - 94);
+frames(10); // settle standing on the vent
+vm.runInContext('game.level.vents[0].ventT = 2.35', sandbox);
+let mVent = 1e9;
+for (let i = 0; i < 80; i++) { frames(1); mVent = Math.min(mVent, G().player.y); }
+check('erupting vent launches the hero sky-high', mVent < 2000);
+// reaching a checkpoint shoves the lava back down
+vm.runInContext('game.level.risingLava.y = 1000; game.checkpoint = game.level.checks[2]; game.checkpoint.reached = true;', sandbox);
+frames(3);
+check('checkpoints push the lava back down', RL().y >= 1139);
+// the crater rim: burst out, grab the star, party
+put(950, 460 - 94);
+frames(25);
+check('the crater rim star starts the celebration', G().endPhase === 'party' && G().level.n === 'volcanoescape');
+check('volcano secret completion is remembered', G().miniDone.volcanoescape === true && sandbox.localStorage.getItem('ffbg_mini').includes('volcanoescape'));
+frames(320);
+tap('Space');
+frames(5);
+check('escape exits back to Lava World', G().level.n === 6 && G().state === 'play');
+check('no rising-lava state leaks back into the host', G().level.risingLava === null && G().level.vents === null);
+frames(40);
+check('normal lava world physics after return', ['play', 'dead'].includes(G().state));
+
+// ---------------- mini-game: SECRET BUBBLE MAZE ----------------
+vm.runInContext('game.startLevel(2)', sandbox);
+frames(150);
+put(3102, 1012 - 60);
+frames(10);
+check('bubble stream cave leads into the SECRET BUBBLE MAZE', G().level.n === 'bubblemaze');
+frames(150);
+check('bubble maze plays underwater', G().state === 'play' && G().level.water === true && G().level.currents.length === 5);
+// the up current carries you, but steering stays free
+put(420, 1400);
+frames(70);
+check('up current carries the hero to the starfish room', G().player.y < 1220);
+put(420, 1300);
+frames(35, { ArrowLeft: 1 });
+check('swimming across a current stays possible', G().player.x < 370);
+// the triple bubble valves seal the treasure shaft
+put(1270, 950);
+frames(60, { ArrowUp: 1 });
+check('bubble valves block the treasure shaft', G().player.y >= 815);
+// each shell switch pops its color-matched valve
+const VBROKEN = () => vm.runInContext('game.level.solids.filter(s => s.valve && s.broken).length', sandbox);
+put(160, 1096 - 40);
+frames(6);
+check('starfish shell switch pops the blue valve', VBROKEN() === 1 &&
+  vm.runInContext("game.level.solids.find(s => s.valve && s.broken).kind === 'ice'", sandbox) &&
+  vm.runInContext('game.level.shellSwitches[0].on', sandbox));
+put(2340, 1846 - 40);
+frames(6);
+put(2340, 1096 - 40);
+frames(6);
+check('all three shell switches pop all three valves', VBROKEN() === 3);
+// ride the freed shaft current straight up into the pearl chamber
+put(1270, 950);
+frames(170, { ArrowUp: 1 });
+check('the freed current lifts you to the giant pearl', G().endPhase === 'party' && G().level.n === 'bubblemaze');
+check('bubble maze completion is remembered', G().miniDone.bubblemaze === true);
+frames(320);
+tap('Space');
+frames(5);
+check('maze exits back to Underwater World', G().level.n === 2 && G().state === 'play');
+check('no currents or switches leak back into the host', G().level.currents === null && G().level.shellSwitches === null);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

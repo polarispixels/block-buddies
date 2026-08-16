@@ -207,6 +207,10 @@ game.respawnPlayer = function () {
   }
   pl.vx = 0; pl.vy = 0; pl.hearts = 3; pl.inv = 2; pl.mood = 'happy';
   game.projectiles = []; game.shoes = [];
+  if (lv.risingLava) { // the lava backs way off after a tumble — fresh start
+    lv.risingLava.y = Math.max(lv.risingLava.y, (cp ? cp.groundY : lv.playerStart.y + 100) + 420);
+    lv.risingLava.y = Math.min(lv.risingLava.y, lv.risingLava.y0);
+  }
   if (game.zombie && game.bossStage > 0 && game.zombie.state !== 'friend') {
     const z = game.zombie;
     z.x = game.arenaR - 220; z.y = z.groundY - z.h;
@@ -590,6 +594,62 @@ function updatePlay(dt) {
   if (lv.gate) lv.gate.update(dt);
   for (const sd of lv.subDoors) sd.update(dt);
   if (lv.mission) lv.mission.update(dt, pl);
+  if (lv.truckBuild) lv.truckBuild.update(dt, pl);
+  // steam vents (Volcano Escape): idle platform -> bubbling warning -> blast.
+  // The eruption phase turns the solid bouncy, and anyone already standing on
+  // it gets launched too — timing stays forgiving either way.
+  if (lv.vents) {
+    for (const v of lv.vents) {
+      const prev = v.ventT;
+      v.ventT = (v.ventT + dt) % 3.2;
+      const erupt = v.ventT >= 2.4;
+      v.bouncy = erupt;
+      const nearCam = Math.abs(v.x + v.w / 2 - (game.cam.x + W / 2)) < W && Math.abs(v.y - (game.cam.y + H / 2)) < H;
+      if (prev < 1.7 && v.ventT >= 1.7 && nearCam) AudioSys.sfx('steam');
+      if (prev < 2.4 && v.ventT >= 2.4 && nearCam) AudioSys.sfx('launch');
+      if (erupt) {
+        if (pl.onGround && pl.vy >= 0 && pl.x + pl.w > v.x && pl.x < v.x + v.w && Math.abs(pl.y + pl.h - v.y) < 8) {
+          pl.vy = v.bounceVy || -1400;
+          pl.onGround = false;
+          pl.squash = 1.45;
+          pl.setMood('grin', 1);
+          AudioSys.sfx('bounce');
+        }
+        if (chance(0.5)) Particles.burst(v.x + v.w / 2 + rand(-20, 20), v.y - rand(0, 90), 1, { colors: ['#ffe156', '#ff9f43', '#fff'], type: 'flame', sp1: 90, grav: -160, l1: 0.5, s1: 12, up: 20 });
+      }
+    }
+  }
+  // rising lava (Volcano Escape): slow, and it PAUSES whenever it gets close
+  // beneath the hero — a friendly menace, never a speedrun timer. Reaching a
+  // checkpoint pushes it well back down.
+  if (lv.risingLava) {
+    const rl = lv.risingLava;
+    if (game.checkpoint !== rl.lastCp && game.checkpoint) {
+      rl.lastCp = game.checkpoint;
+      rl.y = Math.max(rl.y, game.checkpoint.groundY + 420);
+    }
+    const gap = rl.y - (pl.y + pl.h);
+    if (gap > 260) rl.y -= rl.speed * 1.7 * dt; // far below: hustle a little
+    else if (gap > 140) rl.y -= rl.speed * dt;  // close: creep
+    rl.y = clamp(rl.y, rl.minY, rl.y0);
+  }
+  // shell switches (Bubble Maze): touch one, its color-matched valve pops
+  if (lv.shellSwitches) {
+    for (const sw of lv.shellSwitches) {
+      if (sw.on || !overlaps(sw, pl)) continue;
+      sw.on = true;
+      AudioSys.sfx('switch');
+      AudioSys.sfx('powerup');
+      Particles.burst(sw.x + sw.w / 2, sw.y, 14, { colors: [POW[sw.kind].c, '#fff'], type: 'star', sp1: 240, l1: 0.8, s1: 10 });
+      const valve = lv.solids.find(s => s.valve && !s.broken && s.kind === sw.kind);
+      if (valve) {
+        valve.broken = true;
+        Particles.burst(valve.x + valve.w / 2, valve.y + valve.h / 2, 18, { colors: [POW[sw.kind].c, '#fff'], type: 'bubble', sp1: 260, grav: -80, l1: 1, s1: 11 });
+        AudioSys.sfx('shatter');
+      }
+      pl.setMood('grin', 1.2);
+    }
+  }
   for (const sh of game.shoes) if (!sh.dead) sh.update(dt);
   if (game.zombie && !game.cut) game.zombie.update(dt);
   if (game.chest) game.chest.update(dt);
@@ -1057,6 +1117,12 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'ascent') {
       outlineText(ctx, 'SECRET SUMMIT!', W / 2, 140, 78, '#ffd24a', '#5a4a86');
       outlineText(ctx, 'YOU FOUND THE HIDDEN MOUNTAIN!', W / 2, 212, 34, '#fff', '#5a4a86');
+    } else if (game.level.n === 'volcanoescape') {
+      outlineText(ctx, 'VOLCANO ESCAPE!', W / 2, 140, 76, '#ff9f43', '#5a1a10');
+      outlineText(ctx, 'YOU BURST OUT OF THE VOLCANO!', W / 2, 212, 34, '#ffe156', '#5a1a10');
+    } else if (game.level.n === 'bubblemaze') {
+      outlineText(ctx, 'THE GIANT PEARL!', W / 2, 140, 76, '#e8ecff', '#2a4a86');
+      outlineText(ctx, 'YOU SOLVED THE BUBBLE MAZE!', W / 2, 212, 34, '#7fd8ff', '#2a4a86');
     } else if (game.level.n === 'skyflight') {
       outlineText(ctx, 'TO THE MOON!', W / 2, 132, 80, '#ffe9a0', '#5a4a86');
       for (let i = 0; i < 5; i++) { // the stars you gathered on the way
@@ -1103,6 +1169,7 @@ function renderWorld() {
   if (lv.gate) lv.gate.draw(ctx);
   for (const sd of lv.subDoors) sd.draw(ctx);
   if (lv.mission) lv.mission.draw(ctx, t);
+  if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);
   for (const sp of game.spiders) sp.draw(ctx);
