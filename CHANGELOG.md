@@ -8,6 +8,18 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.7.1] - 2026-08-16
+
+### Fixed
+- **Cloud Climb was impossible to finish** (found by Jack): the rest ledges and
+  the summit were solid clouds, so jumping — and especially the final super
+  bounce — bonked the hero's head on their undersides. Every cloud in the
+  climb is now one-way, and the summit gained real clearance so the last
+  bounce sails up through it and lands at the castle. The Secret Ascent summit
+  had the same latent bug and got the same fix.
+- New end-to-end harness check: ride the final super cloud from the pad all
+  the way up onto the summit (no teleporting past the bounce this time).
+
 ## [1.7.0] - 2026-08-16
 
 ### Added

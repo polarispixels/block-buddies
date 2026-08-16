@@ -558,7 +558,7 @@ function buildLevel(n) {
     addPlat(lv, 430, 3080, 190);
     addPlat(lv, 720, 2960, 190);
     addPlat(lv, 430, 2840, 220);
-    addPlat(lv, 160, 2720, 500, { h: 60, solid: true }); // wide rest ledge
+    addPlat(lv, 160, 2720, 500); // wide rest ledge (one-way like every cloud here)
     lv.checks.push(new Checkpoint(340, 2720));
     candyRow(lv, 180, 760, 3160, 4);
     candyArc(lv, 430, 720, 2760, 2920, 4);
@@ -571,7 +571,7 @@ function buildLevel(n) {
     addPlat(lv, 630, 2210, 190);
     addPlat(lv, 760, 2050, 260);  // both routes meet here (super lands directly)
     candyArc(lv, 880, 1000, 2100, 2620, 5);
-    addPlat(lv, 340, 1950, 520, { h: 60, solid: true }); // rest ledge B
+    addPlat(lv, 340, 1950, 520); // rest ledge B
     lv.checks.push(new Checkpoint(520, 1950));
     // route choice: SIDE cloud (arrow) is the way on; SUPER here loops back
     addPlat(lv, 880, 1910, 110, { bouncy: true, h: 40, bounceVy: -1150, bounceVx: -360 }); // side-launcher
@@ -582,7 +582,7 @@ function buildLevel(n) {
     candyArc(lv, 550, 850, 1450, 1800, 5);
     addPlat(lv, 610, 1330, 190);
     addPlat(lv, 890, 1210, 210);
-    addPlat(lv, 460, 1080, 460, { h: 60, solid: true }); // rest ledge C
+    addPlat(lv, 460, 1080, 460); // rest ledge C
     lv.checks.push(new Checkpoint(650, 1080));
     // easter egg: a far-off snoozing cloud with candy, off the right edge
     addPlat(lv, 1020, 940, 170);
@@ -591,10 +591,10 @@ function buildLevel(n) {
     candyRow(lv, 1110, 1240, 750, 3);
     // final: SUPER cloud straight to the summit
     addPlat(lv, 300, 1040, 120, { bouncy: true, h: 40, bounceVy: -1500 });
-    addPlat(lv, 150, 340, 820, { h: 80, solid: true }); // the sky summit
-    lv.decor.skyCastle = { x: 420, y: 340 };
-    lv.goalStar = { x: 850, y: 250 };
-    candyRow(lv, 260, 800, 290, 5);
+    addPlat(lv, 150, 380, 820); // the sky summit (one-way: bounce up through!)
+    lv.decor.skyCastle = { x: 420, y: 380 };
+    lv.goalStar = { x: 850, y: 290 };
+    candyRow(lv, 260, 800, 330, 5);
     lv.decor.clouds = []; lv.decor.birds = [];
     for (let i = 0; i < 22; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(100, lv.h - 200), s: rand(0.6, 1.5) });
     for (let i = 0; i < 4; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(300, 2800), sp: rand(40, 90) });
@@ -635,11 +635,11 @@ function buildLevel(n) {
     addPlat(lv, 2240, 580, 180);
     addPlat(lv, 1980, 460, 180);
     candyArc(lv, 2000, 2760, 380, 740, 6);
-    addPlat(lv, 1150, 330, 900, { h: 70, solid: true }); // the secret summit
-    lv.decor.secretChamber = { x: 1500, y: 330 };
-    candyRow(lv, 1250, 1450, 280, 4); // candy mound overflow
-    candyRow(lv, 1300, 1400, 240, 3);
-    lv.goalStar = { x: 1900, y: 230 };
+    addPlat(lv, 1150, 340, 900); // the secret summit (one-way: hop up onto it)
+    lv.decor.secretChamber = { x: 1500, y: 340 };
+    candyRow(lv, 1250, 1450, 290, 4); // candy mound overflow
+    candyRow(lv, 1300, 1400, 250, 3);
+    lv.goalStar = { x: 1900, y: 240 };
     lv.decor.pines = []; lv.decor.peaks = true;
     for (let x = 120; x < 2900; x += rand(350, 700)) lv.decor.pines.push({ x, s: rand(0.8, 1.3) });
   }

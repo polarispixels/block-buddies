@@ -311,7 +311,7 @@ put(2590 - 28, 960 - 94);
 frames(5); // grab the power block on the upper terrace
 frames(70, { ArrowRight: 1 }); // smash through the cracked wall
 check('power smash opens the final stretch', vm.runInContext('game.level.solids.some(s => s.breakable && s.broken)', sandbox) === true);
-put(1850, 330 - 94);
+put(1850, 340 - 94);
 frames(20);
 check('secret summit star starts the celebration', G().endPhase === 'party' && G().level.n === 'ascent');
 check('secret completion is remembered', G().miniDone.ascent === true && sandbox.localStorage.getItem('ffbg_mini').includes('ascent'));
@@ -769,7 +769,11 @@ check('super cloud launches far higher than a normal cloud', mSup < mNorm - 250)
 put(920, 1910 - 94);
 frames(60);
 check('side cloud launches up and across', G().player.x < 700);
-put(830, 340 - 94);
+put(340, 1040 - 94); // ride the final super cloud all the way up
+let mFin = 1e9;
+for (let i = 0; i < 100; i++) { frames(1); mFin = Math.min(mFin, G().player.y); }
+check('final super cloud carries the hero up onto the summit', Math.abs(G().player.y + 94 - 380) < 6 && mFin < 340);
+put(830, 380 - 94);
 frames(20);
 check('cloud summit starts the celebration', G().endPhase === 'party' && G().level.n === 'cloudclimb' && G().miniDone.cloudclimb === true);
 frames(320);
