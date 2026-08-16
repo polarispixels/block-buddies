@@ -1040,6 +1040,8 @@ function renderTitle() {
       ctx.beginPath(); ctx.arc(m.x, my - 7, 7, Math.PI, TAU); ctx.stroke();
     }
   }
+  // tiny version stamp (also handy for verifying live deploys)
+  outlineText(ctx, 'v' + GAME_VERSION, 46, H - 14, 15, 'rgba(255,255,255,0.8)', '#5a4a86');
   Particles.draw(ctx);
   drawTouchUI();
 }

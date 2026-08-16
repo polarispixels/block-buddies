@@ -8,6 +8,14 @@ step, zero dependencies. The design doc's success metric governs everything:
   `polarispixels/block-buddies`, main branch, root). Deploy = commit + push;
   Pages rebuilds in ~40-60s. Verify with
   `curl -s <live-url>/js/<file>.js | grep <new-string>`.
+- **Docs for collaborators:** `docs/index.html`, served at
+  https://polarispixels.github.io/block-buddies/docs/ — architecture, per-level
+  detail, systems, versioning. Keep it in sync with reality on every change.
+- **Versioning (SEMVER):** `GAME_VERSION` in `js/util.js` (also stamped tiny on
+  the title screen — handy live-deploy check). Every release: bump it (MAJOR =
+  breaks localStorage saves, MINOR = new level/feature, PATCH = fix), add a
+  `## [x.y.z]` entry to `CHANGELOG.md`, update the badge in `docs/index.html`,
+  and `git tag vX.Y.Z && git push --tags`. The harness enforces the sync.
 - It's a PWA (`manifest.webmanifest` + `sw.js`, network-first cache): "Add to
   Home Screen" gives fullscreen app-like play, including iPhone (where the
   in-game ⛶ button is hidden because Safari forbids the Fullscreen API).
@@ -93,7 +101,8 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path). 112 checks; must print `ALL CHECKS PASSED`. Run it 2-3× — a
+  goal path) and version/changelog/docs sync checks. 115 checks; must print
+  `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).
 - **`tools/screenshot.sh <name> '<js-hook>'`** — real-render screenshots via

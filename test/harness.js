@@ -492,6 +492,17 @@ tap('Space');
 frames(5);
 check('maze party exit returns to title', G().state === 'title');
 
+// ---------------- versioning ----------------
+check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
+check('CHANGELOG has an entry for the current version', (function () {
+  const log = fs.readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf8');
+  return log.includes('## [' + vm.runInContext('GAME_VERSION', sandbox) + ']');
+})());
+check('docs page reports the current version', (function () {
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
+  return doc.includes('v' + vm.runInContext('GAME_VERSION', sandbox));
+})());
+
 // ---------------- title: character select + level select ----------------
 check('default character is boy', G().character === 'boy');
 tap('ArrowUp');

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funny Face Block Game — Developer &amp; Agent Documentation</title>
+<meta name="description" content="Complete technical and design documentation for Funny Face Block Game: architecture, all nine levels, core systems, versioning, and collaboration workflow.">
+<style>
+  :root {
+    --bg: #fdf9f0; --panel: #ffffff; --ink: #33294a; --soft: #6b5f85;
+    --accent: #ff8fb0; --accent2: #4aa3ff; --gold: #e8a917; --line: #e8e0d0;
+    --code-bg: #f3eee2; --ok: #3f9c3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    background: linear-gradient(135deg, #5a4a86, #8a5fb0);
+    color: #fff; padding: 42px 20px 34px; text-align: center;
+  }
+  header h1 { margin: 0 0 6px; font-size: 2.1rem; letter-spacing: 0.5px; }
+  header p { margin: 4px auto; max-width: 720px; color: #e8ddff; }
+  .badge {
+    display: inline-block; background: #ffd24a; color: #5a4a86; font-weight: 700;
+    border-radius: 999px; padding: 3px 14px; margin: 8px 4px 0; font-size: 0.95rem;
+  }
+  .badge.play { background: #7be07b; }
+  a { color: var(--accent2); }
+  header a { color: #ffe156; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; }
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 24px; margin: 24px 0;
+  }
+  nav.toc ul { columns: 2; margin: 8px 0 0; padding-left: 20px; }
+  @media (max-width: 640px) { nav.toc ul { columns: 1; } }
+  h2 {
+    margin-top: 52px; padding-bottom: 6px; border-bottom: 3px solid var(--accent);
+    font-size: 1.55rem;
+  }
+  h3 { margin-top: 30px; font-size: 1.15rem; color: #4a3a70; }
+  code, pre {
+    font-family: ui-monospace, "Cascadia Code", Consolas, Menlo, monospace;
+    font-size: 0.92em; background: var(--code-bg); border-radius: 6px;
+  }
+  code { padding: 1px 6px; }
+  pre { padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { padding: 0; background: none; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.95rem; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f3eafc; }
+  tr:nth-child(even) td { background: #fbf8f2; }
+  .tablewrap { overflow-x: auto; }
+  .level {
+    background: var(--panel); border: 1px solid var(--line); border-left: 8px solid var(--lc, var(--accent));
+    border-radius: 14px; padding: 6px 24px 18px; margin: 22px 0;
+  }
+  .level h3 { margin-top: 16px; font-size: 1.3rem; }
+  .level dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; margin: 12px 0 0; }
+  .level dt { font-weight: 700; color: var(--soft); }
+  .level dd { margin: 0; }
+  @media (max-width: 560px) { .level dl { grid-template-columns: 1fr; } .level dt { margin-top: 8px; } }
+  .callout {
+    border-left: 6px solid var(--gold); background: #fff8df; border-radius: 0 10px 10px 0;
+    padding: 12px 18px; margin: 18px 0;
+  }
+  .callout.rule { border-left-color: #e05a5a; background: #ffefef; }
+  .callout.ok { border-left-color: var(--ok); background: #eefae8; }
+  footer { text-align: center; color: var(--soft); padding: 30px 16px 50px; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🙂 Funny Face Block Game</h1>
+  <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
+  <span class="badge">v1.0.0</span>
+  <a class="badge play" href="../">▶ Play the game</a>
+  <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
+</header>
+<main>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#overview">Overview &amp; design north star</a></li>
+    <li><a href="#versioning">Versioning (SEMVER)</a></li>
+    <li><a href="#hard-rules">Hard rules</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#systems">Core systems</a></li>
+    <li><a href="#levels">The nine worlds, level by level</a></li>
+    <li><a href="#progression">Progression &amp; persistence</a></li>
+    <li><a href="#testing">Testing &amp; verification</a></li>
+    <li><a href="#collaborating">Collaborating: adding levels &amp; features</a></li>
+    <li><a href="#bug-class">Known recurring bug class</a></li>
+  </ul>
+</nav>
+
+<h2 id="overview">Overview &amp; design north star</h2>
+<p><strong>Funny Face Block Game</strong> is a 2D cartoon platformer built for Jack, a five-year-old. It is a
+single HTML page plus six plain JavaScript files — <em>no build step, no dependencies, no asset files</em>.
+All art is procedural canvas drawing and all audio is procedural WebAudio. It runs from
+<code>file://</code>, from GitHub Pages, and as an installable PWA (fullscreen "Add to Home Screen" play,
+including iPhone).</p>
+<p class="callout ok"><strong>The success metric that governs every decision:</strong> "Does Jack immediately
+understand it, and does he want to play again?" Forgiveness beats challenge. Icons instead of text.
+Everything is cartoon-cute: big googly faces on <em>everything</em> — blocks, terrain, the sun, trees, the
+volcano, a planet. No gore, ever: enemies "poof" into stars and candy, or better, become friends.</p>
+<ul>
+  <li><strong>Live URL:</strong> <a href="https://polarispixels.github.io/block-buddies/">polarispixels.github.io/block-buddies</a> (GitHub Pages, <code>main</code> branch, repo root; deploy = push, rebuild ~40–60&nbsp;s)</li>
+  <li><strong>Canvas:</strong> 1280 × 720 logical pixels (<code>W</code>/<code>H</code> in <code>js/util.js</code>), scaled to fit the screen</li>
+  <li><strong>Controls:</strong> Arrow keys move/jump/duck (or swim/fly), <kbd>Space</kbd> = action (throw power, advance dialogs, open things). Touch: left-thumb ◀▶▼ cluster, right-thumb JUMP + ★ action (becomes ▲▼ underwater/space). Digits 1–9 jump to a level from the title.</li>
+</ul>
+
+<h2 id="versioning">Versioning (SEMVER)</h2>
+<p>The game is versioned with <a href="https://semver.org/">Semantic Versioning</a> starting at
+<strong>1.0.0</strong> (the first versioned release: nine complete worlds, two bosses, three vehicles, PWA support).</p>
+<div class="tablewrap"><table>
+  <tr><th>Bump</th><th>When</th><th>Examples</th></tr>
+  <tr><td><strong>MAJOR</strong></td><td>Breaking changes to saved progress (<code>localStorage</code> keys/format) or a rework that invalidates this document's architecture</td><td>Changing the meaning of <code>ffbg_unlocked</code>; replacing the level format</td></tr>
+  <tr><td><strong>MINOR</strong></td><td>New player-visible content or features</td><td>A new level, a new vehicle, a new enemy, a new power</td></tr>
+  <tr><td><strong>PATCH</strong></td><td>Bug fixes, tuning, visual/audio polish with no new content</td><td>Fixing a projectile height, adjusting a hitbox</td></tr>
+</table></div>
+<p>The version lives in <strong>one place in code</strong>: <code>GAME_VERSION</code> at the top of
+<code>js/util.js</code>. It is rendered as a tiny stamp in the bottom-left corner of the title screen —
+which doubles as a quick way to confirm a live deploy took effect. Every release must:</p>
+<ol>
+  <li>Bump <code>GAME_VERSION</code> in <code>js/util.js</code></li>
+  <li>Add a matching <code>## [x.y.z]</code> entry to <code>CHANGELOG.md</code> (Keep-a-Changelog style)</li>
+  <li>Update the version badge in this document (<code>docs/index.html</code>)</li>
+  <li>Tag the release commit: <code>git tag vX.Y.Z &amp;&amp; git push --tags</code></li>
+</ol>
+<p>The test harness enforces #1–#3: it fails if <code>GAME_VERSION</code> isn't valid SEMVER, if the
+changelog lacks an entry for it, or if this page doesn't mention it.</p>
+
+<h2 id="hard-rules">Hard rules</h2>
+<div class="callout rule">
+<ol>
+  <li><strong>Zero build step.</strong> Plain <code>&lt;script&gt;</code> tags, no ES modules, no npm, no bundler. <code>index.html</code> must keep working from <code>file://</code>.</li>
+  <li><strong>No asset files.</strong> All art is procedural canvas drawing; all audio is procedural WebAudio. Everything gets a face; nothing gets gore.</li>
+  <li><strong>Design for a five-year-old.</strong> Icons instead of text, generous hitboxes, frequent checkpoints (they refill hearts), no fall deaths, auto step-up on ≤52&nbsp;px ledges, unlimited retries, bosses show icon hints when you use the wrong power.</li>
+  <li><strong>Verify before claiming done.</strong> Run <code>node test/harness.js</code> (must print <code>ALL CHECKS PASSED</code>) and screenshot new visuals with <code>tools/screenshot.sh</code>.</li>
+</ol>
+</div>
+
+<h2 id="architecture">Architecture</h2>
+<p>Six scripts loaded by <code>index.html</code> in a fixed order; they share globals (no modules), so
+<strong>load order matters</strong>:</p>
+<div class="tablewrap"><table>
+  <tr><th>File</th><th>Contents</th></tr>
+  <tr><td><code>js/util.js</code></td><td><code>GAME_VERSION</code>, constants (<code>W=1280</code>, <code>H=720</code>), drawing helpers (<code>rr</code>, <code>drawFace</code>, <code>drawBlock</code>, <code>drawCrown</code>, keycaps, candy), palettes (<code>POW</code>, <code>RAINBOW</code>), keyboard input (<code>keys</code>/<code>justP</code>), <code>TouchUI</code> (two-thumb layout + fullscreen button + title tap hook)</td></tr>
+  <tr><td><code>js/audio.js</code></td><td><code>AudioSys</code>: procedural sound effects (one <code>sfx(name)</code> switch) and step-sequenced music (<code>SONGS</code> table, midi-note arrays per theme). Unlocked on first user input.</td></tr>
+  <tr><td><code>js/particles.js</code></td><td><code>Particles</code> pool (star / sparkle / heart / block / confetti / candy / flame / bubble), <code>candyBurst</code></td></tr>
+  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code></td></tr>
+  <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star), <code>drawDecor</code> (incl. castle, grandstand, royals)</td></tr>
+  <tr><td><code>js/game.js</code></td><td>The <code>game</code> state machine, boss and ending flows, cutscenes (<code>updateCut</code>), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop</td></tr>
+</table></div>
+<h3>Conventions</h3>
+<ul>
+  <li><strong>Entities:</strong> <code>x, y</code> is the top-left corner of a <code>w × h</code> box; <code>cx</code>/<code>cy</code> getters give the center. World units are pixels.</li>
+  <li><strong>Ground:</strong> the walkable ground top is <code>y = 620</code> in most levels (1000 in Unicorn Forest; Space Maze is a 130&nbsp;px cell grid).</li>
+  <li><strong>Levels</strong> are plain objects from <code>buildLevel(n)</code>: arrays of <code>solids</code>, <code>spiders</code>, <code>pickups</code>, <code>checks</code> (checkpoints), <code>hints</code>, plus theme flags (<code>water</code>, <code>dark</code>, <code>fallCatch</code>, <code>space</code>, <code>boss</code>…) and optional structures (<code>lava</code>, <code>ramps</code>, <code>turbos</code>, <code>bridges</code>, <code>centipedes</code>, <code>mazeGrid</code>, <code>goalStar</code>, <code>castleX</code>, <code>finishX</code>).</li>
+  <li><strong>PWA:</strong> <code>manifest.webmanifest</code> + <code>sw.js</code> (network-first cache named <code>ffbg-v1</code>) — one refresh picks up a new deploy; the game keeps working offline afterwards.</li>
+</ul>
+
+<h2 id="systems">Core systems</h2>
+
+<h3>The player</h3>
+<p>3 hearts, refilled at every checkpoint. Taking a hit removes one heart and grants a generous
+invulnerability window; at zero hearts the player respawns at the last checkpoint (unlimited retries,
+vehicle preserved). Movement: run 300&nbsp;px/s, jump; in water/space it becomes free 4-direction
+swimming. Ledges ≤52&nbsp;px are stepped up automatically.</p>
+
+<h3>Power blocks (carried one at a time, thrown with Space/★)</h3>
+<div class="tablewrap"><table>
+  <tr><th>Block</th><th>Projectile effect</th><th>First appears</th></tr>
+  <tr><td>🔥 <strong>Fire</strong></td><td>Fast fireball; pops angry enemies into stars/candy. In Lava World it instead <em>ignites</em> spiders, who panic-run and then explode — clusters chain-react.</td><td>Level 1</td></tr>
+  <tr><td>❄️ <strong>Ice</strong></td><td>Freezes an enemy into a harmless ice block (frozen swim-spiders float upward). Required for boss stages.</td><td>Level 2</td></tr>
+  <tr><td>🌈 <strong>Rainbow</strong></td><td>Slow wavy shot that <em>befriends</em> an enemy — hearts, a smile, and it follows you around. Befriends whole centipedes and aliens. Every boss is ultimately befriended, never killed.</td><td>Level 3</td></tr>
+  <tr><td>⭐ <strong>Power</strong></td><td>Not a projectile: 6 seconds of super mode — rainbow-flashing, faster (440&nbsp;px/s), higher jumps, shielded from damage, and smashes breakable walls / rams bosses.</td><td>Level 4</td></tr>
+</table></div>
+
+<h3>Forgiveness features (never remove these)</h3>
+<ul>
+  <li><strong>No fall deaths:</strong> Cloud World catches falling players with a friendly cloud and returns them to safety; lava pools bounce the player out at the cost of one heart.</li>
+  <li><strong>Checkpoints</strong> refill all hearts; death during a boss respawns <em>inside</em> the sealed arena (at <code>arenaL + 20</code>), never outside it.</li>
+  <li><strong>Icon hints:</strong> floating keycap/icon hints teach controls; bosses pop an icon bubble showing the needed power when hit with the wrong one.</li>
+</ul>
+
+<h3>Vehicles</h3>
+<p><code>player.vehicle</code> ∈ <code>wheel</code> (the default block wheel) / <code>truck</code> / <code>unicorn</code>.
+Boarding happens by walking or driving into a <code>ParkedTruck</code> / <code>ParkedUnicorn</code> placed in
+<code>lv.pickups</code>; boarding resizes the hitbox, and respawns keep the vehicle. Each level resets to the wheel.</p>
+
+<h3>Bosses</h3>
+<p>Both bosses share one slot — <code>game.zombie</code> holds a <code>Zombie</code> <em>or</em> a
+<code>Magma</code> (same interface: <code>update</code>/<code>draw</code>/<code>hitBy</code>/<code>setState</code>/<code>hp</code>/<code>groundY</code>).
+<code>game.bossPlan</code> maps each stage to its required power; wrong hits show a hint bubble and do no harm.
+Boss power-block pickups respawn via <code>bossKind</code>. The arena seals behind a rock wall during the fight.</p>
+
+<h3>Cutscenes &amp; endings</h3>
+<p><code>game.cut = {name, t}</code> is handled in <code>updateCut</code> (kinds: <code>bossintro</code>,
+<code>magmaintro</code>, <code>rumble</code>, <code>chestfall</code>, <code>eruption</code>, <code>coronation</code>);
+player input is frozen during a cutscene. Endings run through <code>game.endPhase</code> phases into
+<code>'party'</code> — a big celebratory overlay (<code>drawPartyOverlay</code>) with per-level headline text;
+pressing Space after 5&nbsp;s advances the bonus-level chain.</p>
+
+<h3>Audio</h3>
+<p>All procedural WebAudio. One <code>AudioSys.sfx(name)</code> switch for effects; music is a step
+sequencer reading per-theme note tables in <code>SONGS</code> (every world has its own tune). Audio
+unlocks on the first user input, as browsers require.</p>
+
+<h2 id="levels">The nine worlds, level by level</h2>
+<p>Worlds 1–5 are the base game, advanced by star gates; 6–9 are bonus worlds unlocked by beating the
+previous world's boss or finale. Every level ends in a celebration. "New here" lists mechanics that
+did not exist in any earlier level; "Cameos" lists returning elements from earlier worlds.</p>
+
+<div class="level" style="--lc:#5ecb4a">
+<h3>1 · Block Meadow <small>(theme <code>meadow</code>)</small></h3>
+<dl>
+  <dt>Biome</dt><dd>Sunny grass meadow: smiling sun with rotating rays, rolling hills, flowers, round trees, drifting clouds. World 4200&nbsp;px wide, flat ground at y=620.</dd>
+  <dt>Objective</dt><dd>Tutorial run to the star gate. Floating keycap hints teach ◀▶ movement, ▲ jump, and Space to throw.</dd>
+  <dt>Enemies</dt><dd>3 walking spiders (purple, googly-eyed, patrol a fixed range).</dd>
+  <dt>New here</dt><dd>Everything foundational: running/jumping, candy collecting, hearts, checkpoints, block piles, platforms, the 🔥 fire block and throwing, the star gate.</dd>
+  <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy rows and arcs.</dd>
+  <dt>Cameos</dt><dd>None — this is the origin. Its walk spider, candy trails, checkpoints, and star gate recur in every later world.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#2fa7d9">
+<h3>2 · Underwater World <small>(theme <code>water</code>)</small></h3>
+<dl>
+  <dt>Biome</dt><dd>Deep blue sea: light rays, swaying seaweed, coral, background fish, rising bubbles. 4200 × 1200 world (taller than the screen), seabed at y=1130, sandy ruins columns.</dd>
+  <dt>Objective</dt><dd>Swim to the star gate on the seabed.</dd>
+  <dt>Enemies</dt><dd>5 swimming spiders patrolling open water.</dd>
+  <dt>New here</dt><dd><strong>4-direction swimming</strong> (<code>lv.water</code>: ▲▼ ascend/descend, gravity off), the ❄️ ice block, and a physics gag: frozen swim-spiders float upward like ice cubes.</dd>
+  <dt>Pickups</dt><dd>Ice ×2, heart ×1, candy.</dd>
+  <dt>Cameos</dt><dd>Checkpoints, candy trails, star gate. The swim movement introduced here returns as zero-gravity flight in Space Maze (level 9).</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#6ec6ff">
+<h3>3 · Cloud World <small>(theme <code>cloud</code>)</small></h3>
+<dl>
+  <dt>Biome</dt><dd>Sky kingdom: fluffy sleepy-faced cloud platforms, background rainbow arcs, flapping birds. 4600&nbsp;px wide with <em>no ground</em> — only floating platforms.</dd>
+  <dt>Objective</dt><dd>Hop the cloud islands and one-way platforms, activate two rainbow bridges to span the gaps, reach the star gate.</dd>
+  <dt>Enemies</dt><dd>2 jumping spiders (new) and 2 walking spiders.</dd>
+  <dt>New here</dt><dd>🌈 rainbow block (the <strong>befriending</strong> mechanic), one-way pass-through platforms, pink bouncy spring blocks, rainbow bridges, and <strong>cloud-catch</strong> (<code>lv.fallCatch</code>): falling never hurts — a smiling cloud scoops the player back up.</dd>
+  <dt>Pickups</dt><dd>Rainbow ×2, heart ×1, candy.</dd>
+  <dt>Cameos</dt><dd>Walk spiders from level 1. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#8d8fa0">
+<h3>4 · Mountain World <small>(theme <code>mountain</code>)</small></h3>
+<dl>
+  <dt>Biome</dt><dd>Snowy alpine terraces: parallax peaks, falling snow, pine trees, a rocky cave overhang. 4800&nbsp;px wide, climbing ground tiers (620 → 572 → 524).</dd>
+  <dt>Objective</dt><dd>Climb the terraces, use ⭐ power blocks to <strong>smash two breakable walls</strong> blocking the path, reach the star gate.</dd>
+  <dt>Enemies</dt><dd>3 walking, 2 jumping, and 2 <strong>hanging spiders</strong> (new: dangle on webs under the overhang and drop on you).</dd>
+  <dt>New here</dt><dd>The ⭐ <strong>power block / super mode</strong> (6&nbsp;s of speed, big jumps, shielding, wall-smashing) and breakable cracked walls with worried faces.</dd>
+  <dt>Pickups</dt><dd>Power ×2, ice ×2, heart ×1, candy.</dd>
+  <dt>Cameos</dt><dd>Ice blocks from level 2; walk/jump spiders. The super-mode ram introduced here is later required against King Magma (level 6).</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#6a4fa0">
+<h3>5 · Zombie Cave <small>(theme <code>cave</code>)</small> — first boss</h3>
+<dl>
+  <dt>Biome</dt><dd>Dark purple cavern: glowing crystals, cartoon skulls, stalactites, sparkle motes. 5000&nbsp;px wide. The screen is <strong>dark</strong> (<code>lv.dark</code>) with light pools around the player, crystals, and pickups; a 22-candy trail lights the way.</dd>
+  <dt>Objective</dt><dd>Cross the cave and beat the ZOMBIE boss. Three icon-hinted stages: 🔥 fire ×3 → ❄️ ice freeze (he shatters out and stumbles) → 🌈 rainbow, which transforms him into a friend.</dd>
+  <dt>Enemies</dt><dd>3 hanging, 2 walking, 1 jumping spider, plus the Zombie boss (arena seals behind a rock wall; dying respawns you <em>inside</em> the arena).</dd>
+  <dt>New here</dt><dd>Darkness + light-source rendering, boss fights (<code>game.bossPlan</code>, staged powers, hint bubbles, respawning boss pickups), cutscenes.</dd>
+  <dt>Ending</dt><dd>A treasure chest tumbles from the ceiling (<code>chestfall</code>); opening it reveals the <strong>GOLDEN CANDY TREASURE</strong> → party → unlocks Lava World.</dd>
+  <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy trail; boss-stage blocks respawn in the arena.</dd>
+  <dt>Cameos</dt><dd>The boss plan is a deliberate reprise of the first three worlds' powers in order: fire (1), ice (2), rainbow (3). Hang spiders from level 4.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#ff7a2b">
+<h3>6 · Lava World <small>(theme <code>lava</code>)</small> — bonus, second boss</h3>
+<dl>
+  <dt>Biome</dt><dd>Volcanic badlands: parallax volcano silhouettes with glowing mouths, rising embers, and the huge sleepy-faced <strong>Candy Volcano</strong> looming behind the boss arena. 5000&nbsp;px wide, four glowing lava pools splitting the ground.</dd>
+  <dt>Objective</dt><dd>Cross the lava gaps and beat KING MAGMA. His stages invert expectations: 🔥 fire only <em>feeds</em> him — you need ❄️ ice ×3 → a ⭐ super-mode <strong>power ram</strong> → 🌈 rainbow to befriend him.</dd>
+  <dt>Enemies</dt><dd>9 spiders (walk/jump) placed in tight clusters on purpose, plus King Magma (who lobs <code>LavaBlob</code> projectiles).</dd>
+  <dt>New here</dt><dd><strong>Ignition chains:</strong> in this world fire doesn't pop spiders — it sets them burning; they panic-run, explode, and ignite neighbors for firework chain reactions. Lava pools: falling in bounces you out at the cost of one heart (no deaths).</dd>
+  <dt>Ending</dt><dd>The befriended Magma triggers the volcano: rumble → <strong>CANDY VOLCANO</strong> eruption raining candy → party → unlocks Monster Truck Rally.</dd>
+  <dt>Pickups</dt><dd>Fire ×2, ice ×1, heart ×2, candy; boss-stage blocks in the arena.</dd>
+  <dt>Cameos</dt><dd>The pink spring block from Cloud World; block piles from Block Meadow; the boss plan reprises ice (2), super mode (4), and rainbow (3). Lava pools go on to reappear as hazards in the Truck Rally.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#c9924a">
+<h3>7 · Monster Truck Rally <small>(theme <code>dirt</code>)</small> — bonus</h3>
+<dl>
+  <dt>Biome</dt><dd>Desert rally course: smiling desert sun, flat-top mesas, drifting dust, pennant flags along the track, and a grandstand full of cheering fans at the finish. The longest world: 7200&nbsp;px.</dd>
+  <dt>Objective</dt><dd>Board the monster truck at the start line and race the course — six jump ramps (including THE giant 210&nbsp;px-tall ramp), a turbo pad, three lava pools to clear — and cross the finish line at x=6420.</dd>
+  <dt>Enemies</dt><dd>4 <strong>dirt tornadoes</strong> (new: tall wandering dust devils), 3 walking and 1 jumping spider.</dd>
+  <dt>New here</dt><dd>The <strong>truck vehicle</strong> (faster than the wheel, monster tires), ramps with automatic mid-air backflips, and the turbo pad (a burst of flame-trailing speed).</dd>
+  <dt>Ending</dt><dd>Finish line → grandstand celebration → <strong>CANDY TROPHY</strong> ("YOU WIN THE RACE!") → party → unlocks Unicorn Forest.</dd>
+  <dt>Pickups</dt><dd>Fire, ice, rainbow, heart ×2, big candy arcs over every ramp.</dd>
+  <dt>Cameos</dt><dd>Lava pools from Lava World are the track hazards; all three throwable powers appear together for the first time since the base game; walk/jump spiders patrol the infield.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#b06cf0">
+<h3>8 · Unicorn Forest <small>(theme <code>forest</code>)</small> — bonus</h3>
+<dl>
+  <dt>Biome</dt><dd>Enchanted deep forest: two parallax layers of giant trees, soft god-rays, glowing mushrooms, butterflies, floating rainbow sparkle motes. 5600 × 1100 world with the ground at y=1000 and a pink castle at the far end (x=5060).</dd>
+  <dt>Objective</dt><dd>Mount the unicorn and travel the forest — along the ground past centipedes or up through the leafy branch canopy — to the castle, where the royals crown you.</dd>
+  <dt>Enemies</dt><dd>3 <strong>centipedes</strong> (new: multi-segment chains of 5–6 googly faces; a rainbow shot befriends the <em>entire</em> chain at once), plus a walking and a jumping spider.</dd>
+  <dt>New here</dt><dd>The <strong>unicorn vehicle</strong>: mash ▲ to flap winged <strong>flight</strong> with glitter trails, and its horn fires rainbow shots <em>without needing a block</em>. Pink booster mushrooms (bouncy) launch you into the canopy.</dd>
+  <dt>Ending</dt><dd>The <strong>coronation</strong> cutscene at the castle: you are crowned, and the crown is <em>permanent</em> — <code>game.royal</code> persists in <code>localStorage</code> and the hero wears the crown in every level and on the title screen forever after. Party → unlocks Space Maze.</dd>
+  <dt>Pickups</dt><dd>Rainbow ×3, heart ×2, candy arcs through the treetops.</dd>
+  <dt>Cameos</dt><dd>Cloud World's one-way platforms return as leafy branches and its spring blocks as pink mushrooms; walk/jump spiders from the base game; the befriending mechanic (level 3) becomes the level's main verb.</dd>
+</dl>
+</div>
+
+<div class="level" style="--lc:#4aa3ff">
+<h3>9 · Space Maze <small>(theme <code>space</code>)</small> — bonus finale</h3>
+<dl>
+  <dt>Biome</dt><dd>Outer space: twinkling parallax starfield, nebula wisps, a sleepy-faced ringed planet, a little red planet, occasional shooting stars. The world is a <strong>44 × 19 cell maze</strong> (130&nbsp;px cells → 5720 × 2470&nbsp;px) whose connectivity is verified by BFS in the test harness — no sealed rooms, and a long path to the goal.</dd>
+  <dt>Objective</dt><dd>Float through the maze — following a candy breadcrumb trail, with hearts and power blocks hidden in dead ends — and touch the giant grinning <strong>golden star</strong>.</dd>
+  <dt>Enemies</dt><dd>12 <strong>alien saucers</strong> (new: flying-saucer spiders patrolling horizontal or vertical beats). Fire pops them; rainbow befriends them.</dd>
+  <dt>New here</dt><dd><strong>Weightless movement</strong> (<code>lv.space</code>), a grid-maze level format (<code>lv.mazeGrid</code>), and a <code>goalStar</code> objective instead of a gate.</dd>
+  <dt>Ending</dt><dd>Touching the star → <strong>MAZE MASTER!</strong> — and in the party, <em>all the aliens become friends</em>. The party exit returns to the title screen, completing the chain.</dd>
+  <dt>Pickups</dt><dd>Fire ×3, rainbow ×3, heart ×4, candy breadcrumbs along the main route.</dd>
+  <dt>Cameos</dt><dd>The zero-gravity controls are Underwater World's swim system reused (<code>lv.water</code> + <code>lv.space</code>); the golden star is the base game's gate star grown into a destination; befriending returns as the kindest way to clear a corridor.</dd>
+</dl>
+</div>
+
+<h2 id="progression">Progression &amp; persistence</h2>
+<ul>
+  <li><strong>Base game:</strong> star gates advance 1 → 2 → 3 → 4 → 5.</li>
+  <li><strong>Unlock chain:</strong> beating each boss/finale unlocks the next bonus world — Zombie → 6, King Magma → 7, Rally finish → 8, Coronation → 9. Party exits chain 5 → 6 → 7 → 8 → 9 → title.</li>
+  <li><strong>Title screen:</strong> hero picker (boy/girl — Up/Down or tap a portrait) and a level picker of nine medallions (Left/Right, tap, or digit keys 1–9; locked worlds show a padlock). Selection defaults to the furthest unlocked level.</li>
+</ul>
+<div class="tablewrap"><table>
+  <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
+  <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>9</code></td></tr>
+  <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
+  <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the level-8 coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
+</table></div>
+<p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
+it breaks Jack's saved progress.</p>
+
+<h2 id="testing">Testing &amp; verification</h2>
+<ul>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 115 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
+  <li><code>node --check js/*.js</code> for quick syntax validation.</li>
+  <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
+</ul>
+
+<h2 id="collaborating">Collaborating: adding levels &amp; features</h2>
+<p>Established pattern for a new level (every bonus world so far has followed it):</p>
+<ol>
+  <li><strong>One new traversal mechanic</strong> (swim, flight, truck, weightlessness…) + <strong>one new enemy</strong> + <strong>a themed spectacle ending</strong> — never just "more platforms".</li>
+  <li>Add <code>LEVEL_META[n]</code>, a <code>buildLevel</code> branch, theme cases in <code>drawBG</code>/<code>drawSolids</code>/<code>drawDecor</code>, and a music entry in <code>SONGS</code>.</li>
+  <li><strong>Progression hookup:</strong> unlock trigger from the previous world's ending, party-chain exit, title medallion + level icon, and every <code>1..N</code> clamp in <code>game.js</code> — grep for the previous maximum level number to find each spot.</li>
+  <li><strong>Harness coverage</strong> for the new mechanic, enemy, and ending; then screenshots of every new visual.</li>
+  <li>Bump <code>GAME_VERSION</code> (MINOR), update <code>CHANGELOG.md</code> and this page, tag, push, verify live.</li>
+</ol>
+<p>Design guardrails for anything new: it must be understandable without reading (icons/faces/color),
+losable without punishment (checkpoint + retry), and it should end in a celebration, not a "game over".</p>
+
+<h2 id="bug-class">Known recurring bug class</h2>
+<p class="callout rule"><strong>Projectile/target height mismatches.</strong> Three shipped bugs were
+variations of "the shot sails N pixels over the enemy's hitbox on flat ground" (fireball vs. spider,
+unicorn rainbow vs. centipede, crouch-shot). Whenever adding an enemy or a firing height, add a harness
+check that <em>actually fires</em> the projectile from ground level at the enemy and asserts the hit.</p>
+
+</main>
+<footer>
+  Funny Face Block Game v1.0.0 · built for Jack ·
+  <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
+  This document is the onboarding reference for human and AI collaborators. Keep it in sync with
+  <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.
+</footer>
+</body>
+</html>

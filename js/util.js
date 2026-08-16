@@ -1,5 +1,6 @@
 'use strict';
 // ---------------------------------------------------------------- basics
+const GAME_VERSION = '1.0.0'; // SEMVER — bump with every release (see docs/index.html + CHANGELOG.md)
 const W = 1280, H = 720, TAU = Math.PI * 2;
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
