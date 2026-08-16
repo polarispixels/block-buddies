@@ -8,6 +8,26 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.8.2] - 2026-08-16
+
+### Fixed
+- **Volcano Escape's top section was practically unfinishable** (found by Ryan):
+  the crater rim was two solid rock slabs whose undersides hung at exactly head
+  height over BOTH routes — the express vent fired the hero straight into the
+  left slab's belly (a guaranteed bonk 4px before clearing it), and the ladder
+  route's final hops bonked the right slab. The big terraces were solid too
+  (bonks from below), and the top checkpoint was buried inside the crater wall.
+  Now: every terrace is jump-through one-way (the Cloud Climb rule), the crater
+  rim is two thinner slabs floating above any jump's reach, the express vent
+  moved under the open throat and fires harder (−1540) so it lands you directly
+  ON the top terrace, the checkpoint moved into the open, and the summit
+  treasure sits on the right rim beside the star. The beloved mini volcanoes
+  are untouched — they just stop launching you into ceilings.
+- Five new harness checks actually RIDE the express vent to the top terrace,
+  hop up through the one-way terrace, and verify a full jump under the crater
+  rim reaches its natural apex (262 checks; the old suite teleported past this
+  stretch, which is how the bonk shipped).
+
 ## [1.8.1] - 2026-08-16
 
 ### Fixed

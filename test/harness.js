@@ -898,10 +898,38 @@ vm.runInContext('game.level.vents[0].ventT = 2.35', sandbox);
 let mVent = 1e9;
 for (let i = 0; i < 80; i++) { frames(1); mVent = Math.min(mVent, G().player.y); }
 check('erupting vent launches the hero sky-high', mVent < 2000);
+// REGRESSION (found by Ryan): the express vent used to fire you head-first
+// into the crater wall's underside, and the solid terraces bonked from below —
+// the top of the climb was practically unfinishable. Ride it for real:
+put(320, 1430 - 94);
+frames(10); // settle on the express vent
+vm.runInContext('game.level.vents[1].ventT = 2.35', sandbox);
+let ventMin = 1e9, landedC = false;
+for (let i = 0; i < 110; i++) {
+  frames(1);
+  ventMin = Math.min(ventMin, G().player.y);
+  if (Math.abs(G().player.y + 94 - 720) < 3 && G().player.vy === 0) landedC = true;
+}
+check('express vent clears the crater rim (no head bonk)', ventMin < 640);
+check('express vent lands the hero on terrace C', landedC);
+check('every volcano terrace is jump-through one-way', vm.runInContext('game.level.solids.every(s => s.h !== 60 || s.oneWay)', sandbox));
+// the bail-out shelf hops up THROUGH one-way terrace C
+put(300, 850 - 94);
+frames(6);
+tap('ArrowUp');
+frames(50);
+check('bail-out shelf hop passes up through terrace C', Math.abs(G().player.y + 94 - 720) < 5);
+// the ladder route's final hops fit fully under the floating crater rim
+put(800, 860 - 94);
+frames(6);
+let hopMin = 1e9;
+tap('ArrowUp');
+for (let i = 0; i < 40; i++) { frames(1); hopMin = Math.min(hopMin, G().player.y); }
+check('full jump under the crater rim reaches its natural apex', Math.abs(hopMin - 618) < 10);
 // reaching a checkpoint shoves the lava back down
 vm.runInContext('game.level.risingLava.y = 1000; game.checkpoint = game.level.checks[2]; game.checkpoint.reached = true;', sandbox);
 frames(3);
-check('checkpoints push the lava back down', RL().y >= 1139);
+check('checkpoints push the lava back down', RL().y >= 1120);
 // the crater rim: burst out, grab the star, party
 put(950, 460 - 94);
 frames(25);

@@ -744,7 +744,7 @@ function buildLevel(n) {
     addPlat(lv, 140, 2810, 230);
     addPlat(lv, 470, 2690, 230);
     addPlat(lv, 800, 2570, 230);
-    addPlat(lv, 1130, 2450, 400, { h: 60, solid: true }); // terrace A
+    addPlat(lv, 1130, 2450, 400, { h: 60, oneWay: true }); // terrace A (jump up through!)
     lv.checks.push(new Checkpoint(1310, 2450));
     candyArc(lv, 200, 1000, 2540, 2870, 6);
     // the first steam vent: stand on it, wait for the rumble, ride the blast
@@ -754,38 +754,42 @@ function buildLevel(n) {
     // climb on up-left
     addPlat(lv, 700, 1710, 220);
     addPlat(lv, 380, 1590, 220);
-    addPlat(lv, 80, 1470, 420, { h: 60, solid: true }); // terrace B
+    addPlat(lv, 80, 1470, 420, { h: 60, oneWay: true }); // terrace B
     lv.checks.push(new Checkpoint(240, 1470));
     candyRow(lv, 760, 860, 1660, 2);
-    // ROUTE CHOICE: the vent express (left, straight up) or the long rock
-    // ladder (right, more candy + a heart). Wrong is impossible — they rejoin.
-    vent(120, 1430, { offset: 0.6 });
-    addPlat(lv, 60, 850, 300); // vent-express catch ledge
-    pick(lv, 168, 1280, 'candy'); pick(lv, 168, 1060, 'candy');
+    // ROUTE CHOICE: the vent express (straight up the open throat, right onto
+    // terrace C) or the long rock ladder (right, more candy + a heart).
+    // Wrong is impossible — they rejoin.
+    vent(360, 1430, { offset: 0.6, pow: -1540 });
+    addPlat(lv, 60, 850, 300); // bail-out shelf (hop back up through terrace C)
+    pick(lv, 408, 1150, 'candy'); pick(lv, 408, 900, 'candy');
     addPlat(lv, 560, 1350, 200);
     addPlat(lv, 860, 1230, 200);
     addPlat(lv, 1160, 1110, 220);
-    addPlat(lv, 1340, 980, 240, { h: 60, solid: true }); // eastern candy ledge
+    addPlat(lv, 1340, 980, 240, { h: 60, oneWay: true }); // eastern candy ledge
     candyRow(lv, 1390, 1540, 930, 3);
     pick(lv, 1450, 870, 'heart');
     addPlat(lv, 1080, 900, 200);
     addPlat(lv, 760, 860, 220);
     addPlat(lv, 430, 830, 220);
     candyArc(lv, 620, 1260, 1030, 1300, 5);
-    // terrace C, right under the crater throat
-    addPlat(lv, 140, 720, 460, { h: 60, solid: true });
-    lv.checks.push(new Checkpoint(300, 720));
-    // the crater: rock walls funnel into a narrow throat; the SUPER vent
-    // blasts the hero out the top of the volcano onto the sunny rim
-    lv.solids.push({ x: 0, y: 460, w: 340, h: 260, pile: true });
-    lv.solids.push({ x: 560, y: 460, w: 1040, h: 260, pile: true });
+    // terrace C, right under the crater throat (one-way like every terrace —
+    // the vent express and the ladder route both pop up THROUGH it)
+    addPlat(lv, 140, 720, 460, { h: 60, oneWay: true });
+    lv.checks.push(new Checkpoint(540, 720));
+    // the crater rim: two rock slabs floating high enough that no jump from
+    // any platform beneath can reach their undersides — nothing to bonk on.
+    // The SUPER vent blasts the hero up the open throat and out of the volcano.
+    lv.solids.push({ x: 0, y: 460, w: 260, h: 100, pile: true });
+    lv.solids.push({ x: 580, y: 460, w: 1020, h: 100, pile: true });
     vent(400, 680, { pow: -1500, offset: 0.2 });
     lv.goalStar = { x: 1000, y: 370 };
-    lv.decor.lavaTreasure = { x: 168, y: 460 }; // the summit candy hoard
-    candyRow(lv, 640, 900, 410, 3);
+    lv.decor.lavaTreasure = { x: 640, y: 460 }; // the summit candy hoard
+    candyRow(lv, 60, 210, 410, 2); // a little gold on the left rim too
+    candyRow(lv, 900, 1100, 410, 3);
     // slowly rising lava: pure excitement, zero panic — it pauses whenever it
     // gets close beneath the hero and drops back at every checkpoint
-    lv.risingLava = { y: 3090, y0: 3090, speed: 30, minY: 900, lastCp: null };
+    lv.risingLava = { y: 3090, y0: 3090, speed: 30, minY: 960, lastCp: null };
     lv.decor.rocks = [];
     for (let x = 150; x < 1500; x += rand(300, 550)) lv.decor.rocks.push({ x, s: rand(0.7, 1.3) });
   }
