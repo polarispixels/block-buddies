@@ -275,6 +275,15 @@ let minY = 1e9;
 for (let i = 0; i < 70; i++) { frames(1); minY = Math.min(minY, G().player.y); }
 check('spring block launches the hero sky-high', minY < 200);
 check('bounce route collects the fire crystal first (any order works)', TOK(1).taken === true && MIS().puzzle.count() === 1);
+// the halfway stepping-stone chains the bounce onto the cave roof
+put(2800, 300 - 94);
+frames(8);
+check('halfway platform holds the hero', Math.abs(G().player.y - (300 - 94)) < 3);
+tap('ArrowUp');
+frames(55, { ArrowRight: 1 });
+check('hop from the stepping-stone lands on the cave roof', G().player.x > 2990 && Math.abs(G().player.y + 94 - 260) < 4);
+frames(160, { ArrowRight: 1 });
+check('roof route crosses the cave and rejoins the path', G().player.x > 3660 && G().player.y + 94 > 340);
 // dying must not un-collect anything
 vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
 frames(60);

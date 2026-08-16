@@ -187,6 +187,7 @@ function buildLevel(n) {
     candyArc(lv, 1150, 1550, 350, 520, 5);
     candyRow(lv, 2050, 2450, 470, 4);
     candyRow(lv, 3050, 3600, 520, 5);
+    candyRow(lv, 3080, 3620, 228, 5); // breadcrumbs along the cave-roof route
     candyRow(lv, 4350, 4600, 470, 3);
     spider(lv, 820, G, 'walk', { range: 170 });
     spider(lv, 1500, 572, 'jump');
@@ -215,6 +216,10 @@ function buildLevel(n) {
     // deliberate choice, and the bounce carries you up through the crystal.
     addPlat(lv, 2470, 420, 140, { oneWay: true });
     addPlat(lv, 2490, 396, 110, { bouncy: true, h: 24, bounceVy: -1150 });
+    // halfway stepping-stone (one-way): lets the spring bounce chain rightward
+    // onto the cave roof — an aerial route over the shrine that rejoins the
+    // path at the far end of the cave
+    addPlat(lv, 2755, 300, 130, { oneWay: true });
     // Crystal 3 (power): sealed in a pocket at the cave's back — cracked wall
     // on the left (power-smash it, as learned earlier), solid rock on the
     // right so the pocket can't be entered from the far side.

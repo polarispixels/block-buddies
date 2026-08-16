@@ -8,6 +8,18 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.6.2] - 2026-08-16
+
+### Fixed
+- **Mountain: the spring bounce now chains somewhere.** Added a halfway
+  one-way stepping-stone between the spring and the cave roof, so after the
+  bounce Jack can hop rightward onto the ledge above the treasure-chest cave,
+  follow a candy trail across the roof, and drop back to the path at the far
+  end — no more nearly-impossible drift-jump to continue rightward from the
+  spring. (The spring itself stays put, keeping the ground path clear.)
+- Harness: stepping-stone landing, roof crossing, and path-rejoin checks
+  ( checks total).
+
 ## [1.6.1] - 2026-08-16
 
 Playtest fixes from Jack's Mountain run.
