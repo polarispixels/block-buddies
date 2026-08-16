@@ -8,6 +8,20 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.8.1] - 2026-08-16
+
+### Fixed
+- Secret Ascent finale, from playtest: the golden star sat right where you hop
+  onto the summit, so the party (which freezes the hero in mini-games) started
+  instantly and the yeti/chest/candy mountain were unreachable scenery. The
+  summit is now just the arrival ledge; a spring at its left end launches you
+  over a gap onto a new **treasure terrace** — a ridiculous coin-paved gold
+  mountain wearing a crown, coin stacks, loose coins, the giant chest and the
+  waving yeti, ~23 collectible candies (plus a heart) to wade through, a
+  one-shot gold-rush fanfare + candy fountain on first landing, and the star
+  moved to the far end of the hoard so the celebration happens IN the gold.
+  Undershooting the gap just drops you back onto the climb — no punishment.
+
 ## [1.8.0] - 2026-08-16
 
 ### Added

@@ -633,6 +633,16 @@ function updatePlay(dt) {
     else if (gap > 140) rl.y -= rl.speed * dt;  // close: creep
     rl.y = clamp(rl.y, rl.minY, rl.y0);
   }
+  // gold rush (Secret Ascent): first landing in the treasure hoard = fanfare
+  if (lv.goldRush && !lv.goldRush.done && pl.x < lv.goldRush.x && pl.y < lv.goldRush.y) {
+    lv.goldRush.done = true;
+    AudioSys.sfx('chest');
+    AudioSys.sfx('cheer');
+    game.shake = Math.max(game.shake, 0.3);
+    pl.setMood('grin', 3);
+    Particles.candyBurst(pl.cx, pl.y - 40, 22);
+    Particles.burst(pl.cx, pl.y, 22, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 400, l0: 0.7, l1: 1.4, s1: 12, grav: 300 });
+  }
   // shell switches (Bubble Maze): touch one, its color-matched valve pops
   if (lv.shellSwitches) {
     for (const sw of lv.shellSwitches) {

@@ -313,7 +313,19 @@ frames(70, { ArrowRight: 1 }); // smash through the cracked wall
 check('power smash opens the final stretch', vm.runInContext('game.level.solids.some(s => s.breakable && s.broken)', sandbox) === true);
 put(1850, 340 - 94);
 frames(20);
-check('secret summit star starts the celebration', G().endPhase === 'party' && G().level.n === 'ascent');
+check('arriving on the summit no longer wins instantly', G().endPhase === null && G().state === 'play');
+// the summit spring launches over the gap onto the TREASURE TERRACE
+const candyGold0 = G().candy;
+put(1195, 300 - 94);
+frames(4); // land on the spring — boing
+let mGold = 1e9;
+for (let i = 0; i < 85; i++) { frames(1, { ArrowLeft: 1 }); mGold = Math.min(mGold, G().player.y); }
+check('summit spring launches sky-high over the gap', mGold < 60);
+check('hero lands on the treasure terrace', Math.abs(G().player.y + 94 - 260) < 6);
+frames(40, { ArrowLeft: 1 }); // wade into the ridiculous gold
+check('gold rush fanfare pops and candy showers in', G().level.goldRush.done === true && G().candy > candyGold0 + 3);
+frames(90, { ArrowLeft: 1 }); // all the way to the star at the far end
+check('the star among the gold starts the celebration', G().endPhase === 'party' && G().level.n === 'ascent');
 check('secret completion is remembered', G().miniDone.ascent === true && sandbox.localStorage.getItem('ffbg_mini').includes('ascent'));
 frames(320);
 tap('Space');

@@ -31,7 +31,7 @@ function newLevel(n) {
     space: false, mazeGrid: null, goalStar: null, mission: null,
     subDoors: [], flight: false,
     truckBuild: null, vents: null, risingLava: null,
-    currents: null, shellSwitches: null,
+    currents: null, shellSwitches: null, goldRush: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -670,11 +670,21 @@ function buildLevel(n) {
     addPlat(lv, 2240, 580, 180);
     addPlat(lv, 1980, 460, 180);
     candyArc(lv, 2000, 2760, 380, 740, 6);
-    addPlat(lv, 1150, 340, 900); // the secret summit (one-way: hop up onto it)
-    lv.decor.secretChamber = { x: 1500, y: 340 };
-    candyRow(lv, 1250, 1450, 290, 4); // candy mound overflow
-    candyRow(lv, 1300, 1400, 250, 3);
-    lv.goalStar = { x: 1900, y: 240 };
+    addPlat(lv, 1150, 340, 900); // the secret summit — the ARRIVAL ledge
+    candyRow(lv, 1420, 1880, 290, 5); // breadcrumbs lead LEFT toward the bouncer
+    // the summit's own secret: a spring at the left end launches you over a
+    // small gap onto the TREASURE TERRACE above — where the hoard actually is
+    addPlat(lv, 1170, 300, 100, { bouncy: true, h: 40, bounceVy: -1150 });
+    addPlat(lv, 250, 260, 800); // the treasure terrace (one-way: sail up onto it)
+    lv.decor.secretChamber = { x: 620, y: 260, rich: true }; // a RIDICULOUS hoard
+    lv.goldRush = { x: 1000, y: 400, done: false }; // fanfare on first landing
+    // wading through the gold showers real candy into the counter
+    candyArc(lv, 350, 600, 140, 220, 7);
+    candyRow(lv, 380, 980, 210, 9);
+    candyRow(lv, 430, 900, 160, 7);
+    pick(lv, 800, 180, 'heart');
+    // the star waits at the FAR end of the gold — the party happens in it
+    lv.goalStar = { x: 330, y: 160 };
     lv.decor.pines = []; lv.decor.peaks = true;
     for (let x = 120; x < 2900; x += rand(350, 700)) lv.decor.pines.push({ x, s: rand(0.8, 1.3) });
   }
@@ -1776,14 +1786,59 @@ function drawSubDecor(ctx, lv, cam, t, d, visible) {
     drawFace(ctx, e.x, ey - 2, 17, 'grin', t, 37);
   }
   if (d.secretChamber && visible(d.secretChamber.x)) { // the secret summit chamber
-    const c = d.secretChamber, g = c.y;
-    // candy mountain
+    const c = d.secretChamber, g = c.y, rich = !!c.rich;
+    if (rich) { // golden ambience over the whole ridiculous hoard
+      ctx.save();
+      ctx.globalAlpha = 0.16 + 0.06 * Math.sin(t * 2.2);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.ellipse(c.x - 80, g - 110, 420, 220, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // candy mountain (a proper GOLD MOUNTAIN when rich)
     ctx.fillStyle = '#ffd24a';
     ctx.beginPath();
-    ctx.moveTo(c.x - 260, g); ctx.quadraticCurveTo(c.x - 130, g - 150, c.x - 40, g);
+    if (rich) {
+      ctx.moveTo(c.x - 340, g);
+      ctx.quadraticCurveTo(c.x - 250, g - 150, c.x - 150, g - 190);
+      ctx.quadraticCurveTo(c.x - 60, g - 150, c.x + 20, g);
+    } else {
+      ctx.moveTo(c.x - 260, g); ctx.quadraticCurveTo(c.x - 130, g - 150, c.x - 40, g);
+    }
     ctx.closePath(); ctx.fill();
-    for (let i = 0; i < 9; i++) {
-      drawCandy(ctx, c.x - 240 + (i % 5) * 44 + (i > 4 ? 24 : 0), g - 14 - Math.floor(i / 5) * 34 - (i % 3) * 12, 17, i % 3, t + i);
+    if (rich) {
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4; ctx.stroke();
+      // the mound is PAVED in coins...
+      ctx.fillStyle = '#ffe27a';
+      for (let i = 0; i < 14; i++) {
+        const k = i / 13;
+        const mx2 = c.x - 320 + k * 320;
+        const my2 = g - 8 - Math.sin(k * Math.PI) * 155 - (i % 3) * 14;
+        ctx.beginPath(); ctx.ellipse(mx2 + (i % 2) * 16, my2 + 16, 13, 8, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      // ...crowned, obviously
+      drawCrown(ctx, c.x - 150, g - 194, 22);
+      // coin stacks between the chest and the yeti
+      for (const [ox, n2] of [[212, 5], [252, 7], [292, 4]]) {
+        for (let i = 0; i < n2; i++) {
+          ctx.fillStyle = i % 2 ? '#ffd24a' : '#ffe27a';
+          ctx.beginPath(); ctx.ellipse(c.x + ox, g - 8 - i * 13, 17, 8, 0, 0, TAU); ctx.fill();
+          ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+      // loose coins spilled along the ground
+      ctx.fillStyle = '#ffd24a';
+      for (const ox of [-360, -338, 40, 66, 180, 330, 356, 400]) {
+        ctx.beginPath(); ctx.ellipse(c.x + ox, g - 5, 11, 6, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      if (chance(0.25)) Particles.burst(c.x + rand(-320, 300), g - rand(10, 220), 1, { colors: ['#ffe156', '#fff', '#ffd24a'], type: 'sparkle', sp1: 25, grav: -45, l1: 1, s1: 9, up: 0 });
+    }
+    const nCandy = rich ? 16 : 9;
+    for (let i = 0; i < nCandy; i++) {
+      const bx3 = rich ? c.x - 300 + (i % 6) * 48 + (i > 5 ? 24 : 0) : c.x - 240 + (i % 5) * 44 + (i > 4 ? 24 : 0);
+      const by3 = g - 14 - Math.floor(i / (rich ? 6 : 5)) * 34 - (i % 3) * 12;
+      drawCandy(ctx, bx3, by3, rich ? 19 : 17, i % 3, t + i);
     }
     // giant golden chest, lid open, glowing
     ctx.save();
