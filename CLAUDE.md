@@ -119,6 +119,19 @@ unicorn rainbow vs centipede, plus the crouch-shot request). Whenever adding
 an enemy or firing height, add a harness check that *actually fires* the
 projectile from ground level at the enemy and asserts the hit.
 
+## Development method (agents)
+
+- Use whatever plugins, skills, and tools are appropriate for the task at hand
+  — don't limit yourself to raw file edits when a better tool exists.
+- Use multi-agent architecture whenever appropriate to balance speed, quality,
+  and cost: the top-tier model (e.g. Fable) belongs at the outermost
+  orchestration layer — decomposing work, reviewing results, handling the
+  trickiest design/debugging — while well-scoped subtasks (searches, mechanical
+  edits, screenshot loops, boilerplate, parallel level work) should be
+  delegated to subagents on lesser models (Sonnet/Haiku) for token efficiency.
+  Solo work is fine when a task is small enough that delegation overhead would
+  cost more than it saves.
+
 ## Working agreements with Ryan
 
 - Ship in one shot: implement fully, verify with harness + screenshots, then
