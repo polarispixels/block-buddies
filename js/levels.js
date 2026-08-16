@@ -504,7 +504,8 @@ function buildLevel(n) {
         new MissionToken(3380, 386, 'fire', 'egg')
       ], new Shrine(3800, 430, { theme: 'nest' })),
       new MissionItem('dinokey'));
-    // the secret valley's golden star
+    // the secret valley's golden star — guarded by the SPINOSAURUS boss
+    lv.boss = true; lv.bossType = 'spino'; lv.bossX = 4470;
     lv.goalStar = { x: 5600, y: 500 };
     lv.decor.ferns = []; lv.decor.jflowers = []; lv.decor.shroomsJ = []; lv.decor.prints = [];
     for (let x = 100; x < 5700; x += rand(220, 420)) lv.decor.ferns.push({ x, s: rand(0.8, 1.5), c: randi(0, 2) });
@@ -513,8 +514,8 @@ function buildLevel(n) {
     for (let x = 400; x < 5600; x += rand(400, 800)) lv.decor.prints.push({ x });
     lv.decor.longnecks = [{ x: 620, s: 1, c: 0 }, { x: 4750, s: 1.15, c: 1 }];
     lv.decor.trike = { x: 3150, x0: 3150, dir: 1, t: rand(9) };
-    lv.decor.trex = { x: 5250, t: 0, lastPhase: 0 };
-    lv.decor.bigflowers = [{ x: 4550, c: 0 }, { x: 4980, c: 1 }, { x: 5420, c: 2 }];
+    lv.decor.trex = { x: 5540, t: 0, lastPhase: 0 }; // watches the finale from beside the star
+    lv.decor.bigflowers = [{ x: 4550, c: 0 }, { x: 4980, c: 1 }, { x: 5620, c: 2 }];
     lv.decor.eggsDecor = [{ x: 3290, s: 0.8 }, { x: 3335, s: 0.6 }];
     lv.decor.butterflies = [];
     for (let i = 0; i < 8; i++) lv.decor.butterflies.push({ x: rand(200, 5600), y: rand(250, 560), c: randi(0, 3), sp: rand(20, 50) * (chance(0.5) ? 1 : -1) });

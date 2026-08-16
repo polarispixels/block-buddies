@@ -70,7 +70,7 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 | 7 | Monster Truck Rally | dirt | `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
-| 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | golden star in the Secret Dino Valley → party |
+| 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
 
 Progression: gates advance 1→5; beating each boss/finale unlocks the next
 bonus world (zombie→6, magma→7, rally→8, coronation→9, maze star→10) and party
@@ -84,12 +84,14 @@ everywhere via `drawBoy`/`drawHead`).
 - **Vehicles**: `player.vehicle` ∈ wheel/truck/unicorn; board via
   ParkedTruck/ParkedUnicorn pushed into `lv.pickups`. Boarding resizes the
   hitbox. Respawns keep the vehicle.
-- **Bosses** share one slot: `game.zombie` holds Zombie OR Magma (same
+- **Bosses** share one slot: `game.zombie` holds Zombie, Magma, OR Spino (same
   interface: update/draw/hitBy/setState/hp/groundY). `game.bossPlan` maps
   stage→required power; wrong hits show an icon hint bubble. Boss pickups
   respawn via `bossKind`. Arena respawn: death during a boss respawns
   *inside* the sealed arena at `arenaL+20` (never at the outside checkpoint —
-  that was a real shipped bug).
+  that was a real shipped bug). Boss trigger x is `lv.bossX` (default 3900);
+  Spino's befriending breaks `game.spinoWalls` and the jungle goal star
+  requires the boss (if any) to be a friend.
 - **Adventure missions (distributed collection)**: `lv.mission` (built in
   `buildLevel`, classes at the end of entities.js). `Mission` lifecycle
   `'puzzle'→'reward'→'carrying'→'done'`; `MissionGate` pushes its own solid
@@ -140,7 +142,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 169 checks; must print
+  goal path) and version/changelog/docs sync checks. 180 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

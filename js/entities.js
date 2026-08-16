@@ -3028,3 +3028,302 @@ class FireBreather {
     ctx.restore();
   }
 }
+
+// ================================================================ spinosaurus boss
+// Giant fire-breathing Spinosaurus guarding the Secret Dino Valley (level 10).
+// Lives in the shared game.zombie boss slot — same interface as Zombie/Magma
+// (update/draw/hitBy/setState/hp/groundY/hits). Plan: ice x3 douses his flame
+// (stage 1) -> fire x3 gives him the hiccups (stage 2, his own medicine!) ->
+// rainbow befriends him (stage 3). Once a friend, the valley walls crumble and
+// he breathes CONFETTI instead of fire.
+class Spino {
+  constructor(x, groundY) {
+    this.w = 200; this.h = 190;
+    this.x = x; this.y = groundY - this.h;
+    this.groundY = groundY;
+    this.vx = 0; this.vy = 0;
+    this.hp = 3;
+    this.state = 'intro';
+    this.st = 0; this.t = rand(10);
+    this.facing = -1;
+    this.hits = 0;
+    this.flashT = 0; this.wrongT = 0; this.hiccupT = 0;
+    this.breathT = rand(1); // stage-1 fire cycle: walk<2.2, inhale<3.2, fire<4.4
+    this.confettiT = 3;
+    this.crownDrop = false; this.shoeLost = false; // Zombie interface shape
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  setState(s) { this.state = s; this.st = 0; }
+  breath() {
+    if (game.bossStage !== 1 || this.state !== 'chase') return 'walk';
+    return this.breathT < 2.2 ? 'walk' : this.breathT < 3.2 ? 'inhale' : 'fire';
+  }
+  flameBox() {
+    const mx = this.facing > 0 ? this.x + this.w - 14 : this.x + 14;
+    const range = 320;
+    return { x: this.facing > 0 ? mx : mx - range, y: this.groundY - 68, w: range, h: 62 };
+  }
+  update(dt) {
+    const pl = game.player;
+    this.t += dt; this.st += dt;
+    this.flashT = Math.max(0, this.flashT - dt);
+    this.wrongT = Math.max(0, this.wrongT - dt);
+    this.hiccupT = Math.max(0, this.hiccupT - dt);
+    const arenaL = game.arenaL, arenaR = game.arenaR;
+    switch (this.state) {
+      case 'chase': {
+        const tantrum = game.bossStage >= 2; // flames doused -> stompy tantrum
+        const br = this.breath();
+        if (br === 'walk') {
+          this.facing = pl.cx > this.cx ? 1 : -1;
+          this.x += this.facing * (tantrum ? 130 : 85) * dt;
+          if (Math.floor(this.t * 2.4) !== Math.floor((this.t - dt) * 2.4)) { // stomp cadence
+            game.shake = Math.max(game.shake, tantrum ? 0.16 : 0.1);
+            if (Math.abs(this.cx - (game.cam.x + W / 2)) < W) AudioSys.sfx('thud');
+            Particles.burst(this.cx - this.facing * 40, this.groundY, 3, { colors: ['#7a5230', '#57b84a'], sp1: 90, l1: 0.4, s1: 7, up: 40 });
+          }
+        }
+        const prevB = this.breathT;
+        if (game.bossStage === 1) {
+          this.breathT = (this.breathT + dt) % 4.4;
+          if (prevB < 2.2 && this.breathT >= 2.2 && Math.abs(this.cx - (game.cam.x + W / 2)) < W) AudioSys.sfx('inhale');
+          if (prevB < 3.2 && this.breathT >= 3.2 && Math.abs(this.cx - (game.cam.x + W / 2)) < W) AudioSys.sfx('fire');
+          if (br === 'fire') {
+            const fb = this.flameBox();
+            if (chance(0.85)) Particles.burst(fb.x + rand(0, fb.w), fb.y + rand(8, fb.h - 8), 1, { colors: ['#ff9f43', '#ffe156', '#ff6b35'], type: 'flame', sp1: 70, grav: -90, l1: 0.4, s1: 14, up: 10 });
+            if (game.state === 'play' && pl.superT <= 0 && overlaps(fb, pl)) {
+              pl.damage(1);
+              pl.vx = this.facing * 340;
+            }
+          }
+        }
+        this.x = clamp(this.x, arenaL, arenaR - this.w);
+        if (overlaps(this, pl)) {
+          if (pl.superT > 0) { /* super mode shields */ }
+          else pl.damage(1);
+        }
+        break;
+      }
+      case 'dizzy':
+        if (this.st > 2.2) this.setState('chase');
+        break;
+      case 'rainbowing':
+        Particles.burst(this.cx + rand(-90, 90), this.y + rand(0, this.h), 2, { colors: RAINBOW, type: 'sparkle', sp1: 80, grav: -120, l1: 0.7, s1: 10, up: 0 });
+        if (this.st > 2.5) {
+          this.setState('friend');
+          this.loseHeart();
+          AudioSys.sfx('friend');
+          Particles.burst(this.cx, this.cy, 30, { colors: ['#ff8fb0', '#ffd24a', '#fff'], type: 'heart', sp1: 360, l1: 1.1, s1: 13 });
+          // the valley opens: both arena walls crumble
+          for (const s of (game.spinoWalls || [])) {
+            if (s.broken) continue;
+            s.broken = true;
+            Particles.burst(s.x + s.w / 2, s.y + s.h / 2, 14, { colors: ['#8a9a7a', '#57b84a'], type: 'block', sp1: 320, l1: 1, s1: 12, grav: 900 });
+          }
+          AudioSys.sfx('smash');
+          AudioSys.setMusic('jungle');
+        }
+        break;
+      case 'friend': case 'dance':
+        // a friendly spino breathes confetti now and then
+        this.confettiT -= dt;
+        if (this.confettiT <= 0) {
+          this.confettiT = this.state === 'dance' ? 1.6 : 3.5;
+          const mx = this.facing > 0 ? this.x + this.w : this.x;
+          Particles.burst(mx + this.facing * 60, this.groundY - 110, 14, { colors: RAINBOW, type: 'confetti', sp1: 260, l1: 1.6, s1: 11, grav: 200, up: 120 });
+          if (Math.abs(this.cx - (game.cam.x + W / 2)) < W) AudioSys.sfx('whoosh');
+        }
+        break;
+    }
+  }
+  loseHeart() {
+    this.hp--;
+    game.shake = Math.max(game.shake, 0.5);
+    AudioSys.sfx('thud');
+    Particles.burst(this.cx, this.y - 20, 12, { colors: ['#ff7d92', '#fff'], type: 'heart', sp1: 300, l1: 0.8, s1: 12 });
+    if (this.hp === 2) { this.setState('dizzy'); game.setBossStage(2); }
+    else if (this.hp === 1) { this.setState('dizzy'); game.setBossStage(3); }
+  }
+  hitBy(kind) {
+    if (this.state === 'friend' || this.state === 'rainbowing' || this.state === 'dance') return;
+    const need = game.bossPlan[game.bossStage];
+    if (kind !== need) {
+      this.wrongT = 2;
+      if (kind === 'fire' && game.bossStage === 1) { // fire just feeds a fire-breather — yum
+        AudioSys.sfx('hiccup');
+        Particles.burst(this.cx + this.facing * 70, this.y + 40, 6, { colors: ['#ffe156'], type: 'flame', sp1: 130, l1: 0.4, s1: 9 });
+      } else AudioSys.sfx('boing');
+      return;
+    }
+    if (this.state !== 'chase' && this.state !== 'dizzy') return;
+    if (game.bossStage === 1) { // ice douses the flames
+      this.hits++;
+      this.flashT = 0.4;
+      this.breathT = 0; // sizzle — the wind-up fizzles out
+      AudioSys.sfx('freeze');
+      Particles.burst(this.cx + this.facing * 80, this.y + 50, 12, { colors: ['#d6f4ff', '#fff'], type: 'bubble', sp1: 200, grav: -120, l1: 0.7, s1: 10 });
+      if (this.hits >= 3) { this.hits = 0; this.loseHeart(); }
+    } else if (game.bossStage === 2) { // his own medicine: hiccups!
+      this.hits++;
+      this.hiccupT = 0.8;
+      AudioSys.sfx('hiccup');
+      Particles.burst(this.cx + this.facing * 80, this.y + 30, 8, { colors: ['#c9c9d8', '#fff'], type: 'bubble', sp1: 140, grav: -140, l1: 0.8, s1: 11 });
+      if (this.hits >= 3) { this.hits = 0; this.loseHeart(); }
+    } else if (game.bossStage === 3) {
+      this.setState('rainbowing');
+      AudioSys.sfx('rainbow');
+    }
+  }
+  draw(ctx) {
+    const t = this.t;
+    const friend = this.state === 'friend' || this.state === 'dance';
+    const x = this.x, y = this.y, w = this.w, h = this.h, cx = this.cx, g = this.groundY;
+    const facing = this.facing;
+    const br = this.breath();
+    const inhale = br === 'inhale' ? Math.min(1, (this.breathT - 2.2) / 1.0) : 0;
+    const stomp = this.state === 'chase' && br === 'walk' ? Math.abs(Math.sin(this.t * 7.5)) * 8 : 0;
+    const hic = this.hiccupT > 0 ? Math.sin(this.hiccupT * 30) * 5 : 0;
+    const dance = this.state === 'dance' ? Math.abs(Math.sin(t * 7)) * 14 : 0;
+    const by = g - stomp - dance + hic;
+    ctx.save();
+    // flame stream first (under the body)
+    if (br === 'fire') {
+      const fb = this.flameBox();
+      const prog = Math.min(1, (this.breathT - 3.2) / 0.25);
+      const len = fb.w * prog;
+      const x0 = facing > 0 ? fb.x : fb.x + fb.w - len;
+      for (let fx = 0; fx < len; fx += 26) {
+        ctx.fillStyle = ['#ff6b35', '#ff9f43', '#ffe156'][Math.floor((fx / 26 + t * 10) % 3)];
+        ctx.beginPath();
+        ctx.arc(x0 + fx + 13, fb.y + fb.h / 2 + Math.sin(t * 20 + fx * 0.15) * 7, 18 + Math.sin(fx * 0.09 + t * 12) * 6, 0, TAU);
+        ctx.fill();
+      }
+      // spout pouring from the snout down into the ground-hugging stream
+      const mx0 = cx + facing * 150, my0 = by - 138; // snout tip
+      const mx1 = facing > 0 ? fb.x + 20 : fb.x + fb.w - 20, my1 = fb.y + fb.h / 2;
+      for (let i = 0; i < 4; i++) {
+        const k = i / 3;
+        ctx.fillStyle = ['#ffe156', '#ff9f43', '#ff6b35', '#ff9f43'][i];
+        ctx.beginPath();
+        ctx.arc(lerp(mx0, mx1, k) + Math.sin(t * 18 + i) * 4, lerp(my0, my1, k * k), 10 + k * 8, 0, TAU);
+        ctx.fill();
+      }
+    }
+    // tail
+    ctx.strokeStyle = friend ? '#6cc4a0' : '#4aa890'; ctx.lineWidth = 26; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - facing * 70, by - 70);
+    ctx.quadraticCurveTo(cx - facing * 150, by - 50, cx - facing * 190, by - 100);
+    ctx.stroke();
+    // legs
+    ctx.fillStyle = friend ? '#6cc4a0' : '#4aa890';
+    for (const lx of [-52, 12]) rr(ctx, cx + lx, by - 62, 34, 62, 12), ctx.fill();
+    // THE SAIL — his signature, glows when he's about to breathe fire
+    const sailN = 6;
+    for (let i = 0; i < sailN; i++) {
+      const sx = cx - facing * (i - 2.2) * 30;
+      const sh = 46 + Math.sin(i * 1.1) * 22 + (i === 2 ? 18 : 0);
+      const glow = inhale > 0 ? inhale : (br === 'fire' ? 1 : 0);
+      ctx.fillStyle = friend ? '#ff8fb0' : glow > 0.4 ? '#ff6b35' : '#ff9f43';
+      ctx.beginPath();
+      ctx.moveTo(sx - 16, by - 118);
+      ctx.quadraticCurveTo(sx, by - 118 - sh - glow * 12, sx + 16, by - 118);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = friend ? '#d6559a' : '#c2451a'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    // body
+    const puff = 1 + inhale * 0.18;
+    ctx.fillStyle = friend ? '#6cc4a0' : '#4aa890';
+    ctx.beginPath(); ctx.ellipse(cx, by - 88, 92 * puff, 62 * puff, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = friend ? '#3a8a6a' : '#2a7a64'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#e8f4d0'; // belly
+    ctx.beginPath(); ctx.ellipse(cx + facing * 18, by - 70, 52 * puff, 34 * puff, 0, 0, TAU); ctx.fill();
+    // spots
+    ctx.fillStyle = friend ? '#3a8a6a' : '#2a7a64';
+    for (const [ox, oy] of [[-50, -100], [-14, -128], [40, -104]]) {
+      ctx.beginPath(); ctx.arc(cx + ox, by + oy, 8, 0, TAU); ctx.fill();
+    }
+    // comically small arms
+    ctx.strokeStyle = friend ? '#6cc4a0' : '#4aa890'; ctx.lineWidth = 12;
+    for (const ay of [-96, -80]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + facing * 74, by + ay);
+      ctx.lineTo(cx + facing * 96, by + ay + 10 + Math.sin(t * 5) * 4);
+      ctx.stroke();
+    }
+    // head with long croc snout
+    const hx = cx + facing * 76, hy = by - 150 + hic;
+    ctx.fillStyle = friend ? '#6cc4a0' : '#4aa890';
+    ctx.beginPath(); ctx.ellipse(hx, hy, 40, 32, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = friend ? '#3a8a6a' : '#2a7a64'; ctx.lineWidth = 4; ctx.stroke();
+    const snx = hx + facing * 52;
+    ctx.beginPath(); ctx.ellipse(snx, hy + 12, 34, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    // teeth (goofy, stubby)
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      const tx2 = snx - facing * 20 + facing * i * 16;
+      ctx.beginPath();
+      ctx.moveTo(tx2 - 4, hy + 24); ctx.lineTo(tx2, hy + 31); ctx.lineTo(tx2 + 4, hy + 24);
+      ctx.closePath(); ctx.fill();
+    }
+    // puffed cheeks while inhaling — the boss-sized telegraph
+    if (inhale > 0) {
+      ctx.fillStyle = '#7fd8b8';
+      ctx.beginPath(); ctx.arc(hx + facing * 24, hy + 16, 8 + inhale * 18, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#2a7a64'; ctx.stroke();
+      if (chance(0.35)) Particles.burst(hx, hy - 40, 1, { colors: ['#ffe156'], type: 'sparkle', sp1: 25, grav: -40, l1: 0.4, s1: 8, up: 0 });
+    }
+    // face
+    let mood = 'happy';
+    if (this.state === 'dizzy') mood = 'dizzy';
+    else if (friend) mood = 'grin';
+    else if (br === 'fire' || inhale > 0.4) mood = 'surprised';
+    drawFace(ctx, hx - facing * 6, hy - 4, 30, mood, t, 71, facing, 0);
+    if (this.state === 'dizzy') {
+      for (let i = 0; i < 3; i++) {
+        const a = t * 4 + i * TAU / 3;
+        ctx.fillStyle = '#ffe156';
+        starPath(ctx, hx + Math.cos(a) * 52, hy - 40 + Math.sin(a) * 10, 9, 4.5);
+        ctx.fill();
+      }
+    }
+    // befriended: a big flower tucked behind his ear
+    if (friend) {
+      const fx2 = hx - facing * 34, fy2 = hy - 26;
+      ctx.fillStyle = '#ff8fb0';
+      for (let i = 0; i < 6; i++) {
+        const a = i * TAU / 6 + t * 0.4;
+        ctx.beginPath(); ctx.arc(fx2 + Math.cos(a) * 11, fy2 + Math.sin(a) * 11, 7, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(fx2, fy2, 7, 0, TAU); ctx.fill();
+    }
+    // ice-hit flash
+    if (this.flashT > 0) {
+      ctx.save();
+      ctx.globalAlpha = this.flashT * 1.4;
+      ctx.fillStyle = '#bfe8ff';
+      ctx.beginPath(); ctx.ellipse(cx, by - 88, 98, 68, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    // boss hearts
+    if (!friend && game.bossStage > 0 && this.state !== 'rainbowing') {
+      for (let i = 0; i < 3; i++) {
+        drawHeartIcon(ctx, cx - 44 + i * 44, y - 64 + Math.sin(t * 3 + i) * 3, 26, i < this.hp, t + i);
+      }
+    }
+    // "wrong power" hint bubble
+    if (this.wrongT > 0 && game.bossStage > 0) {
+      const need = game.bossPlan[game.bossStage];
+      const hy2 = y - 128 + Math.sin(t * 6) * 6;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.beginPath(); ctx.arc(cx, hy2, 40, 0, TAU); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, hy2 + 36); ctx.lineTo(cx, hy2 + 58); ctx.lineTo(cx + 12, hy2 + 34);
+      ctx.closePath(); ctx.fill();
+      drawBlock(ctx, cx - 26, hy2 - 26, 52, need, t);
+    }
+  }
+}

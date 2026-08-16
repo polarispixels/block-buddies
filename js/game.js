@@ -114,7 +114,7 @@ game.startLevel = function (n) {
   game.checkpoint = null;
   game.lastSafe = { x: lv.playerStart.x, y: lv.playerStart.y };
   game.friendCount = 0;
-  game.zombie = null; game.bossStage = 0; game.bossPickups = [];
+  game.zombie = null; game.bossStage = 0; game.bossPickups = []; game.spinoWalls = [];
   game.chest = null; game.endPhase = null; game.cut = null; game.caught = null;
   game.raceDone = false; game.cheerT = 0; game.crowned = false; game.mazeDone = false;
   game.cam.x = 0;
@@ -191,7 +191,21 @@ game.startCloudCatch = function () {
 };
 game.startBossIntro = function () {
   const G = 620;
-  if (game.level.n === 6) {
+  if (game.level.n === 10) {
+    game.zombie = new Spino(5150, G); // same slot as the zombie — same interface
+    game.zombie.state = 'intro';
+    game.bossPlan = { 1: 'ice', 2: 'fire', 3: 'rainbow' };
+    game.arenaL = 4430; game.arenaR = 5440;
+    // vine-covered rocks seal the valley on BOTH sides — the way onward opens
+    // only once the spinosaurus is a friend
+    const wl = { x: 4392, y: G - 260, w: 56, h: 260, pile: true };
+    const wr = { x: 5450, y: G - 260, w: 56, h: 260, pile: true };
+    game.level.solids.push(wl, wr);
+    game.spinoWalls = [wl, wr];
+    Particles.burst(4420, G - 180, 12, { colors: ['#8a9a7a', '#57b84a'], type: 'block', sp1: 300, l1: 1, s1: 12, grav: 900 });
+    Particles.burst(5478, G - 180, 12, { colors: ['#8a9a7a', '#57b84a'], type: 'block', sp1: 300, l1: 1, s1: 12, grav: 900 });
+    game.cut = { name: 'spinointro', t: 0 };
+  } else if (game.level.n === 6) {
     game.zombie = new Magma(4720, G); // same slot as the zombie — same interface
     game.zombie.state = 'intro';
     game.bossPlan = { 1: 'ice', 2: 'power', 3: 'rainbow' };
@@ -264,6 +278,7 @@ game.jungleWin = function () {
   Particles.candyBurst(gs.x, gs.y - 30, 14);
   // every dino and spider in the valley joins the party
   for (const sp of game.spiders) if (sp.state === 'angry' && sp.befriend) sp.befriend();
+  if (game.zombie) game.zombie.setState('dance');
 };
 game.finishRace = function () {
   if (game.raceDone) return;
@@ -340,6 +355,26 @@ function updateCut(dt) {
     }
     const tx = clamp(z.cx - W * 0.55, 0, game.level.w - W);
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'spinointro') {
+    const t = c.t;
+    if (t < 1.6) { // stomps in from the deep valley
+      z.x = lerp(5250, 4950, t / 1.6);
+      z.facing = -1;
+      if (Math.floor(t * 4) !== Math.floor((t - dt) * 4)) {
+        AudioSys.sfx('thud'); game.shake = Math.max(game.shake, 0.25);
+        Particles.burst(z.cx, z.groundY, 6, { colors: ['#7a5230', '#57b84a'], sp1: 130, l1: 0.5, s1: 8, up: 60 });
+      }
+    }
+    else if (t < 2.8) { // the big roar, sail flaring
+      if (!c.roared) { c.roared = true; AudioSys.sfx('roar'); game.shake = 0.5; }
+      if (chance(0.4)) Particles.burst(z.cx - 90, z.y - 40, 2, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 200, grav: -120, l1: 0.5, s1: 11 });
+    }
+    else if (t < 3.7) { // ...then a giant hiccup. Very fierce.
+      if (!c.hicced) { c.hicced = true; AudioSys.sfx('hiccup'); z.hiccupT = 0.8; }
+    }
+    else { game.cut = null; z.setState('chase'); game.setBossStage(1); }
+    const tx = clamp(z.cx - W * 0.55, 0, game.level.w - W);
+    game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-4 * dt));
   } else if (c.name === 'eruption') {
     game.shake = Math.max(game.shake, 0.45);
     if (c.t > 0.5) {
@@ -407,7 +442,7 @@ function updateCamera(dt) {
 function updatePlay(dt) {
   const lv = game.level, pl = game.player;
   if (game.cut) { updateCut(dt); return; }
-  if (lv.boss && !game.zombie && pl.x > 3900) { game.startBossIntro(); return; }
+  if (lv.boss && !game.zombie && pl.x > (lv.bossX || 3900)) { game.startBossIntro(); return; }
 
   // treasure chest opening gets first claim on Space
   if (game.endPhase === 'prompt' && justP.Space && game.chest && Math.abs(pl.cx - game.chest.cx) < 150) {
@@ -423,7 +458,8 @@ function updatePlay(dt) {
   // coronation happens when you reach the castle
   if (lv.castleX && !game.crowned && pl.x > lv.castleX) { game.startCoronation(); return; }
   // touching the golden star wins the maze
-  if (lv.goalStar && !game.mazeDone && Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) {
+  if (lv.goalStar && !game.mazeDone && (!game.zombie || game.zombie.state === 'friend' || game.zombie.state === 'dance') &&
+      Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) {
     if (lv.n === 10) game.jungleWin(); else game.mazeWin();
   }
   if (game.endPhase !== 'party' || lv.n >= 7) pl.update(dt); // victory laps and flying allowed!
@@ -994,6 +1030,11 @@ function renderWorld() {
     if (game.cut.t >= 1.5 && game.cut.t < 2.7) outlineText(ctx, 'BLORP!', z.cx, z.y - 90, 62, '#ff9f43', '#fff');
     else if (game.cut.t >= 2.7 && game.cut.t < 3.5) outlineText(ctx, 'AH-CHOO!', z.cx, z.y - 90, 48, '#ffe156', '#8a2a10');
     else if (game.cut.t >= 3.5 && game.cut.t < 4.6) outlineText(ctx, '?!', z.cx, z.y - 90, 54, '#fff', '#8a2a10');
+  }
+  if (game.cut && game.cut.name === 'spinointro' && game.zombie) {
+    const z = game.zombie;
+    if (game.cut.t >= 1.7 && game.cut.t < 2.7) outlineText(ctx, 'RAWR!', z.cx, z.y - 100, 64, '#ff6b35', '#fff');
+    else if (game.cut.t >= 2.9 && game.cut.t < 3.6) outlineText(ctx, '...HIC!', z.cx, z.y - 100, 46, '#ffe156', '#2a7a64');
   }
   if (game.endPhase === 'prompt' && game.chest && game.chest.landed && !game.chest.open) {
     drawSpacebar(ctx, game.chest.cx, game.chest.y - 70, 120, t);

@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.5.0</span>
+  <span class="badge">v1.6.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -194,8 +194,11 @@ Boarding happens by walking or driving into a <code>ParkedTruck</code> / <code>P
 <code>lv.pickups</code>; boarding resizes the hitbox, and respawns keep the vehicle. Each level resets to the wheel.</p>
 
 <h3>Bosses</h3>
-<p>Both bosses share one slot — <code>game.zombie</code> holds a <code>Zombie</code> <em>or</em> a
-<code>Magma</code> (same interface: <code>update</code>/<code>draw</code>/<code>hitBy</code>/<code>setState</code>/<code>hp</code>/<code>groundY</code>).
+<p>All three bosses share one slot — <code>game.zombie</code> holds a <code>Zombie</code>,
+<code>Magma</code>, or <code>Spino</code> (same interface: <code>update</code>/<code>draw</code>/<code>hitBy</code>/<code>setState</code>/<code>hp</code>/<code>groundY</code>).
+The boss trigger x is per-level via <code>lv.bossX</code> (default 3900). The Spinosaurus seals its
+arena on <em>both</em> sides (<code>game.spinoWalls</code>, broken on friendship) since the level
+continues past it.
 <code>game.bossPlan</code> maps each stage to its required power; wrong hits show a hint bubble and do no harm.
 Boss power-block pickups respawn via <code>bossKind</code>. The arena seals behind a rock wall during the fight.</p>
 
@@ -406,7 +409,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Objective</dt><dd>Cross the jungle (jumping the fire-breathers' flames), discover the Ancient Jungle Gate, find the three lost dinosaur eggs and return them to the Nest Shrine to earn the <strong>Dino Key</strong>, open the gate, and touch the golden star in the Secret Dino Valley.</dd>
   <dt>Enemies</dt><dd>5 <strong>fire-breathing dinos</strong> (new — see below) in four escalating encounters: a lone tutorial dino on open ground, one beside platforms, a staggered-timing pair, and one guarding the shrine terrace. Plus 2 vine spiders (hang spiders dangling from the canopy).</dd>
   <dt>New here</dt><dd>The <strong><code>FireBreather</code></strong>: a squat orange dino whose cycle is idle → <em>inhale (cheeks puff huge — the unmissable "fire is coming!" telegraph)</em> → a low horizontal flame stream. The flame hugs the ground so <em>jumping over it</em> is the natural answer; touching it costs one heart with a gentle shove, standard invulnerability applies. Ice freezes him (pausing the fire), rainbow befriends him for good, and fireballs just make him burp. Also new: the <strong>Three Lost Dinosaur Eggs</strong> — the terrace holds the Dinosaur Nest Shrine (a vine-wrapped chest with three empty nest bowls showing ghost eggs), and the eggs are scattered along the jungle: one on a low leaf platform, one high in the canopy reached by a <strong>giant bouncy mushroom</strong>, and one bobbing right in the shrine guard's flame path (time the fire cycle — or freeze/befriend the guard). Returning with all three runs the nest ceremony, complete with a one-second gag where an egg cracks and a baby eye peeks out. Friendly dinosaurs everywhere: two long-necks that bend their heads toward the hero and blow hearts, a baby triceratops that wanders, sniffs flowers, and hops excitedly when approached, and a goofy T-Rex in the valley with comically tiny arms who stomps, roars… and then sneezes.</dd>
-  <dt>Ending</dt><dd>The Ancient Jungle Gate (mossy stone, dino carvings, flanking statues, huge golden keyhole) grinds and shakes when bumped and thinks of a <em>green dino-head key</em>. Bringing the Dino Key makes the stone slab rise into the lintel under falling leaves; the valley's golden star then starts the <strong>SECRET DINO VALLEY</strong> party (befriending every remaining creature) → party exit returns to the title.</dd>
+  <dt>Ending</dt><dd>The Ancient Jungle Gate (mossy stone, dino carvings, flanking statues, huge golden keyhole) grinds and shakes when bumped and thinks of a <em>green dino-head key</em>. Bringing the Dino Key makes the stone slab rise into the lintel under falling leaves — and then the <strong>GIANT SPINOSAURUS</strong> stomps in, roars (and hiccups), and vine-rocks seal the valley on both sides. Boss plan: ❄️ ice ×3 douses his ground-hugging flame breath (cheeks + sail glow during the inhale telegraph; jump the flame like the little fire-dinos taught you) → 🔥 fire ×3 gives him the hiccups (his own medicine) → 🌈 rainbow befriends him: flower behind the ear, crumbling walls, and confetti breath forever after. The valley's golden star (reachable only once he's a friend) starts the <strong>SECRET DINO VALLEY</strong> party — the Spinosaurus dances → party exit returns to the title.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2 (befriending a fire-breather is a valid strategy!), ice ×1, heart ×2, candy arcs tracing the jump path over every flame.</dd>
   <dt>Cameos</dt><dd>The mission grammar from Mountain World (locked thing → find item → return) with every piece re-themed via configuration; the hang spider reappears as a vine spider; the sequence-puzzle symbols are the familiar power blocks; the golden goal star from Space Maze ends the level; leaf platforms reuse Unicorn Forest's branch drawing.</dd>
 </dl>
@@ -437,7 +440,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 169 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 180 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -486,7 +489,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.5.0 · built for Jack ·
+  Block Buddies v1.6.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

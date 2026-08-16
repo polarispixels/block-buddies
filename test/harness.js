@@ -648,6 +648,39 @@ frames(150);
 check('ancient gate rises open', MIS2().gate.state === 'open' && MIS2().gate.solid.broken === true && MIS2().state === 'done');
 frames(60, { ArrowRight: 1 });
 check('hero enters the secret valley', G().player.cx > 4300);
+// ---------------- the SPINOSAURUS guards the valley ----------------
+frames(30, { ArrowRight: 1 }); // cross the boss trigger
+check('spinosaurus intro begins', vm.runInContext("!!(game.cut && game.cut.name === 'spinointro')", sandbox) && G().zombie !== null);
+frames(280); // stomp in, roar, hiccup
+check('spino stage 1 begins (needs ice)', G().bossStage === 1 && G().bossPlan[1] === 'ice' && G().zombie.state === 'chase');
+check('valley sealed on both sides', vm.runInContext('game.spinoWalls.length', sandbox) === 2 && !vm.runInContext('game.spinoWalls[0].broken || game.spinoWalls[1].broken', sandbox));
+// his flame hurts a grounded hero but stays jumpably low
+vm.runInContext("game.zombie.x = 5100; game.zombie.facing = -1; game.zombie.breathT = 3.15; game.player.hearts = 3; game.player.inv = 0;", sandbox);
+put2(4880, 620 - 94);
+frames(20);
+check('spino flame costs one heart', G().player.hearts === 2);
+check('spino flame stays jumpably low', (function () {
+  const fb = vm.runInContext('game.zombie.flameBox()', sandbox);
+  return fb.y >= 545 && fb.h <= 70;
+})());
+vm.runInContext("game.zombie.setState('chase'); game.zombie.hitBy('fire')", sandbox);
+check('wrong power shows a hint, no progress', G().zombie.wrongT > 0 && G().zombie.hp === 3);
+// death during the boss respawns inside the sealed valley
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(10);
+check('boss death respawns inside the valley arena', G().state === 'play' && Math.abs(G().player.x - (G().arenaL + 20)) < 2);
+vm.runInContext("game.zombie.hitBy('ice'); game.zombie.hitBy('ice'); game.zombie.hitBy('ice')", sandbox);
+check('three ice hits douse the flames -> stage 2 (needs fire)', G().bossStage === 2 && G().zombie.hp === 2);
+frames(150); // dizzy passes
+vm.runInContext("game.zombie.hitBy('fire'); game.zombie.hitBy('fire'); game.zombie.hitBy('fire')", sandbox);
+check('three fire hiccups -> stage 3 (needs rainbow)', G().bossStage === 3 && G().zombie.hp === 1);
+frames(150);
+vm.runInContext("game.zombie.hitBy('rainbow')", sandbox);
+frames(170); // rainbow transformation
+check('rainbow befriends the spinosaurus', G().zombie.state === 'friend' && G().zombie.hp === 0);
+check('valley walls crumble for a friend', vm.runInContext('game.spinoWalls[0].broken && game.spinoWalls[1].broken', sandbox) === true);
 put2(5560, 620 - 94);
 frames(20);
 check('valley golden star starts the party', G().endPhase === 'party');

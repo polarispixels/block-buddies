@@ -8,6 +8,29 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.6.0] - 2026-08-16
+
+### Added
+- **Dino Jungle boss: the GIANT SPINOSAURUS.** Passing through the opened
+  Ancient Gate now triggers a boss fight in the Secret Dino Valley (same shared
+  boss slot and interface as the Zombie and King Magma). Vine-covered rocks
+  seal the valley on BOTH sides; the golden star waits beyond.
+  - Intro cutscene: he stomps in shaking the ground, ROARS with his sail
+    flaring... then hiccups.
+  - Stage 1 (❄️ ice ×3): he chases and breathes boss-sized fire — cheeks and
+    sail glow during the inhale telegraph, and the flame hugs the ground so
+    jumping clears it. Each ice hit douses the wind-up with a steam-fizzle.
+  - Stage 2 (🔥 fire ×3): flames doused, he throws a stompy tantrum; fireballs
+    give him the hiccups — his own medicine.
+  - Stage 3 (🌈 rainbow): the transformation. He becomes a friend, gets a
+    flower behind his ear, the valley walls crumble, and from then on he
+    breathes CONFETTI. He dances at the valley party.
+  - Wrong powers show the icon hint bubble (fire in stage 1 just feeds him);
+    deaths respawn inside the sealed arena; boss hearts shown as always.
+- 11 harness checks: intro trigger, stage plan, arena sealing, flame damage +
+  jumpable-low flame, wrong-power hint, in-arena respawn, all three stages,
+  befriending, wall crumble, and the star gated behind friendship.
+
 ## [1.5.0] - 2026-08-16
 
 Both adventure missions redesigned from trivial walk-through sequences into
