@@ -293,8 +293,34 @@ check('halfway platform holds the hero', Math.abs(G().player.y - (300 - 94)) < 3
 tap('ArrowUp');
 frames(55, { ArrowRight: 1 });
 check('hop from the stepping-stone lands on the cave roof', G().player.x > 2990 && Math.abs(G().player.y + 94 - 260) < 4);
-frames(160, { ArrowRight: 1 });
-check('roof route crosses the cave and rejoins the path', G().player.x > 3660 && G().player.y + 94 > 340);
+frames(60, { ArrowRight: 1 });
+check('roof route walks above the cave', G().player.x > 3200 && Math.abs(G().player.y + 94 - 260) < 6);
+frames(60, { ArrowRight: 1 }); // ...onward, into the sparkling cave mouth
+check('walking the roof discovers the SECRET ASCENT', G().level.n === 'ascent');
+frames(150);
+check('secret ascent plays with its own fresh hero', G().state === 'play' && G().player.hearts === 3);
+put(1720, 1740 - 94);
+frames(30);
+check('diagonal camera tracks up and to the right', G().cam.x > 300 && G().cam.y > 100 && G().cam.y < 1600);
+put(1935, 1700 - 94);
+let mAsc = 1e9;
+for (let i = 0; i < 70; i++) { frames(1); mAsc = Math.min(mAsc, G().player.y); }
+check('ascent spring launches up the cliff face', mAsc < 1350);
+check('the dead-end nook hides a peeking dino', vm.runInContext('!!game.level.decor.dinoPeek', sandbox));
+put(2590 - 28, 960 - 94);
+frames(5); // grab the power block on the upper terrace
+frames(70, { ArrowRight: 1 }); // smash through the cracked wall
+check('power smash opens the final stretch', vm.runInContext('game.level.solids.some(s => s.breakable && s.broken)', sandbox) === true);
+put(1850, 330 - 94);
+frames(20);
+check('secret summit star starts the celebration', G().endPhase === 'party' && G().level.n === 'ascent');
+check('secret completion is remembered', G().miniDone.ascent === true && sandbox.localStorage.getItem('ffbg_mini').includes('ascent'));
+frames(320);
+tap('Space');
+frames(5);
+check('exiting returns to Mountain World with mission intact', G().level.n === 4 && G().state === 'play' && MIS().puzzle.count() === 1 && TOK(1).taken);
+frames(25);
+check('the door does not instantly re-enter', G().level.n === 4);
 // dying must not un-collect anything
 vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
 frames(60);
@@ -719,6 +745,70 @@ frames(320);
 tap('Space');
 frames(5);
 check('jungle party exit returns to title', G().state === 'title');
+
+// ---------------- mini-game: CLOUD CLIMB ----------------
+vm.runInContext('game.startLevel(3)', sandbox);
+frames(150);
+vm.runInContext('game.level.marker = 42', sandbox); // prove the host level object survives
+put(2480 - 28, 560 - 94);
+frames(10);
+check('cloud door leads into CLOUD CLIMB', G().level.n === 'cloudclimb');
+frames(150);
+check('cloud climb plays', G().state === 'play');
+put(200, 3340 - 94);
+tap('ArrowUp');
+frames(55);
+check('one-way clouds: jump up through, land on top', Math.abs(G().player.y + 94 - 3200) < 5);
+put(930, 2680 - 94);
+let mSup = 1e9;
+for (let i = 0; i < 80; i++) { frames(1); mSup = Math.min(mSup, G().player.y); }
+put(225, 2680 - 94);
+let mNorm = 1e9;
+for (let i = 0; i < 80; i++) { frames(1); mNorm = Math.min(mNorm, G().player.y); }
+check('super cloud launches far higher than a normal cloud', mSup < mNorm - 250);
+put(920, 1910 - 94);
+frames(60);
+check('side cloud launches up and across', G().player.x < 700);
+put(830, 340 - 94);
+frames(20);
+check('cloud summit starts the celebration', G().endPhase === 'party' && G().level.n === 'cloudclimb' && G().miniDone.cloudclimb === true);
+frames(320);
+tap('Space');
+frames(5);
+check('returning lands back in Cloud World, same level object', G().level.n === 3 && G().level.marker === 42 && G().state === 'play');
+
+// ---------------- mini-game: UNICORN SKY FLIGHT ----------------
+vm.runInContext('game.startLevel(8)', sandbox);
+frames(150);
+put(4480 - 28, 1000 - 94);
+frames(10);
+check('rainbow ring leads into SKY FLIGHT', G().level.n === 'skyflight');
+frames(150);
+check('sky flight plays on unicorn wings', G().state === 'play' && G().player.vehicle === 'unicorn' && G().level.flight === true);
+const yF0 = G().player.y;
+frames(50, { ArrowUp: 1 });
+check('holding Up rises', G().player.y < yF0 - 120);
+const yF1 = G().player.y;
+frames(60);
+check('releasing Up drifts gently down', G().player.y > yF1 + 40);
+frames(40, { ArrowLeft: 1 });
+check('steering banks sideways', G().player.x < 560);
+put(640 - 28, 3400 - 47);
+frames(6);
+check('rainbow stars collect into the tally', G().flightStars >= 1);
+check('weave bars have opposite openings', vm.runInContext('game.level.solids.some(s => s.y === 1500 && s.x === 0) && game.level.solids.some(s => s.y === 1200 && s.x === 400)', sandbox) === true);
+put(640 - 28, 380);
+frames(20);
+check('reaching the moon starts the celebration', G().endPhase === 'party' && G().level.n === 'skyflight' && G().miniDone.skyflight === true);
+frames(320);
+tap('Space');
+frames(5);
+check('flight exits back to the forest', G().level.n === 8 && G().state === 'play');
+frames(20, { ArrowUp: 1 });
+frames(70);
+check('no flight physics leak back in the forest', Math.abs(G().player.y + 94 - 1000) < 8 && G().player.vehicle !== 'unicorn');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
 
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));

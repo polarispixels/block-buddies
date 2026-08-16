@@ -8,6 +8,40 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.7.0] - 2026-08-16
+
+### Added
+- **Mini-games & sublevels.** Worlds can now contain doors into smaller
+  gameplay spaces. The shared system: `SubDoor` entrances (cloud swirl / cave
+  mouth / rainbow ring), string-id levels, `enterSub`/`exitSub` that stash and
+  restore the ENTIRE host state (live level object, the Player instance,
+  camera, music) so mission progress survives and no sublevel physics can leak
+  out, goal-star finales with per-game party headlines, replayable doors, and
+  completion persisted in `ffbg_mini` (gold star over a finished door).
+- **Cloud Climb** (door on Cloud World's middle island): a pure vertical climb
+  through stacked one-way clouds with checkpointed rest-ledges. Three bouncer
+  flavors, now visually distinct game-wide: pink = bounce, GOLD STAR = super
+  bounce, BLUE ARROW = sideways launch (new `bounceVx` + an airborne momentum
+  window). Route choice: the tempting gold spring loops back; the blue arrow
+  is the way on. Summit: cloud castle + golden star; a snoozing cloud-kitten
+  hides off-route.
+- **Mountain Secret Ascent** (sparkling cave mouth at the end of the cave-roof
+  route): a hidden diagonal climb of rock terraces marching up-and-right, with
+  a cliff spring, a route choice whose dead-end nook hides a peeking baby dino,
+  and a cracked-wall/power-block reprise. Summit: giant golden chest, candy
+  mountain, and a huge waving yeti.
+- **Unicorn Sky Flight** (rainbow ring in Unicorn Forest): a new flight model —
+  HOLD Up to rise, release to drift down, steer with Left/Right — through a
+  tall sky of cloud bars, balloons, and route choices, collecting rainbow
+  stars into a wordless five-star tally (reaching THE MOON always succeeds;
+  all five earns a bigger celebration). A sixth secret star floats beside a
+  spider drifting on a balloon.
+- 27 new harness checks: all three entrances, vertical/diagonal cameras,
+  one-way climb-through, super vs normal vs side bounces, flight rise/fall/
+  steer, star collection, summits, persistence, host-state restoration
+  (mission progress intact after a sublevel), door re-entry protection, and a
+  flight-physics-leak regression (215 checks total).
+
 ## [1.6.3] - 2026-08-16
 
 ### Fixed

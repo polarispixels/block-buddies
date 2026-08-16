@@ -10,7 +10,11 @@ const LEVEL_META = {
   7: { name: 'MONSTER TRUCK RALLY', theme: 'dirt', music: 'dirt' },
   8: { name: 'UNICORN FOREST', theme: 'forest', music: 'forest' },
   9: { name: 'SPACE MAZE', theme: 'space', music: 'space' },
-  10: { name: 'DINO JUNGLE', theme: 'jungle', music: 'jungle' }
+  10: { name: 'DINO JUNGLE', theme: 'jungle', music: 'jungle' },
+  // sublevels / mini-games (string ids — not in the title picker)
+  cloudclimb: { name: 'CLOUD CLIMB', theme: 'cloud', music: 'cloud' },
+  ascent: { name: 'SECRET ASCENT', theme: 'mountain', music: 'mountain' },
+  skyflight: { name: 'SKY FLIGHT', theme: 'cloud', music: 'forest' }
 };
 
 function newLevel(n) {
@@ -23,6 +27,7 @@ function newLevel(n) {
     ramps: null, turbos: null, finishX: null,
     centipedes: [], castleX: null,
     space: false, mazeGrid: null, goalStar: null, mission: null,
+    subDoors: [], flight: false,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -38,7 +43,7 @@ function addPlat(lv, x, y, w, opts = {}) {
   // platform that looks like a walk-through one is just a nuisance.
   const h = opts.h || 36;
   const oneWay = opts.solid ? false : (opts.oneWay || h < 60);
-  lv.solids.push({ x, y, w, h, oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, plat: true });
+  lv.solids.push({ x, y, w, h, oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, bounceVx: opts.bounceVx, plat: true });
 }
 function addBlockPile(lv, x, top, cols, rows) {
   lv.solids.push({ x, y: top - rows * 48, w: cols * 48, h: rows * 48, pile: true });
@@ -158,6 +163,7 @@ function buildLevel(n) {
     spider(lv, 2450, 560, 'walk', { range: 120 });
     spider(lv, 3780, 570, 'jump');
     spider(lv, 3950, 570, 'walk', { range: 100 });
+    lv.subDoors.push(new SubDoor(2480, 560, 'cloudclimb', 'cloud')); // CLOUD CLIMB entrance
     lv.checks.push(new Checkpoint(2350, 560));
     lv.checks.push(new Checkpoint(3750, 570));
     lv.gate = new Gate(4520, 570);
@@ -231,6 +237,8 @@ function buildLevel(n) {
     // right so the pocket can't be entered from the far side.
     addWallBreak(lv, 3620, 572, 4);
     lv.solids.push({ x: 3720, y: 350, w: 56, h: 222, pile: true });
+    // the roof route's real secret: a sparkling cave mouth up on the overhang
+    lv.subDoors.push(new SubDoor(3580, 260, 'ascent', 'cave'));
     const mGate = new MissionGate(4480, 524);
     lv.solids.push(mGate.solid);
     lv.mission = new Mission('goldenkey',
@@ -396,6 +404,7 @@ function buildLevel(n) {
     candyArc(lv, 3500, 4150, 300, 620, 8);
     candyRow(lv, 4280, 4390, 440, 3);
     candyRow(lv, 4800, 5000, G8 - 60, 3);
+    lv.subDoors.push(new SubDoor(4480, G8, 'skyflight', 'rainbow')); // SKY FLIGHT ring
     lv.centipedes.push(new Centipede(1250, G8, 5, 260));
     lv.centipedes.push(new Centipede(2750, G8, 6, 300));
     lv.centipedes.push(new Centipede(3950, G8, 5, 240));
@@ -538,6 +547,143 @@ function buildLevel(n) {
     lv.decor.eggsDecor = [{ x: 3290, s: 0.8 }, { x: 3335, s: 0.6 }];
     lv.decor.butterflies = [];
     for (let i = 0; i < 8; i++) lv.decor.butterflies.push({ x: rand(200, 5600), y: rand(250, 560), c: randi(0, 3), sp: rand(20, 50) * (chance(0.5) ? 1 : -1) });
+  }
+
+  if (n === 'cloudclimb') { // ---------------- CLOUD CLIMB (vertical mini-game)
+    lv.w = 1280; lv.h = 3400;
+    lv.playerStart = { x: 90, y: 3240 };
+    addPlat(lv, 0, 3340, 1280, { h: 80, solid: true }); // soft cloud floor
+    // teach: a ladder of one-way clouds + first bouncy cloud
+    addPlat(lv, 140, 3200, 190);
+    addPlat(lv, 430, 3080, 190);
+    addPlat(lv, 720, 2960, 190);
+    addPlat(lv, 430, 2840, 220);
+    addPlat(lv, 160, 2720, 500, { h: 60, solid: true }); // wide rest ledge
+    lv.checks.push(new Checkpoint(340, 2720));
+    candyRow(lv, 180, 760, 3160, 4);
+    candyArc(lv, 430, 720, 2760, 2920, 4);
+    // middle: two bounce flavors, two routes up
+    addPlat(lv, 850, 2720, 200); // small cloud holding the SUPER cloud
+    addPlat(lv, 880, 2680, 120, { bouncy: true, h: 40, bounceVy: -1500 }); // SUPER (golden glow route)
+    addPlat(lv, 180, 2680, 110, { bouncy: true, h: 40 }); // normal bounce route
+    addPlat(lv, 90, 2450, 240);   // normal bounce lands here...
+    addPlat(lv, 360, 2330, 190);  // ...then ladder up
+    addPlat(lv, 630, 2210, 190);
+    addPlat(lv, 760, 2050, 260);  // both routes meet here (super lands directly)
+    candyArc(lv, 880, 1000, 2100, 2620, 5);
+    addPlat(lv, 340, 1950, 520, { h: 60, solid: true }); // rest ledge B
+    lv.checks.push(new Checkpoint(520, 1950));
+    // route choice: SIDE cloud (arrow) is the way on; SUPER here loops back
+    addPlat(lv, 880, 1910, 110, { bouncy: true, h: 40, bounceVy: -1150, bounceVx: -360 }); // side-launcher
+    addPlat(lv, 180, 1910, 110, { bouncy: true, h: 40, bounceVy: -1500 }); // tempting super...
+    addPlat(lv, 60, 1250, 210);  // ...lands on a candy dead-end (drop back down)
+    candyRow(lv, 90, 230, 1200, 3);
+    addPlat(lv, 250, 1450, 280); // side-launch target: the route onward
+    candyArc(lv, 550, 850, 1450, 1800, 5);
+    addPlat(lv, 610, 1330, 190);
+    addPlat(lv, 890, 1210, 210);
+    addPlat(lv, 460, 1080, 460, { h: 60, solid: true }); // rest ledge C
+    lv.checks.push(new Checkpoint(650, 1080));
+    // easter egg: a far-off snoozing cloud with candy, off the right edge
+    addPlat(lv, 1020, 940, 170);
+    addPlat(lv, 1090, 800, 180);
+    lv.decor.snoozeCloud = { x: 1180, y: 760 };
+    candyRow(lv, 1110, 1240, 750, 3);
+    // final: SUPER cloud straight to the summit
+    addPlat(lv, 300, 1040, 120, { bouncy: true, h: 40, bounceVy: -1500 });
+    addPlat(lv, 150, 340, 820, { h: 80, solid: true }); // the sky summit
+    lv.decor.skyCastle = { x: 420, y: 340 };
+    lv.goalStar = { x: 850, y: 250 };
+    candyRow(lv, 260, 800, 290, 5);
+    lv.decor.clouds = []; lv.decor.birds = [];
+    for (let i = 0; i < 22; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(100, lv.h - 200), s: rand(0.6, 1.5) });
+    for (let i = 0; i < 4; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(300, 2800), sp: rand(40, 90) });
+  }
+
+  if (n === 'ascent') { // ---------------- MOUNTAIN SECRET ASCENT (diagonal)
+    lv.w = 3000; lv.h = 2400;
+    lv.playerStart = { x: 100, y: 2200 };
+    addGround(lv, 0, 3000, 2340);
+    // rocky terraces marching up and to the right
+    addPlat(lv, 260, 2220, 260, { h: 60, solid: true });
+    addPlat(lv, 610, 2100, 260, { h: 60, solid: true });
+    addPlat(lv, 960, 1980, 260, { h: 60, solid: true });
+    addPlat(lv, 1310, 1860, 260, { h: 60, solid: true });
+    addPlat(lv, 1560, 1740, 460, { h: 60, solid: true }); // wide rest terrace
+    lv.checks.push(new Checkpoint(1720, 1740));
+    candyArc(lv, 300, 1400, 1800, 2200, 6);
+    // spring up the cliff face
+    addPlat(lv, 1900, 1700, 90, { bouncy: true, h: 40, bounceVy: -1150 });
+    addPlat(lv, 1720, 1320, 320); // spring lands here (one-way: bounce up through it)
+    // ROUTE CHOICE: left ladder dead-ends at a cosy secret nook (mini dino!),
+    // the candy trail marks the true route up-right
+    addPlat(lv, 1450, 1200, 180);
+    addPlat(lv, 1180, 1080, 180);
+    addPlat(lv, 900, 960, 240, { h: 60, solid: true }); // dead-end nook
+    lv.decor.dinoPeek = { x: 1000, y: 960 };
+    candyRow(lv, 930, 1090, 910, 3);
+    addPlat(lv, 2130, 1200, 180); // the true route (candy-marked)
+    addPlat(lv, 2400, 1080, 180);
+    candyArc(lv, 2100, 2500, 1000, 1240, 5);
+    addPlat(lv, 2520, 960, 380, { h: 60, solid: true }); // upper terrace
+    lv.checks.push(new Checkpoint(2680, 960));
+    // learned mechanic: a cracked wall seals the final stretch
+    pick(lv, 2590, 890, 'power');
+    addWallBreak(lv, 2860, 960, 3);
+    addPlat(lv, 2760, 820, 170); // behind the wall, a ladder climbs up-left
+    addPlat(lv, 2500, 700, 180);
+    addPlat(lv, 2240, 580, 180);
+    addPlat(lv, 1980, 460, 180);
+    candyArc(lv, 2000, 2760, 380, 740, 6);
+    addPlat(lv, 1150, 330, 900, { h: 70, solid: true }); // the secret summit
+    lv.decor.secretChamber = { x: 1500, y: 330 };
+    candyRow(lv, 1250, 1450, 280, 4); // candy mound overflow
+    candyRow(lv, 1300, 1400, 240, 3);
+    lv.goalStar = { x: 1900, y: 230 };
+    lv.decor.pines = []; lv.decor.peaks = true;
+    for (let x = 120; x < 2900; x += rand(350, 700)) lv.decor.pines.push({ x, s: rand(0.8, 1.3) });
+  }
+
+  if (n === 'skyflight') { // ---------------- UNICORN SKY FLIGHT (hold Up to rise)
+    lv.w = 1280; lv.h = 4000;
+    lv.flight = true;
+    lv.playerStart = { x: 580, y: 3800 };
+    addPlat(lv, 0, 3920, 1280, { h: 80, solid: true }); // launch cloud
+    // teach: open rise with a candy trail and the first star
+    candyRow(lv, 560, 720, 3600, 3);
+    pick(lv, 640, 3400, 'star');
+    // steering: offset cloud bars to weave around
+    addPlat(lv, 0, 3050, 520, { h: 60, solid: true });
+    addPlat(lv, 720, 2760, 560, { h: 60, solid: true });
+    pick(lv, 260, 2900, 'star');
+    candyArc(lv, 600, 1100, 2500, 3000, 4);
+    // route choice: divider column — LEFT corridor 2 stars (twistier),
+    // RIGHT corridor 1 star (open and easy)
+    addPlat(lv, 540, 2400, 200, { h: 60, solid: true });
+    addPlat(lv, 560, 2100, 180, { h: 60, solid: true });
+    addPlat(lv, 540, 1800, 200, { h: 60, solid: true });
+    addPlat(lv, 60, 2250, 220, { h: 60, solid: true });   // extra weave on the left
+    addPlat(lv, 150, 1950, 220, { h: 60, solid: true });
+    pick(lv, 300, 2120, 'star');
+    pick(lv, 90, 1850, 'star');
+    pick(lv, 1000, 2050, 'star');
+    // altitude planning: two bars with openings on opposite sides
+    addPlat(lv, 0, 1500, 880, { h: 60, solid: true });    // gap on the RIGHT
+    addPlat(lv, 400, 1200, 880, { h: 60, solid: true });  // gap on the LEFT
+    candyArc(lv, 950, 1150, 1380, 1560, 3);
+    candyArc(lv, 150, 350, 1080, 1260, 3);
+    // easter egg: a spider drifting on a balloon, far off the path
+    lv.decor.balloonSpider = { x: 100, y: 700 };
+    pick(lv, 90, 800, 'star'); // the sixth, secret star
+    // final rise to the moon
+    pick(lv, 640, 900, 'star');
+    candyRow(lv, 540, 740, 620, 3);
+    lv.decor.moonBig = { x: 640, y: 280 };
+    lv.goalStar = { x: 640, y: 330 };
+    lv.decor.clouds = []; lv.decor.birds = []; lv.decor.balloons = [];
+    for (let i = 0; i < 20; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(150, lv.h - 300), s: rand(0.6, 1.4) });
+    for (let i = 0; i < 4; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(800, 3400), sp: rand(40, 80) });
+    for (let i = 0; i < 6; i++) lv.decor.balloons.push({ x: rand(60, 1220), y: rand(600, 3600), c: randi(0, 3), sp: rand(8, 20) });
   }
 
   return lv;
@@ -955,15 +1101,34 @@ function drawSolids(ctx, lv, cam, t) {
           ctx.beginPath(); ctx.arc(mcx + ox, s.y + 12 + oy * sq, r2, 0, TAU); ctx.fill();
         }
         drawFace(ctx, mcx, s.y + 26, 20, 'happy', t, s.x);
-      } else { // spring block
-        ctx.fillStyle = '#ff8fb0';
+      } else { // spring block — color says what it does: pink = bounce,
+        // gold + star = SUPER bounce, blue + tilted arrow = sideways launch
+        const superB = (s.bounceVy || -980) <= -1300, sideB = !!s.bounceVx;
+        const fillC = sideB ? '#7fd8ff' : superB ? '#ffd24a' : '#ff8fb0';
+        const edgeC = sideB ? '#3a8ac2' : superB ? '#c8861b' : '#d6559a';
+        ctx.fillStyle = fillC;
         rr(ctx, s.x, s.y - (sq - 1) * 20, s.w, s.h + (sq - 1) * 20, 10); ctx.fill();
-        ctx.strokeStyle = '#d6559a'; ctx.lineWidth = 3;
+        ctx.strokeStyle = edgeC; ctx.lineWidth = 3;
         rr(ctx, s.x, s.y - (sq - 1) * 20, s.w, s.h + (sq - 1) * 20, 10); ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(s.x + s.w / 2 - 12, s.y + 14); ctx.lineTo(s.x + s.w / 2, s.y + 2); ctx.lineTo(s.x + s.w / 2 + 12, s.y + 14);
-        ctx.closePath(); ctx.fill();
+        const mx = s.x + s.w / 2, my = s.y + (s.h > 30 ? 14 : s.h / 2 + 2);
+        if (sideB) { // tilted arrow showing the launch direction
+          const dir = Math.sign(s.bounceVx);
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(mx - dir * 14, my + 6); ctx.lineTo(mx + dir * 10, my - 4);
+          ctx.moveTo(mx + dir * 10, my - 4); ctx.lineTo(mx + dir * 1, my - 6);
+          ctx.moveTo(mx + dir * 10, my - 4); ctx.lineTo(mx + dir * 8, my + 5);
+          ctx.stroke();
+        } else if (superB) {
+          ctx.fillStyle = '#fff';
+          starPath(ctx, mx, my, 11, 5);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.moveTo(mx - 12, my + 6); ctx.lineTo(mx, my - 6); ctx.lineTo(mx + 12, my + 6);
+          ctx.closePath(); ctx.fill();
+        }
       }
       continue;
     }
@@ -1205,9 +1370,169 @@ function drawSolids(ctx, lv, cam, t) {
   drawDecor(ctx, lv, cam, t);
 }
 
+
+// Landmarks and easter eggs for the mini-games (drawn for any theme).
+function drawSubDecor(ctx, lv, cam, t, d, visible) {
+  if (d.skyCastle && visible(d.skyCastle.x)) { // cloud castle on the sky summit
+    const c = d.skyCastle, g = c.y;
+    for (const [ox, w2, h2, roof] of [[-150, 90, 130, '#ff8fb0'], [0, 120, 190, '#ff5fa2'], [170, 90, 150, '#ff8fb0']]) {
+      ctx.fillStyle = '#fff';
+      rr(ctx, c.x + ox, g - h2, w2, h2, 10); ctx.fill();
+      ctx.strokeStyle = '#c9d4e8'; ctx.lineWidth = 3;
+      rr(ctx, c.x + ox, g - h2, w2, h2, 10); ctx.stroke();
+      ctx.fillStyle = roof;
+      ctx.beginPath();
+      ctx.moveTo(c.x + ox - 12, g - h2); ctx.lineTo(c.x + ox + w2 / 2, g - h2 - 60); ctx.lineTo(c.x + ox + w2 + 12, g - h2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8fd0ff';
+      rr(ctx, c.x + ox + w2 / 2 - 12, g - h2 + 24, 24, 34, 10); ctx.fill();
+      ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(c.x + ox + w2 / 2, g - h2 - 60); ctx.lineTo(c.x + ox + w2 / 2, g - h2 - 84); ctx.stroke();
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath();
+      ctx.moveTo(c.x + ox + w2 / 2, g - h2 - 84); ctx.lineTo(c.x + ox + w2 / 2 + 22, g - h2 - 77); ctx.lineTo(c.x + ox + w2 / 2, g - h2 - 70);
+      ctx.closePath(); ctx.fill();
+    }
+    drawFace(ctx, c.x + 60, g - 130, 34, 'happy', t, 17);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath(); ctx.arc(c.x - 160 + i * 90, g - 4, 26, 0, TAU); ctx.fill();
+    }
+  }
+  if (d.snoozeCloud && visible(d.snoozeCloud.x)) { // easter egg: a snoozing cloud kitten
+    const e = d.snoozeCloud;
+    ctx.fillStyle = 'rgba(255,255,255,0.97)';
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, 30, 0, TAU); ctx.arc(e.x - 30, e.y + 8, 22, 0, TAU); ctx.arc(e.x + 30, e.y + 8, 22, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#ffd7e0'; // little ears
+    for (const ox of [-16, 16]) {
+      ctx.beginPath();
+      ctx.moveTo(e.x + ox - 8, e.y - 24); ctx.lineTo(e.x + ox, e.y - 40); ctx.lineTo(e.x + ox + 8, e.y - 24);
+      ctx.closePath(); ctx.fill();
+    }
+    drawFace(ctx, e.x, e.y, 26, 'sleepy', t, 23);
+    if (chance(0.03)) Particles.burst(e.x + 26, e.y - 30, 1, { colors: ['#bfe8ff'], type: 'bubble', sp1: 15, grav: -35, l1: 1.4, s1: 7, up: 0 });
+  }
+  if (d.moonBig && visible(d.moonBig.x)) { // THE MOON
+    const m = d.moonBig;
+    ctx.save();
+    ctx.globalAlpha = 0.3 + 0.1 * Math.sin(t * 2);
+    ctx.fillStyle = '#fff8d0';
+    ctx.beginPath(); ctx.arc(m.x, m.y, 150, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#ffe9a0';
+    ctx.beginPath(); ctx.arc(m.x, m.y, 104, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#e0c060'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = '#f0d070';
+    for (const [ox, oy, r2] of [[-40, -30, 16], [30, -50, 11], [45, 25, 14], [-25, 45, 9]]) {
+      ctx.beginPath(); ctx.arc(m.x + ox, m.y + oy, r2, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, m.x, m.y, 62, 'grin', t, 29);
+  }
+  for (const b of d.balloons || []) { // drifting party balloons
+    b.y -= b.sp * 0.016;
+    if (b.y < 100) b.y = lv.h - 200;
+    if (!visible(b.x)) continue;
+    const bx = b.x + Math.sin(t * 1.2 + b.x) * 8;
+    ctx.strokeStyle = 'rgba(90,74,134,0.6)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bx, b.y + 24); ctx.quadraticCurveTo(bx + 5, b.y + 50, bx, b.y + 74); ctx.stroke();
+    ctx.fillStyle = ['#ff5a8a', '#ffb62b', '#7fd8ff', '#b06cf0'][b.c];
+    ctx.beginPath(); ctx.ellipse(bx, b.y, 18, 24, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.ellipse(bx - 6, b.y - 8, 5, 8, 0.4, 0, TAU); ctx.fill();
+  }
+  if (d.balloonSpider && visible(d.balloonSpider.x)) { // easter egg: balloonist spider
+    const e = d.balloonSpider;
+    const ey = e.y + Math.sin(t * 1.1) * 10;
+    ctx.fillStyle = '#e86a5a';
+    ctx.beginPath(); ctx.ellipse(e.x, ey - 70, 26, 32, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,74,134,0.7)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(e.x, ey - 40); ctx.lineTo(e.x, ey - 16); ctx.stroke();
+    ctx.fillStyle = '#b06cf0';
+    ctx.beginPath(); ctx.arc(e.x, ey, 20, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#b06cf0'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) { // dangling legs + one waving
+      ctx.beginPath();
+      ctx.moveTo(e.x - 10 + i * 10, ey + 14);
+      ctx.lineTo(e.x - 13 + i * 11, ey + 30 + Math.sin(t * 3 + i) * 3);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(e.x + 16, ey - 4);
+    ctx.lineTo(e.x + 28, ey - 16 + Math.sin(t * 7) * 6);
+    ctx.stroke();
+    drawFace(ctx, e.x, ey - 2, 17, 'grin', t, 37);
+  }
+  if (d.secretChamber && visible(d.secretChamber.x)) { // the secret summit chamber
+    const c = d.secretChamber, g = c.y;
+    // candy mountain
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath();
+    ctx.moveTo(c.x - 260, g); ctx.quadraticCurveTo(c.x - 130, g - 150, c.x - 40, g);
+    ctx.closePath(); ctx.fill();
+    for (let i = 0; i < 9; i++) {
+      drawCandy(ctx, c.x - 240 + (i % 5) * 44 + (i > 4 ? 24 : 0), g - 14 - Math.floor(i / 5) * 34 - (i % 3) * 12, 17, i % 3, t + i);
+    }
+    // giant golden chest, lid open, glowing
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 3);
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(c.x + 90, g - 60, 120, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#ffd24a';
+    rr(ctx, c.x + 20, g - 80, 150, 80, 10); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4;
+    rr(ctx, c.x + 20, g - 80, 150, 80, 10); ctx.stroke();
+    ctx.fillStyle = '#ffe27a';
+    rr(ctx, c.x + 8, g - 128, 174, 42, 14); ctx.fill();
+    ctx.strokeStyle = '#c8861b';
+    rr(ctx, c.x + 8, g - 128, 174, 42, 14); ctx.stroke();
+    for (let i = 0; i < 4; i++) drawCandy(ctx, c.x + 45 + i * 30, g - 84 - (i % 2) * 10, 15, i, t + i);
+    // the giant friendly yeti, waving
+    const yx = c.x + 330, wob = Math.sin(t * 1.5) * 3;
+    ctx.fillStyle = '#f4f8ff';
+    ctx.beginPath(); ctx.ellipse(yx, g - 95 + wob, 85, 100, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#b8cce8'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(yx, g - 25, 95, 30, 0, 0, TAU); ctx.fill(); // furry base
+    ctx.fillStyle = '#dce8f8'; // belly
+    ctx.beginPath(); ctx.ellipse(yx, g - 70 + wob, 52, 58, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#f4f8ff'; ctx.lineWidth = 16; ctx.lineCap = 'round'; // waving arm
+    ctx.beginPath();
+    ctx.moveTo(yx + 70, g - 120 + wob);
+    ctx.quadraticCurveTo(yx + 110, g - 160, yx + 118, g - 190 + Math.sin(t * 5) * 14);
+    ctx.stroke();
+    ctx.beginPath(); // other arm resting
+    ctx.moveTo(yx - 70, g - 110 + wob);
+    ctx.quadraticCurveTo(yx - 100, g - 80, yx - 92, g - 50);
+    ctx.stroke();
+    for (const ox of [-30, 30]) { // little horns
+      ctx.fillStyle = '#8fd0ff';
+      ctx.beginPath();
+      ctx.moveTo(yx + ox - 8, g - 178 + wob); ctx.lineTo(yx + ox, g - 200 + wob); ctx.lineTo(yx + ox + 8, g - 178 + wob);
+      ctx.closePath(); ctx.fill();
+    }
+    drawFace(ctx, yx, g - 130 + wob, 46, 'grin', t, 53);
+    if (chance(0.04)) Particles.burst(yx + rand(-60, 60), g - 180, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 40, grav: -60, l1: 1, s1: 9, up: 10 });
+  }
+  if (d.dinoPeek && visible(d.dinoPeek.x)) { // easter egg: a jungle friend hiding here?!
+    const e = d.dinoPeek, g = e.y;
+    ctx.fillStyle = '#8d8fa0';
+    ctx.beginPath(); ctx.ellipse(e.x + 34, g - 20, 40, 26, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 3; ctx.stroke();
+    const peek = Math.sin(t * 0.8) > 0 ? 1 : 0.2; // shyly ducks in and out
+    ctx.fillStyle = '#57c25c';
+    ctx.beginPath(); ctx.arc(e.x - 4, g - 28 - 14 * peek, 15, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(e.x - 16, g - 25 - 14 * peek, 8, 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    if (peek === 1) drawFace(ctx, e.x - 2, g - 29 - 14 * peek, 14, 'happy', t, 91);
+  }
+}
+
 function drawDecor(ctx, lv, cam, t) {
   const th = lv.theme, d = lv.decor;
   const visible = x => x > cam.x - 150 && x < cam.x + W + 150;
+  drawSubDecor(ctx, lv, cam, t, d, visible); // mini-game landmarks & easter eggs
   if (th === 'meadow') {
     for (const tr of d.trees || []) {
       if (!visible(tr.x)) continue;

@@ -122,6 +122,18 @@ everywhere via `drawBoy`/`drawHead`).
   shove. `opt.offset` staggers pairs; ice freezes/pauses, rainbow befriends,
   fire makes him burp harmlessly. Reuse it anywhere a timed jump-over hazard
   is wanted.
+- **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
+  ('cloudclimb', 'ascent', 'skyflight'), entered via `SubDoor` in
+  `lv.subDoors` (styles cloud/cave/rainbow; re-arms only after horizontal
+  separation so exit never re-enters). `game.enterSub(id)` stashes the whole
+  host state incl. the Player INSTANCE and live level object; `exitSub()`
+  restores it verbatim (mission progress survives, no physics/camera leaks).
+  Sub finales use `lv.goalStar` -> `game.subWin()` -> party -> Space exits
+  back to the host. Completion persists in `ffbg_mini` (gold star on the
+  door). `lv.flight` = hold-Up flight physics (Sky Flight). Bouncer variants:
+  gold star spring = super (`bounceVy` <= -1300 draws gold), blue arrow =
+  side launch (`bounceVx` + a 1.3s airborne momentum window `launchT` on the
+  wheel). Vertical/diagonal camera is automatic when `lv.h > H`.
 - **Cutscenes**: `game.cut = {name, t}` handled in `updateCut` (bossintro,
   magmaintro, rumble, chestfall, eruption, coronation). Player input frozen.
 - **Endings**: `game.endPhase` phases → `'party'` (big text per level in
@@ -142,7 +154,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 188 checks; must print
+  goal path) and version/changelog/docs sync checks. 215 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

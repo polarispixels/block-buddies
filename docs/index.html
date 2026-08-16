@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.6.3</span>
+  <span class="badge">v1.7.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -90,6 +90,7 @@
     <li><a href="#architecture">Architecture</a></li>
     <li><a href="#systems">Core systems</a></li>
     <li><a href="#levels">The ten worlds, level by level</a></li>
+    <li><a href="#minigames">Mini-games &amp; sublevels</a></li>
     <li><a href="#progression">Progression &amp; persistence</a></li>
     <li><a href="#testing">Testing &amp; verification</a></li>
     <li><a href="#collaborating">Collaborating: adding levels &amp; features</a></li>
@@ -415,6 +416,71 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 </dl>
 </div>
 
+<h2 id="minigames">Mini-games &amp; sublevels (since v1.7.0)</h2>
+<p>A world is no longer one continuous strip: it can contain doors into <strong>sublevels</strong> —
+smaller gameplay spaces with their own layout, camera direction, and even movement model. Three exist
+so far, each entered through a themed <code>SubDoor</code> standing in its host world.</p>
+<h3>The transition system</h3>
+<ul>
+  <li><strong>Sublevels are just levels with string ids</strong> — <code>LEVEL_META['cloudclimb']</code>,
+  a <code>buildLevel('cloudclimb')</code> branch, same theme renderers. They never appear in the title
+  picker and never touch <code>ffbg_unlocked</code>.</li>
+  <li><strong><code>SubDoor(cx, groundY, subId, style)</code></strong> — pushed into
+  <code>lv.subDoors</code>; walking into it calls <code>game.enterSub(subId)</code>. Styles:
+  <code>'cloud'</code> swirl archway, <code>'cave'</code> sparkling dark opening,
+  <code>'rainbow'</code> shimmering ring. Doors re-arm only after the player moves a door-width away
+  horizontally, so exiting (or jumping in place) never instantly re-enters; walk away and back to
+  replay. A completed mini-game shows a gold star over its door.</li>
+  <li><strong><code>game.enterSub(id)</code></strong> stashes the <em>entire</em> host state — the
+  live level object (missions, collected pickups and all), the Player <em>instance</em>, enemy/pickup
+  arrays, checkpoint, camera, music — then builds the sublevel with a <em>fresh</em> Player.
+  <strong><code>game.exitSub()</code></strong> restores the stash verbatim. Because the host Player
+  object itself comes back, no sublevel physics, vehicle, or camera state can possibly leak out.</li>
+  <li><strong>Completion</strong> — each sublevel ends at a <code>lv.goalStar</code>; the goal-star
+  handler routes string-id levels to <code>game.subWin()</code>: party overlay (per-sub headline),
+  completion recorded in <code>localStorage.ffbg_mini</code>, and the party's Space-exit calls
+  <code>exitSub()</code> instead of advancing the world chain.</li>
+  <li><strong>Camera came free</strong> — <code>updateCamera</code> always tracked both axes when
+  <code>lv.h &gt; H</code>, so vertical (Cloud Climb, Sky Flight) and diagonal (Secret Ascent)
+  scrolling required zero camera changes.</li>
+</ul>
+<h3>Cloud Climb <small>(door on Cloud World's middle island)</small></h3>
+<p>A pure vertical climb (1280 × 3400): stacked one-way clouds, wide solid rest-ledges with
+checkpoints every third of the way (falls are short and never punished), and the three bouncer
+flavors — <strong>pink</strong> springs bounce (−980), <strong>gold star</strong> springs SUPER-bounce
+(−1500), <strong>blue arrow</strong> springs launch sideways along their arrow
+(<code>bounceVx</code>). The route-choice moment: a tempting gold spring loops back to a candy
+dead-end while the blue arrow spring carries you onward. Summit: a cloud castle, the golden star, and
+(off to the side) a snoozing cloud-kitten easter egg.</p>
+<h3>Mountain Secret Ascent <small>(sparkling cave mouth at the end of the cave-roof route)</small></h3>
+<p>The spring → stepping-stone → cave-roof route now leads somewhere: a secret diagonal climb
+(3000 × 2400) of rock terraces marching up and to the right. Includes a cliff-face spring (its
+landing platform is one-way, so the bounce passes up through it), a route choice where the dead-end
+nook hides a peeking baby dino (wrong turns are still discoveries), and a cracked wall + power block
+reprising the learned smash mechanic. Summit: a giant golden chest, a candy mountain, and a huge
+waving yeti. Completing it is remembered in <code>ffbg_mini</code>.</p>
+<h3>Unicorn Sky Flight <small>(rainbow ring in Unicorn Forest, before the castle)</small></h3>
+<p>A new movement model: <code>lv.flight</code> — <strong>hold Up to rise, release to drift gently
+down</strong> (soft gravity, capped speeds, no mashing), steer with Left/Right, on unicorn wings with
+glitter. The tall sky route (1280 × 4000) teaches rise/fall in open air, then weaves through offset
+cloud bars, then offers a route choice (left corridor: more stars, twistier; right: one star, easy)
+and an altitude-planning pair of bars with openings on opposite sides. <strong>Rainbow stars</strong>
+(a new <code>Pickup</code> kind) fill a wordless five-star tally in the HUD; reaching the moon always
+succeeds, five stars earns "ALL THE STARS!". A sixth secret star floats far off-path beside a spider
+drifting on a balloon. The finale is THE MOON — big, golden, grinning.</p>
+<h3>Adding a future mini-game</h3>
+<ol>
+  <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
+  (any size; tall/wide layouts scroll automatically; set <code>lv.flight</code> for flight physics).</li>
+  <li>Stand a <code>SubDoor</code> in the host world (<code>lv.subDoors.push(...)</code>) — pick or
+  add a style.</li>
+  <li>Place <code>lv.goalStar</code> at the finale and add a party headline branch in
+  <code>drawPartyOverlay</code> for your id. That's the whole hookup: enter/exit/persistence/replay
+  come from the shared system.</li>
+  <li>Keep falls cheap (wide ledges + checkpoints), teach the mechanic low, test the route choice, and
+  hide one small delight off the path.</li>
+</ol>
+
 <h2 id="progression">Progression &amp; persistence</h2>
 <ul>
   <li><strong>Base game:</strong> star gates advance 1 → 2 → 3 → 4 → 5.</li>
@@ -433,6 +499,7 @@ Presses must be ≤1.2&nbsp;s apart:</p>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
   <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code></td></tr>
   <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
+  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight</code>) — a gold star appears over a completed door</td></tr>
   <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the level-8 coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
 </table></div>
 <p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
@@ -440,7 +507,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 188 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 215 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -489,7 +556,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.6.3 · built for Jack ·
+  Block Buddies v1.7.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

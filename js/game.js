@@ -14,10 +14,12 @@ window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
 let saveUnlocked = 1, saveChar = 'boy', saveRoyal = false;
+const saveMini = {};
 try {
   saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 10);
   if (localStorage.getItem('ffbg_char') === 'girl') saveChar = 'girl';
   saveRoyal = localStorage.getItem('ffbg_royal') === '1';
+  for (const k of (localStorage.getItem('ffbg_mini') || '').split(',')) if (k) saveMini[k] = true;
 } catch (e) {}
 
 const game = {
@@ -42,6 +44,7 @@ const game = {
   titleT: 0, titleBoyX: 300, titleBoyD: 1,
   titlePlayer: null, titleSpider: null,
   combo: { up: 0, down: 0, t: 0 }, titleMsg: null,
+  subReturn: null, miniDone: saveMini, flightStars: 0,
   deathPos: null
 };
 
@@ -81,10 +84,12 @@ game.resetProgress = function () { // secret combo: Down×5 fast on the title (k
     localStorage.removeItem('ffbg_unlocked');
     localStorage.removeItem('ffbg_char');
     localStorage.removeItem('ffbg_royal');
+    localStorage.removeItem('ffbg_mini');
   } catch (e) {}
   game.unlocked = 1;
   game.selLevel = 1;
   game.royal = false;
+  game.miniDone = {};
   game.character = 'boy'; // direct set — setCharacter would re-save to the storage we just cleared
   game.titleMsg = { text: 'BRAND NEW GAME!', t: 2.5 };
   AudioSys.sfx('poof');
@@ -105,6 +110,7 @@ game.titleTap = function (p) {
   return false;
 };
 game.startLevel = function (n) {
+  game.subReturn = null; game.flightStars = 0;
   const lv = buildLevel(n);
   game.level = lv;
   game.player = new Player(lv.playerStart.x, lv.playerStart.y);
@@ -121,6 +127,73 @@ game.startLevel = function (n) {
   game.cam.y = lv.h > H ? clamp(game.player.cy - H * 0.5, 0, lv.h - H) : 0;
   game.state = 'intro'; game.introT = 0;
   AudioSys.setMusic(lv.music);
+};
+// ---------------- sublevels / mini-games ----------------
+// enterSub stashes the ENTIRE host state (level object, player instance,
+// enemy/pickup arrays, checkpoint, camera, music) and swaps in a freshly
+// built sublevel. exitSub restores the stash verbatim, which guarantees the
+// host's mission progress survives and no sublevel physics/camera state can
+// leak back out (the sub gets its own Player instance).
+game.enterSub = function (id) {
+  game.subReturn = {
+    level: game.level, player: game.player,
+    spiders: game.spiders, pickups: game.pickups,
+    checkpoint: game.checkpoint, lastSafe: game.lastSafe,
+    camX: game.cam.x, camY: game.cam.y,
+    mazeDone: game.mazeDone, music: game.level.music
+  };
+  const lv = buildLevel(id);
+  game.level = lv;
+  game.player = new Player(lv.playerStart.x, lv.playerStart.y);
+  if (lv.flight) game.player.boardUnicorn();
+  game.spiders = lv.spiders;
+  game.pickups = lv.pickups;
+  game.projectiles = []; game.shoes = [];
+  game.checkpoint = null;
+  game.lastSafe = { x: lv.playerStart.x, y: lv.playerStart.y };
+  game.chest = null; game.endPhase = null; game.cut = null; game.caught = null;
+  game.mazeDone = false;
+  game.flightStars = 0;
+  game.cam.x = clamp(game.player.cx - W / 2, 0, Math.max(0, lv.w - W));
+  game.cam.y = lv.h > H ? clamp(game.player.cy - H * 0.5, 0, lv.h - H) : 0;
+  game.state = 'intro'; game.introT = 0;
+  AudioSys.sfx('rainbow');
+  AudioSys.setMusic(lv.music);
+};
+game.exitSub = function () {
+  const r = game.subReturn;
+  if (!r) return;
+  game.subReturn = null;
+  game.level = r.level;
+  game.player = r.player;
+  game.spiders = r.spiders;
+  game.pickups = r.pickups;
+  game.checkpoint = r.checkpoint;
+  game.lastSafe = r.lastSafe;
+  game.projectiles = []; game.shoes = [];
+  game.chest = null; game.endPhase = null; game.partyT = 0; game.cut = null; game.caught = null;
+  game.mazeDone = r.mazeDone;
+  game.player.vx = 0; game.player.vy = 0; game.player.inv = 1.5;
+  game.cam.x = r.camX; game.cam.y = r.camY;
+  game.state = 'play';
+  AudioSys.sfx('switch');
+  AudioSys.setMusic(r.music);
+};
+game.subWin = function () {
+  if (game.mazeDone) return;
+  game.mazeDone = true; // per-level goal-reached guard, same as the maze star
+  game.endPhase = 'party'; game.partyT = 0;
+  AudioSys.setMusic('win');
+  AudioSys.sfx('chest');
+  AudioSys.sfx('cheer');
+  game.shake = Math.max(game.shake, 0.25);
+  const gs = game.level.goalStar;
+  if (gs) {
+    Particles.burst(gs.x, gs.y, 30, { colors: ['#ffe156', '#ffd24a', '#fff'], type: 'star', sp1: 420, l0: 0.8, l1: 1.6, s1: 13, grav: 100 });
+    Particles.candyBurst(gs.x, gs.y - 30, 12);
+  }
+  game.miniDone[game.level.n] = true;
+  try { localStorage.setItem('ffbg_mini', Object.keys(game.miniDone).join(',')); } catch (e) {}
 };
 game.respawnPlayer = function () {
   const lv = game.level, pl = game.player, cp = game.checkpoint;
@@ -460,7 +533,9 @@ function updatePlay(dt) {
   // touching the golden star wins the maze
   if (lv.goalStar && !game.mazeDone && (!game.zombie || game.zombie.state === 'friend' || game.zombie.state === 'dance') &&
       Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) {
-    if (lv.n === 10) game.jungleWin(); else game.mazeWin();
+    if (typeof lv.n === 'string') game.subWin();
+    else if (lv.n === 10) game.jungleWin();
+    else game.mazeWin();
   }
   if (game.endPhase !== 'party' || lv.n >= 7) pl.update(dt); // victory laps and flying allowed!
   else {
@@ -513,6 +588,7 @@ function updatePlay(dt) {
   for (const p of game.pickups) p.update(dt);
   for (const c of lv.checks) c.update(dt);
   if (lv.gate) lv.gate.update(dt);
+  for (const sd of lv.subDoors) sd.update(dt);
   if (lv.mission) lv.mission.update(dt, pl);
   for (const sh of game.shoes) if (!sh.dead) sh.update(dt);
   if (game.zombie && !game.cut) game.zombie.update(dt);
@@ -553,7 +629,8 @@ function updatePlay(dt) {
       }
     }
     if (game.partyT > 5 && justP.Space) {
-      if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
+      if (game.subReturn) game.exitSub(); // mini-game over — back to the world
+      else if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
       else if (lv.n === 6) game.startLevel(7); // and another one!
       else if (lv.n === 7) game.startLevel(8); // and one more!
       else if (lv.n === 8) game.startLevel(9); // to infinity!
@@ -893,6 +970,17 @@ function drawHUD() {
   // candy counter
   drawCandy(ctx, W - 205, 48, 21, 1, t);
   outlineText(ctx, '× ' + game.candy, W - 262, 50, 32, '#ffd24a', '#5a4a86');
+  if (game.level.flight) { // wordless star tally for Sky Flight
+    for (let i = 0; i < 5; i++) {
+      ctx.save();
+      ctx.globalAlpha = i < game.flightStars ? 1 : 0.3;
+      ctx.fillStyle = i < game.flightStars ? '#ffd24a' : '#fff';
+      starPath(ctx, W / 2 - 96 + i * 48, 52, 16, 7);
+      ctx.fill();
+      if (i < game.flightStars) { ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke(); }
+      ctx.restore();
+    }
+  }
   // current block
   const bx = W - 88, by = 64;
   ctx.save();
@@ -963,7 +1051,22 @@ function drawPartyOverlay() {
     ctx.save();
     ctx.globalAlpha = k;
     ctx.translate(0, (1 - k) * -60);
-    if (game.level.n === 10) {
+    if (game.level.n === 'cloudclimb') {
+      outlineText(ctx, 'SKY SUMMIT!', W / 2, 140, 80, '#8fd0ff', '#3a5a86');
+      outlineText(ctx, 'YOU CLIMBED ABOVE THE CLOUDS!', W / 2, 212, 36, '#fff', '#3a5a86');
+    } else if (game.level.n === 'ascent') {
+      outlineText(ctx, 'SECRET SUMMIT!', W / 2, 140, 78, '#ffd24a', '#5a4a86');
+      outlineText(ctx, 'YOU FOUND THE HIDDEN MOUNTAIN!', W / 2, 212, 34, '#fff', '#5a4a86');
+    } else if (game.level.n === 'skyflight') {
+      outlineText(ctx, 'TO THE MOON!', W / 2, 132, 80, '#ffe9a0', '#5a4a86');
+      for (let i = 0; i < 5; i++) { // the stars you gathered on the way
+        ctx.fillStyle = i < game.flightStars ? '#ffd24a' : 'rgba(255,255,255,0.35)';
+        starPath(ctx, W / 2 - 120 + i * 60, 210, 22, 10, 5, -Math.PI / 2 + Math.sin(game.t * 2 + i) * 0.15);
+        ctx.fill();
+        if (i < game.flightStars) { ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3; ctx.stroke(); }
+      }
+      if (game.flightStars >= 5) outlineText(ctx, 'ALL THE STARS!', W / 2, 268, 36, '#ffd24a', '#5a4a86');
+    } else if (game.level.n === 10) {
       outlineText(ctx, 'SECRET DINO VALLEY!', W / 2, 135, 68, '#7be07b', '#2f5a2a');
       outlineText(ctx, 'DINO FRIENDS FOREVER!', W / 2, 210, 42, '#ffe156', '#2f5a2a');
     } else if (game.level.n === 9) {
@@ -998,6 +1101,7 @@ function renderWorld() {
   drawHints(ctx, lv, t);
   for (const c of lv.checks) c.draw(ctx);
   if (lv.gate) lv.gate.draw(ctx);
+  for (const sd of lv.subDoors) sd.draw(ctx);
   if (lv.mission) lv.mission.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);

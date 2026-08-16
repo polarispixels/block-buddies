@@ -29,7 +29,7 @@ function moveEntity(e, lv, dt) {
     if (s.oneWay) {
       if (e.vy > 0 && prevB <= s.y + 12) {
         e.y = s.y - e.h;
-        if (s.bouncy) { e.vy = s.bounceVy || -980; res.bounced = true; }
+        if (s.bouncy) { e.vy = s.bounceVy || -980; if (s.bounceVx) { e.vx = s.bounceVx; e.launchT = 1.3; } res.bounced = true; }
         else { e.vy = 0; res.ground = true; res.groundS = s; }
       }
       continue;
@@ -37,7 +37,7 @@ function moveEntity(e, lv, dt) {
     if (s.breakable && e.isPlayer && e.superT > 0) { game.smashWall(s); res.smashed = true; continue; }
     if (e.vy > 0) {
       e.y = s.y - e.h;
-      if (s.bouncy) { e.vy = s.bounceVy || -980; res.bounced = true; }
+      if (s.bouncy) { e.vy = s.bounceVy || -980; if (s.bounceVx) { e.vx = s.bounceVx; e.launchT = 1.3; } res.bounced = true; }
       else { e.vy = 0; res.ground = true; res.groundS = s; }
     } else if (e.vy < 0) {
       e.y = s.y + s.h; e.vy = 0; res.head = true;
@@ -70,7 +70,7 @@ class Player {
     this.vehicle = 'wheel'; // 'wheel' | 'truck' | 'unicorn'
     this.turboT = 0; this.airT = 0; this.rot = 0;
     this.rampCd = 0; this.dustT = 0;
-    this.flapCd = 0; this.flapT = 0;
+    this.flapCd = 0; this.flapT = 0; this.launchT = 0;
   }
   boardUnicorn() {
     if (this.vehicle === 'unicorn') return;
@@ -229,6 +229,28 @@ class Player {
       this.x = clamp(this.x, 0, lv.w - this.w);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
       this.checkHazards(lv);
+    } else if (this.vehicle === 'unicorn' && lv.flight) {
+      // ---- SKY FLIGHT: hold Up to rise, release to drift gently down ----
+      this.flapCd = Math.max(0, this.flapCd - dt);
+      this.flapT = Math.max(0, this.flapT - dt);
+      if (ax) { this.vx = clamp(this.vx + ax * 1500 * dt, -280, 280); this.facing = ax; }
+      else this.vx *= Math.exp(-3.5 * dt);
+      this.duck = false;
+      if (keys.ArrowUp) {
+        this.vy -= 2300 * dt;
+        this.flapT = 0.22;
+        if (this.flapCd <= 0) { this.flapCd = 0.28; AudioSys.sfx('flap'); }
+        if (chance(0.5)) Particles.burst(this.cx - this.facing * 36, this.cy + 16, 1, { colors: RAINBOW, type: 'sparkle', sp1: 80, grav: 140, l1: 0.7, s1: 9 });
+      }
+      this.vy += 1050 * dt; // soft gravity
+      this.vy = clamp(this.vy, -300, 330);
+      const res = moveEntity(this, lv, dt);
+      this.onGround = res.ground;
+      if (chance(0.4)) Particles.burst(this.cx - this.facing * 42, this.cy + rand(-12, 20), 1, { colors: RAINBOW.concat(['#fff']), type: 'sparkle', sp1: 50, grav: 150, l0: 0.4, l1: 0.9, s0: 5, s1: 9, up: 0 });
+      this.x = clamp(this.x, 0, lv.w - this.w);
+      this.y = Math.max(this.y, 40);
+      if (res.ground) game.lastSafe = { x: this.x, y: this.y };
+      this.checkHazards(lv);
     } else if (this.vehicle === 'unicorn') {
       // ---- UNICORN (with Pegasus wings!) ----
       this.flapCd = Math.max(0, this.flapCd - dt);
@@ -267,7 +289,11 @@ class Player {
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
       this.checkHazards(lv);
     } else {
-      if (ax) { this.vx = ax * spd; this.facing = ax; } else this.vx = 0;
+      this.launchT = Math.max(0, this.launchT - dt);
+      if (ax) { this.vx = ax * spd; this.facing = ax; this.launchT = 0; }
+      else if (this.launchT > 0 && !this.onGround) { /* side-cloud launch: carry the momentum */ }
+      else this.vx = 0;
+      if (this.onGround) this.launchT = 0;
       this.duck = !!keys.ArrowDown && this.onGround;
       if (this.duck) this.vx *= 0.5;
       if (this.onGround) this.coyote = 0.12; else this.coyote -= dt;
@@ -1447,10 +1473,10 @@ class Spider {
 
 // ================================================================ pickups
 class Pickup {
-  // kinds: fire, ice, rainbow, power, heart, candy
+  // kinds: fire, ice, rainbow, power, heart, candy, star (sky-flight collectible)
   constructor(cx, cy, kind) {
     this.kind = kind;
-    const s = kind === 'candy' ? 26 : kind === 'heart' ? 36 : 54;
+    const s = kind === 'candy' ? 26 : kind === 'heart' ? 36 : kind === 'star' ? 44 : 54;
     this.w = s; this.h = s;
     this.x = cx - s / 2; this.y = cy - s / 2;
     this.t = rand(10);
@@ -1492,6 +1518,12 @@ class Pickup {
       Particles.burst(this.cx, this.cy, 5, { colors: ['#ffd24a', '#fff'], type: 'sparkle', sp1: 130, l1: 0.4, s1: 8 });
       return;
     }
+    if (this.kind === 'star') {
+      game.flightStars++;
+      AudioSys.sfx('collect');
+      Particles.burst(this.cx, this.cy, 12, { colors: RAINBOW.concat(['#ffe156']), type: 'star', sp1: 240, l1: 0.8, s1: 11, grav: 120 });
+      return;
+    }
     if (this.kind === 'heart') {
       pl.hearts = Math.min(3, pl.hearts + 1);
       game.heartFlash = 1;
@@ -1520,6 +1552,23 @@ class Pickup {
     const cx = this.cx, cy = this.cy + bob;
     if (this.kind === 'candy') {
       drawCandy(ctx, cx, cy, 22, this.candyShape, this.t);
+      return;
+    }
+    if (this.kind === 'star') {
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(this.t * 4);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(cx, cy, 36, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.sin(this.t * 1.6) * 0.3);
+      ctx.fillStyle = '#ffd24a';
+      starPath(ctx, 0, 0, 22, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.restore();
+      if (chance(0.15)) Particles.burst(cx + rand(-20, 20), cy + rand(-20, 20), 1, { colors: RAINBOW, type: 'sparkle', sp1: 20, grav: -40, l1: 0.6, s1: 7, up: 0 });
       return;
     }
     if (this.kind === 'heart') {
@@ -3324,6 +3373,96 @@ class Spino {
       ctx.moveTo(cx - 10, hy2 + 36); ctx.lineTo(cx, hy2 + 58); ctx.lineTo(cx + 12, hy2 + 34);
       ctx.closePath(); ctx.fill();
       drawBlock(ctx, cx - 26, hy2 - 26, 52, need, t);
+    }
+  }
+}
+
+// ================================================================ sublevel doors
+// The shared entrance into mini-games/sublevels. Stand a SubDoor in any level
+// (lv.subDoors) and walking into it calls game.enterSub(this.sub); on return
+// the player reappears beside it. `armed` prevents instant re-entry after
+// exiting — walk away and back to replay. Styles: 'cloud' (swirl archway),
+// 'cave' (dark sparkling opening), 'rainbow' (shimmering ring). A gold star
+// appears above once that mini-game has been completed (game.miniDone).
+class SubDoor {
+  constructor(cx, groundY, sub, style) {
+    this.w = 92; this.h = 118;
+    this.x = cx - this.w / 2; this.y = groundY - this.h; this.groundY = groundY;
+    this.sub = sub; this.style = style;
+    this.t = rand(9); this.armed = false;
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt) {
+    this.t += dt;
+    const over = overlaps(this, game.player);
+    if (over && this.armed && game.state === 'play' && !game.cut && !game.endPhase) {
+      this.armed = false;
+      game.enterSub(this.sub);
+      return;
+    }
+    if (!over && Math.abs(game.player.cx - this.cx) > this.w) this.armed = true;
+    if (chance(0.1)) {
+      const cols = this.style === 'rainbow' ? RAINBOW : this.style === 'cave' ? ['#ffe156', '#d0a0ff'] : ['#fff', '#bfe8ff'];
+      Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
+    }
+  }
+  draw(ctx) {
+    const t = this.t, cx = this.cx, g = this.groundY;
+    ctx.save();
+    if (this.style === 'rainbow') {
+      // a shimmering rainbow ring standing on the ground
+      for (let i = 0; i < RAINBOW.length; i++) {
+        ctx.strokeStyle = RAINBOW[i];
+        ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 3 + i);
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.ellipse(cx, this.y + this.h / 2, 34 - i * 3, this.h / 2 - i * 3.5, 0, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 2.5);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(cx, this.y + this.h / 2, 22, this.h / 2 - 22, 0, 0, TAU); ctx.fill();
+    } else if (this.style === 'cave') {
+      // dark secret opening with a mossy stone rim
+      ctx.fillStyle = '#5f6070';
+      ctx.beginPath(); ctx.ellipse(cx, g - 4, this.w / 2 + 10, this.h - 6, 0, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = '#1c1430';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 - 6, this.h - 22, 0, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = '#57b84a';
+      for (const [ox, mr] of [[-30, 10], [8, 13], [34, 9]]) {
+        ctx.beginPath(); ctx.ellipse(cx + ox, this.y + 6, mr, 6, 0, Math.PI, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4);
+      ctx.fillStyle = '#ffe156';
+      starPath(ctx, cx, this.y + this.h * 0.5, 9, 4);
+      ctx.fill();
+    } else { // cloud swirl archway
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      for (let i = 0; i < 7; i++) {
+        const a = Math.PI + i * Math.PI / 6;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * (this.w / 2 + 4), g - 26 + Math.sin(a) * (this.h - 30), 16, 0, TAU);
+        ctx.fill();
+      }
+      ctx.save();
+      ctx.translate(cx, this.y + this.h * 0.52);
+      ctx.rotate(t * 1.4);
+      ctx.strokeStyle = '#8fd0ff'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 12 + i * 9, i * 2, i * 2 + 3.6);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    // completed badge
+    if (game.miniDone && game.miniDone[this.sub]) {
+      ctx.fillStyle = '#ffd24a';
+      starPath(ctx, cx, this.y - 20 + Math.sin(t * 3) * 3, 13, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke();
     }
   }
 }
