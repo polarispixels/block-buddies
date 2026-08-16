@@ -2376,15 +2376,15 @@ class MissionItem {
       ctx.beginPath(); ctx.arc(this.cx, this.cy, 62, 0, TAU); ctx.fill();
       ctx.restore();
     }
-    drawKey(ctx, this.cx, this.cy, this.state === 'waiting' ? 78 : 58, this.t);
+    drawKey(ctx, this.cx, this.cy, this.state === 'waiting' ? 78 : 58, this.t, true, this.kind === 'dinokey' ? 'dino' : 'gold');
   }
 }
 
 class PuzzleSwitch {
-  constructor(cx, groundY, kind) {
-    this.cx = cx; this.groundY = groundY; this.kind = kind;
-    this.w = 96;
-    this.lit = false; this.stood = false;
+  constructor(cx, groundY, kind, skin = 'plate') { // 'plate' (stone floor plate) | 'egg' (dino egg on a pedestal)
+    this.cx = cx; this.groundY = groundY; this.kind = kind; this.skin = skin;
+    this.w = skin === 'egg' ? 120 : 96;
+    this.lit = false; this.stood = false; this.hatched = false;
     this.wobbleT = 0; this.popT = 0; this.t = rand(9);
   }
   playerOn(pl) {
@@ -2399,6 +2399,7 @@ class PuzzleSwitch {
     this.stood = on;
   }
   draw(ctx) {
+    if (this.skin === 'egg') { this.drawEgg(ctx); return; }
     const t = this.t, g = this.groundY;
     const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 26) * 0.22 * this.wobbleT : 0;
     const down = this.stood ? 6 : 0;
@@ -2421,6 +2422,62 @@ class PuzzleSwitch {
     drawBlock(ctx, -bs / 2, -bs / 2, bs, this.kind, t, { wobble: this.lit, seed: this.cx });
     ctx.restore();
   }
+  drawEgg(ctx) {
+    const t = this.t, g = this.groundY;
+    const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 26) * 0.18 * this.wobbleT : 0;
+    const squish = this.stood ? 0.93 : 1;
+    const bounce = this.lit ? Math.abs(Math.sin(t * 4)) * 5 : 0;
+    const pop = this.popT * 24;
+    const ecy = g - 24 - 38 * squish - bounce - pop;
+    if (this.lit) {
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 4);
+      ctx.fillStyle = POW[this.kind].c;
+      ctx.beginPath(); ctx.ellipse(this.cx, ecy, 52, 60, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // stone pedestal
+    ctx.fillStyle = this.lit ? '#c8d4b4' : '#a8b494';
+    rr(ctx, this.cx - 50, g - 24, 100, 28, 7); ctx.fill();
+    ctx.strokeStyle = '#6a7a5a'; ctx.lineWidth = 3;
+    rr(ctx, this.cx - 50, g - 24, 100, 28, 7); ctx.stroke();
+    // the egg
+    ctx.save();
+    ctx.translate(this.cx, g - 24);
+    ctx.rotate(wob);
+    ctx.translate(-this.cx, -(g - 24));
+    ctx.fillStyle = '#fff6e0';
+    ctx.beginPath(); ctx.ellipse(this.cx, ecy, 28, 38 * squish, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c9b88a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = POW[this.kind].c; // colored spots = the egg's identity
+    for (const [ox, oy, r2] of [[-10, -14, 7], [11, 2, 8], [-6, 16, 6], [10, -22, 5]]) {
+      ctx.beginPath(); ctx.arc(this.cx + ox, ecy + oy * squish, r2, 0, TAU); ctx.fill();
+    }
+    if (this.lit) { // crack lines: it's waking up!
+      ctx.strokeStyle = '#a08a5a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.cx - 14, ecy - 22); ctx.lineTo(this.cx - 6, ecy - 14); ctx.lineTo(this.cx - 12, ecy - 6);
+      ctx.moveTo(this.cx + 8, ecy - 26); ctx.lineTo(this.cx + 14, ecy - 18);
+      ctx.stroke();
+    }
+    if (this.hatched) { // a baby dino pokes out of the top
+      const hb = Math.sin(t * 5) * 3;
+      ctx.fillStyle = '#57c25c';
+      ctx.beginPath(); ctx.arc(this.cx, ecy - 40 + hb, 13, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(this.cx + 11, ecy - 37 + hb, 7, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      drawFace(ctx, this.cx - 2, ecy - 41 + hb, 13, 'grin', t, 91);
+      // shell cap
+      ctx.fillStyle = '#fff6e0';
+      ctx.beginPath(); ctx.arc(this.cx - 2, ecy - 52 + hb, 8, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = '#c9b88a'; ctx.stroke();
+    }
+    ctx.restore();
+    // floating symbol block above the egg
+    const bs = 30;
+    const by = ecy - 66 - Math.sin(t * 2.5) * 4 - (this.lit ? 6 : 0);
+    drawBlock(ctx, this.cx - bs / 2, by - bs / 2, bs, this.kind, t, { wobble: this.lit, seed: this.cx });
+  }
 }
 
 class SequencePuzzle {
@@ -2435,9 +2492,12 @@ class SequencePuzzle {
       sw.lit = true; sw.popT = 0.4; this.progress++;
       AudioSys.sfx('collect');
       Particles.burst(sw.cx, sw.groundY - 60, 10, { colors: ['#ffe156', '#fff', POW[sw.kind].c], type: 'star', sp1: 220, l1: 0.8, s1: 10, grav: 240 });
+      if (sw.skin === 'egg') AudioSys.sfx('hiccup'); // little dino chirp from inside
       if (this.progress >= this.seq.length) {
         this.done = true;
         for (const s of this.switches) s.popT = 0.6;
+        const eggs = this.switches.filter(s => s.skin === 'egg');
+        if (eggs.length) eggs[0].hatched = true; // one egg hatches to celebrate
       }
     } else {
       AudioSys.sfx('boing'); // funny, harmless — wobble everything and let them retry
@@ -2454,18 +2514,33 @@ class SequencePuzzle {
     for (const s of this.switches) s.update(dt, pl, this, active);
   }
   draw(ctx, t) {
-    for (const s of this.switches) s.draw(ctx);
     const sg = this.sign, n = this.seq.length;
     const bw = n * 44 + (n - 1) * 30 + 36, bh = 66;
-    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(sg.x - bw / 2 + 18, sg.y - bh / 2); ctx.lineTo(sg.x - bw / 2 + 18, sg.ceilY);
-    ctx.moveTo(sg.x + bw / 2 - 18, sg.y - bh / 2); ctx.lineTo(sg.x + bw / 2 - 18, sg.ceilY);
-    ctx.stroke();
-    ctx.fillStyle = '#b0743e';
-    rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
-    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
-    rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
+    if (sg.style === 'stone') {
+      // ancient carved tablet on a mossy stone post
+      ctx.fillStyle = '#8a9a7a';
+      rr(ctx, sg.x - 12, sg.y, 24, sg.groundY - sg.y, 6); ctx.fill();
+      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 3;
+      rr(ctx, sg.x - 12, sg.y, 24, sg.groundY - sg.y, 6); ctx.stroke();
+      ctx.fillStyle = '#a8b494';
+      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
+      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 4;
+      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
+      ctx.fillStyle = '#57b84a'; // moss on top
+      for (const [mx, mr] of [[-bw * 0.3, 13], [bw * 0.15, 17], [bw * 0.38, 10]]) {
+        ctx.beginPath(); ctx.ellipse(sg.x + mx, sg.y - bh / 2, mr, 7, 0, Math.PI, TAU); ctx.fill();
+      }
+    } else {
+      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(sg.x - bw / 2 + 18, sg.y - bh / 2); ctx.lineTo(sg.x - bw / 2 + 18, sg.ceilY);
+      ctx.moveTo(sg.x + bw / 2 - 18, sg.y - bh / 2); ctx.lineTo(sg.x + bw / 2 - 18, sg.ceilY);
+      ctx.stroke();
+      ctx.fillStyle = '#b0743e';
+      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
+      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+      rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
+    }
     let ix = sg.x - bw / 2 + 18;
     for (let i = 0; i < n; i++) {
       const got = i < this.progress || this.done;
@@ -2487,13 +2562,19 @@ class SequencePuzzle {
         ix += 30;
       }
     }
+    for (const s of this.switches) s.draw(ctx); // switches in front of the sign post
   }
 }
 
 class MissionGate {
-  constructor(cx, groundY) {
-    this.w = 116; this.h = 210;
+  constructor(cx, groundY, opts = {}) {
+    this.theme = opts.theme || 'wood'; // 'wood' (Mountain door) | 'jungle' (ancient stone gate)
+    const jungle = this.theme === 'jungle';
+    this.w = jungle ? 150 : 116; this.h = jungle ? 280 : 210;
     this.x = cx - this.w / 2; this.y = groundY - this.h; this.groundY = groundY;
+    this.keyStyle = jungle ? 'dino' : 'gold';
+    this.bumpSfx = jungle ? 'grind' : 'thud';
+    this.leafColors = jungle ? ['#57d357', '#7be07b', '#ffe156', '#ff8fb0'] : RAINBOW;
     this.t = rand(9);
     this.state = 'locked'; // locked -> unlocking -> open
     this.bumpT = 0; this.bumpCd = 0; this.hintT = 0; this.unlockT = 0; this.openT = 0;
@@ -2501,7 +2582,7 @@ class MissionGate {
     this.solid = { x: this.x + 12, y: this.y, w: this.w - 24, h: this.h, skipDraw: true };
   }
   get cx() { return this.x + this.w / 2; }
-  khY() { return this.y + 132; }
+  khY() { return this.y + (this.theme === 'jungle' ? 172 : 132); }
   update(dt, pl, mission) {
     this.t += dt;
     this.bumpT = Math.max(0, this.bumpT - dt);
@@ -2522,7 +2603,7 @@ class MissionGate {
         const pushL = keys.ArrowLeft && pl.cx > this.cx && pl.x < s.x + s.w + 8;
         if (pushR || pushL) {
           this.bumpT = 0.55; this.bumpCd = 1.4; this.hintT = 2.4;
-          AudioSys.sfx('thud');
+          AudioSys.sfx(this.bumpSfx);
           game.shake = Math.max(game.shake, 0.15);
           Particles.burst(pushR ? s.x : s.x + s.w, pl.cy, 6, { colors: ['#d9b98a', '#fff'], sp1: 130, l1: 0.5, s1: 7 });
         }
@@ -2546,23 +2627,65 @@ class MissionGate {
         this.state = 'open'; this.openT = 0;
         this.solid.broken = true; // same removal trick the smashable walls use
         AudioSys.sfx('fanfare');
-        Particles.burst(this.cx, this.y + 60, 26, { colors: RAINBOW, type: 'confetti', sp1: 300, l1: 1.6, s1: 11, grav: 260, up: 200 });
+        if (this.theme === 'jungle') AudioSys.sfx('grind');
+        Particles.burst(this.cx, this.y + 60, 26, { colors: this.leafColors, type: 'confetti', sp1: 300, l1: 1.6, s1: 11, grav: 260, up: 200 });
       }
     } else this.openT += dt;
+  }
+  drawKeyhole(ctx, plateCol, edgeCol, r = 26) {
+    const cx = this.cx, ky = this.khY();
+    ctx.fillStyle = plateCol;
+    ctx.beginPath(); ctx.arc(cx, ky, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = edgeCol; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#4a3520';
+    ctx.beginPath(); ctx.arc(cx, ky - 5, r * 0.31, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - r * 0.19, ky - 2); ctx.lineTo(cx + r * 0.19, ky - 2);
+    ctx.lineTo(cx + r * 0.31, ky + r * 0.62); ctx.lineTo(cx - r * 0.31, ky + r * 0.62);
+    ctx.closePath(); ctx.fill();
+    if (this.state === 'locked' && chance(0.02)) {
+      Particles.burst(cx + rand(-12, 12), ky + rand(-12, 12), 1, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 15, grav: -30, l1: 0.7, s1: 7, up: 0 });
+    }
+  }
+  gateMood() {
+    if (this.state === 'open') return 'grin';
+    if (this.state === 'unlocking') return this.unlockT < 0.9 ? 'surprised' : 'grin';
+    if (this.bumpT > 0) return 'surprised';
+    if (this.hintT > 0) return 'worried';
+    return 'sleepy';
   }
   draw(ctx) {
     const t = this.t, cx = this.cx;
     const bx = this.bumpT > 0 ? Math.sin(this.bumpT * 34) * 7 * this.bumpT : 0;
     ctx.save();
     ctx.translate(bx, 0);
-    // stone frame + dark doorway behind the panel
+    if (this.theme === 'jungle') this.drawJungle(ctx, t, cx);
+    else this.drawWood(ctx, t, cx);
+    // "I need a key" thought bubble
+    if (this.hintT > 0 && this.state === 'locked') {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.hintT * 2);
+      const by = this.y - 66 + Math.sin(t * 5) * 5;
+      ctx.fillStyle = '#fff';
+      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, by + 32); ctx.lineTo(cx + 12, by + 32); ctx.lineTo(cx, by + 52);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.stroke();
+      drawKey(ctx, cx, by, 62, t, false, this.keyStyle);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  drawWood(ctx, t, cx) {
+    // Mountain-style wooden door in a stone frame
     ctx.fillStyle = '#8d8fa0';
     rr(ctx, this.x - 16, this.y - 16, this.w + 32, this.h + 16, 26); ctx.fill();
     ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 5;
     rr(ctx, this.x - 16, this.y - 16, this.w + 32, this.h + 16, 26); ctx.stroke();
     ctx.fillStyle = '#2a2140';
     rr(ctx, this.x, this.y, this.w, this.h, 18); ctx.fill();
-    // wooden panel swings away once open
     const swg = this.state === 'open' ? Math.max(0.1, 1 - this.openT * 1.6) : 1;
     if (swg > 0.11) {
       ctx.save();
@@ -2576,43 +2699,87 @@ class MissionGate {
       }
       ctx.fillStyle = '#ffd24a';
       for (const hy of [this.y + 30, this.y + this.h - 42]) { rr(ctx, this.x + 4, hy, 20, 12, 5); ctx.fill(); }
-      let mood = 'sleepy';
-      if (this.state === 'open') mood = 'grin';
-      else if (this.state === 'unlocking') mood = this.unlockT < 0.9 ? 'surprised' : 'grin';
-      else if (this.bumpT > 0) mood = 'surprised';
-      else if (this.hintT > 0) mood = 'worried';
-      drawFace(ctx, cx, this.y + 60, 46, mood, t, 77);
-      // big golden keyhole
-      ctx.fillStyle = '#ffd24a';
-      ctx.beginPath(); ctx.arc(cx, this.khY(), 26, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4; ctx.stroke();
-      ctx.fillStyle = '#6a4020';
-      ctx.beginPath(); ctx.arc(cx, this.khY() - 5, 8, 0, TAU); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx - 5, this.khY() - 2); ctx.lineTo(cx + 5, this.khY() - 2);
-      ctx.lineTo(cx + 8, this.khY() + 16); ctx.lineTo(cx - 8, this.khY() + 16);
-      ctx.closePath(); ctx.fill();
-      if (this.state === 'locked' && chance(0.02)) {
-        Particles.burst(cx + rand(-12, 12), this.khY() + rand(-12, 12), 1, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 15, grav: -30, l1: 0.7, s1: 7, up: 0 });
-      }
+      drawFace(ctx, cx, this.y + 60, 46, this.gateMood(), t, 77);
+      this.drawKeyhole(ctx, '#ffd24a', '#c8861b', 26);
       ctx.restore();
     }
-    // "I need a key" thought bubble
-    if (this.hintT > 0 && this.state === 'locked') {
+  }
+  drawJungle(ctx, t, cx) {
+    // Ancient stone gate: mossy blocks, dino carvings, statues, rising slab
+    // frame
+    ctx.fillStyle = '#8a9a7a';
+    rr(ctx, this.x - 22, this.y - 26, this.w + 44, this.h + 26, 22); ctx.fill();
+    ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 5;
+    rr(ctx, this.x - 22, this.y - 26, this.w + 44, this.h + 26, 22); ctx.stroke();
+    // moss cushions on the lintel
+    ctx.fillStyle = '#57b84a';
+    for (const [mx, mr] of [[-40, 16], [10, 20], [55, 14]]) {
+      ctx.beginPath(); ctx.ellipse(cx + mx, this.y - 24, mr, 9, 0, Math.PI, TAU); ctx.fill();
+    }
+    // lintel face — the gate's expressive stone face
+    drawFace(ctx, cx, this.y + 8, 42, this.gateMood(), t, 78);
+    // flanking dino statues on plinths
+    for (const side of [-1, 1]) {
+      const sx = cx + side * (this.w / 2 + 44);
+      ctx.fillStyle = '#7a8a6a';
+      rr(ctx, sx - 24, this.groundY - 34, 48, 34, 6); ctx.fill();
+      ctx.strokeStyle = '#5a6a50'; ctx.lineWidth = 3;
+      rr(ctx, sx - 24, this.groundY - 34, 48, 34, 6); ctx.stroke();
+      ctx.fillStyle = '#8a9a7a';
+      ctx.beginPath(); ctx.ellipse(sx, this.groundY - 52, 20, 14, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#8a9a7a'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(sx + side * 8, this.groundY - 58);
+      ctx.quadraticCurveTo(sx + side * 22, this.groundY - 88, sx + side * 12, this.groundY - 100);
+      ctx.stroke();
+      ctx.fillStyle = '#8a9a7a';
+      ctx.beginPath(); ctx.arc(sx + side * 12, this.groundY - 102, 8, 0, TAU); ctx.fill();
+    }
+    // dark opening
+    ctx.fillStyle = '#1e2a18';
+    rr(ctx, this.x, this.y, this.w, this.h, 14); ctx.fill();
+    // stone slab rises into the lintel once open
+    const rise = this.state === 'open' ? Math.min(1, this.openT * 1.1) * (this.h - 24) : 0;
+    if (rise < this.h - 26) {
       ctx.save();
-      ctx.globalAlpha = Math.min(1, this.hintT * 2);
-      const by = this.y - 66 + Math.sin(t * 5) * 5;
-      ctx.fillStyle = '#fff';
-      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx - 12, by + 32); ctx.lineTo(cx + 12, by + 32); ctx.lineTo(cx, by + 52);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
-      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.stroke();
-      drawKey(ctx, cx, by, 62, t, false);
+      rr(ctx, this.x, this.y, this.w, this.h, 14); ctx.clip();
+      const sy = this.y - rise;
+      ctx.fillStyle = '#a8b494';
+      rr(ctx, this.x, sy, this.w, this.h, 14); ctx.fill();
+      ctx.strokeStyle = '#6a7a5a'; ctx.lineWidth = 3;
+      rr(ctx, this.x, sy, this.w, this.h, 14); ctx.stroke();
+      // stone block seams
+      for (let r = 1; r < 4; r++) {
+        ctx.beginPath(); ctx.moveTo(this.x + 6, sy + r * this.h / 4); ctx.lineTo(this.x + this.w - 6, sy + r * this.h / 4); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(cx, sy + 8); ctx.lineTo(cx, sy + this.h / 4);
+      ctx.moveTo(cx, sy + this.h / 2); ctx.lineTo(cx, sy + this.h * 0.75); ctx.stroke();
+      // little dino carvings
+      ctx.strokeStyle = '#7a8a6a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const [ox, oy, sd] of [[-38, 60, 1], [38, 60, -1], [-38, 236, -1], [38, 236, 1]]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + ox - sd * 12, sy + oy);
+        ctx.quadraticCurveTo(cx + ox + sd * 4, sy + oy - 18, cx + ox + sd * 14, sy + oy - 22);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + ox + sd * 15, sy + oy - 24, 5, 0, TAU); ctx.stroke();
+      }
+      // keyhole rides the slab
+      ctx.translate(0, -rise);
+      this.drawKeyhole(ctx, '#ffd24a', '#c8861b', 32);
+      ctx.translate(0, rise);
       ctx.restore();
     }
-    ctx.restore();
+    // hanging vines over the frame
+    ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    for (const vx of [-this.w / 2 + 8, -14, this.w / 2 - 20]) {
+      const wob = Math.sin(t * 1.6 + vx) * 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + vx, this.y - 22);
+      ctx.quadraticCurveTo(cx + vx + wob, this.y + 30, cx + vx + wob * 2, this.y + 66 + (vx % 3) * 8);
+      ctx.stroke();
+      ctx.fillStyle = '#57b84a';
+      ctx.beginPath(); ctx.ellipse(cx + vx + wob * 2, this.y + 70 + (vx % 3) * 8, 8, 4, 0.5, 0, TAU); ctx.fill();
+    }
   }
 }
 
@@ -2656,5 +2823,165 @@ class Mission {
     this.puzzle.draw(ctx, t);
     if (this.chest) this.chest.draw(ctx);
     this.item.draw(ctx);
+  }
+}
+
+// ================================================================ fire-breather
+// Squat fire-breathing dino (first used in Dino Jungle). Lives in lv.spiders so
+// all existing enemy plumbing applies unchanged (update/draw loops, projectile
+// hits, body-touch damage, party dancing). Cycle: idle -> inhale (cheeks puff =
+// THE telegraph) -> low horizontal flame. Jumping over the flame is the answer:
+// the flame box hugs the ground. Ice pauses him, rainbow befriends him, fire
+// just makes him burp. Timing is configurable per placement (offset staggers).
+class FireBreather {
+  constructor(cx, groundY, dir = -1, opt = {}) {
+    this.kind = 'firedino';
+    this.w = 76; this.h = 64;
+    this.x = cx - this.w / 2; this.y = groundY - this.h;
+    this.groundY = groundY;
+    this.dir = dir;
+    this.state = 'angry'; // angry | frozen | friend
+    this.dead = false; this.danceT = 0; this.frozenT = 0; this.burpT = 0;
+    this.t = rand(9);
+    this.cycle = opt.cycle || 3.8; // idle 0-1.6, inhale 1.6-2.7, fire 2.7-cycle
+    this.cycleT = opt.offset || 0;
+    this.range = opt.range || 210; // flame length
+    this.stage = 'idle';
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  flameBox() {
+    const mx = this.dir > 0 ? this.x + this.w - 6 : this.x + 6;
+    return { x: this.dir > 0 ? mx : mx - this.range, y: this.groundY - 48, w: this.range, h: 44 };
+  }
+  nearCam() { return Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.8; }
+  hit(kind) {
+    if (kind === 'ice') {
+      this.state = 'frozen'; this.frozenT = 4; this.stage = 'idle';
+      AudioSys.sfx('freeze');
+      Particles.burst(this.cx, this.cy, 10, { colors: ['#d6f4ff', '#7fd8ff'], type: 'sparkle', sp1: 160, l1: 0.7, s1: 9, grav: 100 });
+    } else if (kind === 'rainbow') {
+      this.befriend();
+    } else if (kind === 'fire') {
+      // fire just makes him burp a smoke ring — funny, harmless
+      this.burpT = 0.8;
+      AudioSys.sfx('hiccup');
+      Particles.burst(this.cx + this.dir * 30, this.y + 16, 6, { colors: ['#c9c9d8', '#fff'], type: 'bubble', sp1: 90, grav: -120, l1: 0.8, s1: 10, up: 20 });
+    }
+  }
+  befriend() {
+    if (this.state === 'friend') return;
+    this.state = 'friend'; this.danceT = 1; this.stage = 'idle';
+    AudioSys.sfx('friend');
+    Particles.burst(this.cx, this.y, 12, { colors: ['#ff8fb0', '#fff'], type: 'heart', sp1: 200, l1: 1, s1: 11, grav: 150 });
+  }
+  knockAway(fromX) {
+    this.x += Math.sign(this.cx - fromX) * 26;
+    AudioSys.sfx('poof');
+    Particles.burst(this.cx, this.cy, 8, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 220, l1: 0.6, s1: 9, grav: 300 });
+  }
+  update(dt) {
+    this.t += dt;
+    this.danceT = Math.max(0, this.danceT - dt);
+    this.burpT = Math.max(0, this.burpT - dt);
+    if (this.state === 'frozen') {
+      this.frozenT -= dt;
+      if (this.frozenT <= 0) {
+        this.state = 'angry'; this.cycleT = 0;
+        AudioSys.sfx('shatter');
+        Particles.burst(this.cx, this.cy, 10, { colors: ['#d6f4ff', '#fff'], type: 'block', sp1: 220, l1: 0.6, s1: 9, grav: 500 });
+      }
+      return;
+    }
+    if (this.state === 'friend') return;
+    const prev = this.stage;
+    this.cycleT = (this.cycleT + dt) % this.cycle;
+    this.stage = this.cycleT < 1.6 ? 'idle' : this.cycleT < 2.7 ? 'inhale' : 'fire';
+    if (this.stage === 'inhale' && prev === 'idle' && this.nearCam()) AudioSys.sfx('inhale');
+    if (this.stage === 'fire' && prev !== 'fire' && this.nearCam()) AudioSys.sfx('fire');
+    if (this.stage === 'fire') {
+      const fb = this.flameBox();
+      if (chance(0.8)) Particles.burst(fb.x + rand(0, fb.w), fb.y + rand(6, fb.h - 6), 1, { colors: ['#ff9f43', '#ffe156', '#ff6b35'], type: 'flame', sp1: 60, grav: -80, l1: 0.4, s1: 12, up: 10 });
+      const pl = game.player;
+      if (game.state === 'play' && pl.superT <= 0 && overlaps(fb, pl)) {
+        pl.damage(1);
+        pl.vx = this.dir * 320; // gentle shove along the flame, out of danger
+      }
+    }
+  }
+  draw(ctx) {
+    const t = this.t, facing = this.dir;
+    const inhale = this.stage === 'inhale' ? Math.min(1, (this.cycleT - 1.6) / 0.9) : 0;
+    const puff = 1 + inhale * 0.35 + (this.stage === 'fire' ? 0.12 : 0);
+    const bob = Math.sin(t * 3) * 2;
+    const hop = (this.danceT > 0 || this.state === 'friend') ? Math.abs(Math.sin(t * 6)) * 8 : 0;
+    const bx = this.cx, by = this.y + this.h - hop;
+    ctx.save();
+    // fire stream (behind the body so the mouth reads on top)
+    if (this.state === 'angry' && this.stage === 'fire') {
+      const fb = this.flameBox();
+      const prog = Math.min(1, (this.cycleT - 2.7) / 0.25);
+      const len = fb.w * prog;
+      const x0 = facing > 0 ? fb.x : fb.x + fb.w - len;
+      for (let fx = 0; fx < len; fx += 22) {
+        const wob = Math.sin(t * 22 + fx * 0.2) * 5;
+        ctx.fillStyle = ['#ff6b35', '#ff9f43', '#ffe156'][Math.floor((fx / 22 + t * 10) % 3)];
+        ctx.beginPath();
+        ctx.arc(x0 + fx + 11, fb.y + fb.h / 2 + wob, 14 + Math.sin(fx * 0.11 + t * 14) * 5, 0, TAU);
+        ctx.fill();
+      }
+    }
+    // tail
+    ctx.strokeStyle = '#e8703a'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bx - facing * 24, by - 18);
+    ctx.quadraticCurveTo(bx - facing * 52, by - 30 + bob, bx - facing * 60, by - 8);
+    ctx.stroke();
+    // body
+    ctx.fillStyle = '#ff8a4a';
+    ctx.beginPath(); ctx.ellipse(bx, by - 26 + bob, 34 * puff, 26 * puff, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c2451a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#ffe9c0';
+    ctx.beginPath(); ctx.ellipse(bx + facing * 6, by - 18 + bob, 20 * puff, 14 * puff, 0, 0, TAU); ctx.fill();
+    // legs
+    ctx.fillStyle = '#e8703a';
+    for (const lx of [-18, 18]) { rr(ctx, bx + lx - 7, by - 10, 14, 12, 5); ctx.fill(); }
+    // back spikes
+    ctx.fillStyle = '#ffd24a';
+    for (let i = 0; i < 3; i++) {
+      const sx = bx - facing * (4 + i * 14);
+      ctx.beginPath();
+      ctx.moveTo(sx - 6, by - 44 + bob); ctx.lineTo(sx, by - 57 + bob); ctx.lineTo(sx + 6, by - 44 + bob);
+      ctx.closePath(); ctx.fill();
+    }
+    // head + snout
+    const hx = bx + facing * 26, hy = by - 42 + bob;
+    ctx.fillStyle = '#ff8a4a';
+    ctx.beginPath(); ctx.arc(hx, hy, 20 * (1 + inhale * 0.2), 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c2451a'; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(hx + facing * 16, hy + 6, 12, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    // puffed cheeks — THE "fire is coming" telegraph
+    if (inhale > 0) {
+      ctx.fillStyle = '#ffb35c';
+      ctx.beginPath(); ctx.arc(hx + facing * 7, hy + 9, 6 + inhale * 13, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c2451a'; ctx.stroke();
+      if (chance(0.3)) Particles.burst(hx, hy - 26, 1, { colors: ['#ffe156'], type: 'sparkle', sp1: 20, grav: -40, l1: 0.4, s1: 7, up: 0 });
+    }
+    // burp smoke ring
+    if (this.burpT > 0 && chance(0.4)) {
+      Particles.burst(hx + facing * 22, hy, 1, { colors: ['#c9c9d8'], type: 'bubble', sp1: 50, grav: -100, l1: 0.6, s1: 9, up: 10 });
+    }
+    const mood = this.state === 'friend' ? 'grin' : (this.stage === 'fire' || inhale > 0.4) ? 'surprised' : 'happy';
+    drawFace(ctx, hx - facing * 2, hy - 3, 20, mood, t, 55, facing, 0);
+    // frozen ice cube overlay
+    if (this.state === 'frozen') {
+      ctx.globalAlpha = 0.65;
+      ctx.fillStyle = '#bfe8ff';
+      rr(ctx, this.x - 6, this.y - 12, this.w + 12, this.h + 12, 10); ctx.fill();
+      ctx.strokeStyle = '#7fd8ff'; ctx.lineWidth = 3;
+      rr(ctx, this.x - 6, this.y - 12, this.w + 12, this.h + 12, 10); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
   }
 }

@@ -5,7 +5,7 @@ keys and the `ffbg-v1` SW cache keep the old prefix; renaming them would break
 saves.) The playable heroes are Jack-Jack (`'boy'`, cap) and Becca (`'girl'`,
 curly blonde hair).
 
-A 2D platformer built for Jack (Ryan's ~5-year-old). Nine worlds, zero build
+A 2D platformer built for Jack (Ryan's ~5-year-old). Ten worlds, zero build
 step, zero dependencies. The design doc's success metric governs everything:
 **"Does Jack immediately understand it, and does he want to play again?"**
 
@@ -57,7 +57,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 = pixels. Ground top is y=620 in most levels (1000 in forest; maze is a grid).
 
-## The nine worlds
+## The ten worlds
 
 | # | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
@@ -70,10 +70,12 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 | 7 | Monster Truck Rally | dirt | `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
+| 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient stone gate + 3-egg sequence shrine on a terrace), friendly dinos (longnecks/trike/T-Rex) | golden star in the Secret Dino Valley → party |
 
 Progression: gates advance 1→5; beating each boss/finale unlocks the next
-bonus world (zombie→6, magma→7, rally→8, coronation→9) and party exits chain
-5→6→7→8→9→title. Persistence (localStorage): `ffbg_unlocked` (1-9),
+bonus world (zombie→6, magma→7, rally→8, coronation→9, maze star→10) and party
+exits chain 5→6→7→8→9→10→title. Digit 0 on the title jumps to world 10.
+Persistence (localStorage): `ffbg_unlocked` (1-10),
 `ffbg_char` ('boy'/'girl'), `ffbg_royal` ('1' after coronation → crown drawn
 everywhere via `drawBoy`/`drawHead`).
 
@@ -99,7 +101,18 @@ everywhere via `drawBoy`/`drawHead`).
   differently (other puzzle types, rhythm pads, favors). No text, ever: the
   door hints with a key thought-bubble; wrong presses boing + wobble + instant
   reset, zero damage. Keep mission areas enemy-free (jump spiders chase from
-  430px — don't place them near puzzles or gates).
+  430px — don't place them near puzzles or gates). Theming is config, not new
+  systems: `MissionGate` takes `{theme:'wood'|'jungle'}` (size, art, bump sfx,
+  key style, celebration colors), `PuzzleSwitch` takes a `skin`
+  (`'plate'`|`'egg'`), the sign takes `style:'stone'` + `groundY`, and
+  `MissionItem` kinds `'key'`/`'dinokey'` pick the `drawKey` style.
+- **FireBreather** (`kind='firedino'`, lives in `lv.spiders` so all enemy
+  plumbing just works): deterministic cycle idle 1.6s → inhale 1.1s (cheeks
+  puff = telegraph, `inhale` sfx) → flame 1.1s. The flame box hugs the ground
+  (`flameBox()`, 44px tall) so jumping clears it; damage is 1 heart + a gentle
+  shove. `opt.offset` staggers pairs; ice freezes/pauses, rainbow befriends,
+  fire makes him burp harmlessly. Reuse it anywhere a timed jump-over hazard
+  is wanted.
 - **Cutscenes**: `game.cut = {name, t}` handled in `updateCut` (bossintro,
   magmaintro, rumble, chestfall, eruption, coronation). Player input frozen.
 - **Endings**: `game.endPhase` phases → `'party'` (big text per level in
@@ -120,7 +133,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 136 checks; must print
+  goal path) and version/changelog/docs sync checks. 161 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

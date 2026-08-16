@@ -8,6 +8,35 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.4.0] - 2026-08-16
+
+### Added
+- **World 10: DINO JUNGLE** — a full new bonus biome, unlocked by the Space Maze
+  star (party chain now 5→…→9→10→title; Digit 0 on the title jumps to it).
+  - Lush prehistoric jungle theme (`jungle`): parallax canopy, swaying vines,
+    mist, giant ferns/flowers/mushrooms, dino footprints, a sleepy smoking
+    volcano, and a Secret Dino Valley with waterfall, rainbow, and giant
+    flowers behind the gate. New jungle song and `inhale`/`grind` sfx.
+  - **`FireBreather`** — new reusable enemy/hazard (`kind='firedino'`, lives in
+    `lv.spiders`): deterministic idle → cheek-puffing inhale telegraph → low
+    ground-hugging flame that is jumped over, not fought. One heart + gentle
+    shove on contact; ice pauses it, rainbow befriends it, fire makes it burp.
+    Four escalating encounters, including a staggered pair and a shrine guard.
+  - **Dino Key mission** — the Mountain mission kit reused via configuration:
+    `MissionGate` theme `'jungle'` (mossy stone gate, dino carvings, statues,
+    grind sfx, rising slab, leafy celebration), egg-skinned `PuzzleSwitch`es
+    (three giant spotted eggs on pedestals; the last correct egg hatches a baby
+    dino), a carved stone clue tablet, and `MissionItem` kind `'dinokey'` (green
+    dino-head key with an amber gem).
+  - Friendly dinosaurs: two long-necks that lean toward the hero and blow
+    hearts, a wandering flower-sniffing baby triceratops that hops when you
+    approach, and a goofy stomping T-Rex that roars… then sneezes.
+  - Title screen now shows ten medallions (row recentered, arrow keycaps moved
+    outward); unlock-all combo opens all ten; `ffbg_unlocked` range is 1–10.
+- 25 new harness checks: full jungle mission flow, fire-breather telegraph/
+  hitbox/jump-clearance/freeze/befriend behavior, egg puzzle edge cases,
+  death-with-key, gate persistence, valley finale, and a jungle soak test.
+
 ## [1.3.0] - 2026-08-16
 
 ### Added

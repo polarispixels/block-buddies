@@ -15,7 +15,7 @@ fitCanvas();
 
 let saveUnlocked = 1, saveChar = 'boy', saveRoyal = false;
 try {
-  saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 9);
+  saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 10);
   if (localStorage.getItem('ffbg_char') === 'girl') saveChar = 'girl';
   saveRoyal = localStorage.getItem('ffbg_royal') === '1';
 } catch (e) {}
@@ -50,11 +50,11 @@ const PORTRAITS = [
   { who: 'boy', x: 200, y: 452, r: 46 },
   { who: 'girl', x: 318, y: 452, r: 46 }
 ];
-const medalPos = i => ({ x: W / 2 - 340 + (i - 1) * 85, y: 688, r: 30 });
+const medalPos = i => ({ x: W / 2 - 382.5 + (i - 1) * 85, y: 688, r: 30 });
 game.goTitle = function () {
   game.state = 'title';
   game.titleT = 0;
-  game.selLevel = clamp(game.unlocked, 1, 9);
+  game.selLevel = clamp(game.unlocked, 1, 10);
   AudioSys.setMusic('title');
 };
 game.setCharacter = function (who) {
@@ -66,12 +66,12 @@ game.setCharacter = function (who) {
   if (px2) Particles.burst(px2.x, px2.y, 10, { colors: ['#ffe156', '#ff8fb0', '#fff'], type: 'star', sp1: 220, l1: 0.6, s1: 9, grav: 200 });
 };
 game.unlockAll = function () { // secret combo: Up×5 fast on the title (keyboard only)
-  game.unlocked = 9;
-  game.selLevel = 9;
-  try { localStorage.setItem('ffbg_unlocked', '9'); } catch (e) {}
+  game.unlocked = 10;
+  game.selLevel = 10;
+  try { localStorage.setItem('ffbg_unlocked', '10'); } catch (e) {}
   game.titleMsg = { text: 'ALL WORLDS OPEN!', t: 2.5 };
   AudioSys.sfx('fanfare');
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 10; i++) {
     const m = medalPos(i);
     Particles.burst(m.x, m.y, 8, { colors: RAINBOW, type: 'confetti', sp1: 220, l0: 0.8, l1: 1.6, s1: 10, grav: 250, up: 180 });
   }
@@ -94,7 +94,7 @@ game.titleTap = function (p) {
   for (const pt of PORTRAITS) {
     if (Math.hypot(p.x - pt.x, p.y - pt.y) < pt.r * 1.25) { game.setCharacter(pt.who); return true; }
   }
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 10; i++) {
     const m = medalPos(i);
     if (Math.hypot(p.x - m.x, p.y - m.y) < m.r * 1.35) {
       if (i <= game.unlocked) { game.selLevel = i; game.startLevel(i); }
@@ -248,6 +248,22 @@ game.mazeWin = function () {
   Particles.candyBurst(gs.x, gs.y - 30, 14);
   // the star's magic befriends every alien in the maze — party for all!
   for (const sp of game.spiders) if (sp.kind === 'alien' && sp.state === 'angry') sp.befriend();
+  game.unlocked = Math.max(game.unlocked, 10); // the maze star opens the jungle
+  try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
+};
+game.jungleWin = function () {
+  if (game.mazeDone) return; // shares the goal-star guard flag
+  game.mazeDone = true;
+  game.endPhase = 'party'; game.partyT = 0;
+  AudioSys.setMusic('win');
+  AudioSys.sfx('chest');
+  AudioSys.sfx('cheer');
+  game.shake = Math.max(game.shake, 0.25);
+  const gs = game.level.goalStar;
+  Particles.burst(gs.x, gs.y, 30, { colors: ['#ffe156', '#7be07b', '#fff'], type: 'star', sp1: 420, l0: 0.8, l1: 1.6, s1: 13, grav: 100 });
+  Particles.candyBurst(gs.x, gs.y - 30, 14);
+  // every dino and spider in the valley joins the party
+  for (const sp of game.spiders) if (sp.state === 'angry' && sp.befriend) sp.befriend();
 };
 game.finishRace = function () {
   if (game.raceDone) return;
@@ -407,7 +423,9 @@ function updatePlay(dt) {
   // coronation happens when you reach the castle
   if (lv.castleX && !game.crowned && pl.x > lv.castleX) { game.startCoronation(); return; }
   // touching the golden star wins the maze
-  if (lv.goalStar && !game.mazeDone && Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) game.mazeWin();
+  if (lv.goalStar && !game.mazeDone && Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) {
+    if (lv.n === 10) game.jungleWin(); else game.mazeWin();
+  }
   if (game.endPhase !== 'party' || lv.n >= 7) pl.update(dt); // victory laps and flying allowed!
   else {
     pl.t += dt;
@@ -487,6 +505,9 @@ function updatePlay(dt) {
         Particles.burst(5150 + rand(0, 420), 460, 12, { colors: RAINBOW.concat(['#fff']), type: 'confetti', sp1: 240, l0: 1, l1: 2.2, s1: 11, grav: 220, up: 150 });
       }
     }
+    if (lv.n === 10 && chance(0.4)) { // gentle rain of leaves and petals
+      Particles.burst(game.cam.x + rand(0, W), game.cam.y - 10, 1, { colors: ['#57d357', '#7be07b', '#ffe156', '#ff8fb0'], type: 'confetti', sp1: 50, l0: 2, l1: 3.5, s1: 11, grav: 90, up: 0 });
+    }
     if (lv.n === 9) { // star fireworks in zero-g
       game.cheerT -= dt;
       if (game.cheerT <= 0) {
@@ -500,6 +521,7 @@ function updatePlay(dt) {
       else if (lv.n === 6) game.startLevel(7); // and another one!
       else if (lv.n === 7) game.startLevel(8); // and one more!
       else if (lv.n === 8) game.startLevel(9); // to infinity!
+      else if (lv.n === 9) game.startLevel(10); // ...and beyond, to the dinosaurs!
       else game.goTitle();
     }
   }
@@ -547,6 +569,7 @@ function updateTitle(dt) {
   for (let i = 1; i <= 9; i++) {
     if (justP['Digit' + i] && i <= game.unlocked) { game.selLevel = i; game.startLevel(i); return; }
   }
+  if (justP.Digit0 && game.unlocked >= 10) { game.selLevel = 10; game.startLevel(10); return; }
   if (justP.Space) game.startLevel(clamp(game.selLevel, 1, game.unlocked));
 }
 function update(dt) {
@@ -692,6 +715,22 @@ function drawLevelIcon(ctx, x, y, s, theme, t) {
     ctx.fillStyle = '#ffe156';
     starPath(ctx, s * 0.72, -s * 0.72, s * 0.26, s * 0.12, 5, t);
     ctx.fill();
+  } else if (theme === 'jungle') {
+    // little green dino head peeking over a leaf
+    ctx.fillStyle = '#57c25c';
+    ctx.beginPath(); ctx.arc(0, -s * 0.1, s * 0.55, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.5, s * 0.02, s * 0.3, s * 0.22, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2f8a3c';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.45 + i * s * 0.3, -s * 0.5);
+      ctx.lineTo(-s * 0.3 + i * s * 0.3, -s * 0.85);
+      ctx.lineTo(-s * 0.15 + i * s * 0.3, -s * 0.5);
+      ctx.closePath(); ctx.fill();
+    }
+    drawFace(ctx, -s * 0.05, -s * 0.08, s * 0.55, 'happy', t, 45);
+    ctx.fillStyle = '#3f9c3a';
+    ctx.beginPath(); ctx.ellipse(0, s * 0.72, s * 0.85, s * 0.28, 0, Math.PI, TAU); ctx.fill();
   } else if (theme === 'cave') {
     ctx.fillStyle = '#cfc8e0';
     rr(ctx, -s * 0.7, -s * 0.8, s * 1.4, s * 1.2, s * 0.35); ctx.fill();
@@ -888,7 +927,10 @@ function drawPartyOverlay() {
     ctx.save();
     ctx.globalAlpha = k;
     ctx.translate(0, (1 - k) * -60);
-    if (game.level.n === 9) {
+    if (game.level.n === 10) {
+      outlineText(ctx, 'SECRET DINO VALLEY!', W / 2, 135, 68, '#7be07b', '#2f5a2a');
+      outlineText(ctx, 'DINO FRIENDS FOREVER!', W / 2, 210, 42, '#ffe156', '#2f5a2a');
+    } else if (game.level.n === 9) {
       outlineText(ctx, 'MAZE MASTER!', W / 2, 140, 80, '#ffe156', '#3d3766');
       ctx.fillStyle = '#ffd24a';
       starPath(ctx, W / 2, 225, 34, 15, 5, -Math.PI / 2 + Math.sin(game.t * 2) * 0.2);
@@ -1048,9 +1090,9 @@ function renderTitle() {
   outlineText(ctx, 'PRESS SPACE', W / 2, 545, 34, '#fff', '#5a4a86');
   ctx.restore();
   // world medallions: Left/Right or tap to pick where to play
-  drawKeycap(ctx, W / 2 - 412, 688, 40, 'left', t);
-  drawKeycap(ctx, W / 2 + 412, 688, 40, 'right', t + 0.5);
-  for (let i = 1; i <= 9; i++) {
+  drawKeycap(ctx, W / 2 - 458, 688, 40, 'left', t);
+  drawKeycap(ctx, W / 2 + 458, 688, 40, 'right', t + 0.5);
+  for (let i = 1; i <= 10; i++) {
     const m = medalPos(i);
     const open = i <= game.unlocked;
     const sel = i === game.selLevel && open;

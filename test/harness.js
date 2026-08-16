@@ -543,7 +543,80 @@ check('touching the star wins the maze', G().mazeDone === true && G().endPhase =
 frames(320);
 tap('Space');
 frames(5);
-check('maze party exit returns to title', G().state === 'title');
+check('maze party exit leads into DINO JUNGLE', G().level.n === 10 && sandbox.localStorage.getItem('ffbg_unlocked') === '10');
+frames(150);
+check('jungle loaded and playing', G().state === 'play' && G().level.theme === 'jungle');
+const MIS2 = () => vm.runInContext('game.level.mission', sandbox);
+const put2 = (x, y) => vm.runInContext(`game.player.x = ${x}; game.player.y = ${y}; game.player.vx = 0; game.player.vy = 0`, sandbox);
+check('five fire-breathing dinos placed', vm.runInContext("game.spiders.filter(s => s.kind === 'firedino').length", sandbox) === 5);
+vm.runInContext("game.fb = game.spiders.find(s => s.kind === 'firedino'); game.fb.cycleT = 1.7;", sandbox);
+frames(2);
+check('cheeks puff before the fire (telegraph stage)', vm.runInContext('game.fb.stage', sandbox) === 'inhale');
+check('flame hugs the ground so a jump clears it', (function () {
+  const fb = vm.runInContext('game.fb.flameBox()', sandbox);
+  return fb.y >= 566 && fb.h <= 50;
+})());
+put2(880, 620 - 94);
+vm.runInContext('game.player.inv = 0; game.fb.cycleT = 2.65;', sandbox);
+frames(20);
+check('standing in the flame costs one heart', G().player.hearts === 2);
+vm.runInContext('game.player.hearts = 3; game.player.inv = 0; game.player.y = 400; game.player.vy = -300; game.fb.cycleT = 2.65;', sandbox);
+frames(12);
+check('jumping clears the fire unharmed', G().player.hearts === 3);
+put2(600, 620 - 94); // step clear before the flame ends
+frames(40);
+vm.runInContext("game.fb.hit('ice')", sandbox);
+check('ice freezes the fire dino', vm.runInContext('game.fb.state', sandbox) === 'frozen');
+vm.runInContext('game.player.hearts = 3; game.player.inv = 0;', sandbox);
+put2(880, 620 - 94);
+frames(30);
+check('frozen dino breathes no fire', G().player.hearts === 3);
+vm.runInContext("game.fb.state = 'angry'; game.fb.hit('rainbow')", sandbox);
+check('rainbow befriends the fire dino', vm.runInContext('game.fb.state', sandbox) === 'friend');
+// the ancient gate
+put2(4160, 620 - 94);
+frames(50, { ArrowRight: 1 });
+check('ancient gate blocks the path', G().player.x + G().player.w <= MIS2().gate.solid.x + 2);
+check('gate shows its dino-key wish', MIS2().gate.hintT > 0 && MIS2().gate.keyStyle === 'dino');
+// the egg shrine (terrace at y=430)
+put2(3960 - 28, 430 - 94);
+frames(8);
+check('wrong egg wobbles and resets', MIS2().puzzle.progress === 0 && MIS2().puzzle.resetT > 0);
+frames(80);
+put2(3660 - 28, 430 - 94); frames(8);
+check('first egg (rainbow) lights up', MIS2().puzzle.progress === 1);
+put2(3532, 430 - 94); frames(8); // step clear of every egg zone
+put2(3660 - 28, 430 - 94); frames(8);
+check('re-touching a lit egg does not reset', MIS2().puzzle.progress === 1);
+put2(3810 - 28, 430 - 94); frames(8);
+put2(3960 - 28, 430 - 94); frames(8);
+check('three eggs in order complete the shrine', MIS2().puzzle.done && MIS2().state !== 'puzzle');
+check('an egg hatches a baby dino', MIS2().puzzle.switches[0].hatched === true);
+frames(200);
+check('chest opens into the DINO KEY', MIS2().chest && MIS2().chest.open && MIS2().item.state === 'waiting' && MIS2().item.kind === 'dinokey');
+put2(MIS2().item.x, MIS2().item.y);
+frames(8);
+check('dino key follows the hero', MIS2().item.state === 'follow' && MIS2().state === 'carrying');
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(30);
+check('respawn keeps the dino key', G().state === 'play' &&
+  ['follow', 'flying', 'used'].includes(MIS2().item.state) && ['carrying', 'done'].includes(MIS2().state));
+put2(4150, 620 - 94);
+frames(10);
+check('gate notices the dino key', MIS2().gate.state !== 'locked');
+frames(150);
+check('ancient gate rises open', MIS2().gate.state === 'open' && MIS2().gate.solid.broken === true && MIS2().state === 'done');
+frames(60, { ArrowRight: 1 });
+check('hero enters the secret valley', G().player.cx > 4300);
+put2(5560, 620 - 94);
+frames(20);
+check('valley golden star starts the party', G().endPhase === 'party');
+frames(320);
+tap('Space');
+frames(5);
+check('jungle party exit returns to title', G().state === 'title');
 
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
@@ -574,16 +647,16 @@ check('down arrow switches back to the boy', G().character === 'boy');
 // tap the girl portrait (touch path)
 vm.runInContext('game.titleTap({x: 318, y: 452})', sandbox);
 check('tapping her portrait selects the girl', G().character === 'girl');
-check('title defaults selection to furthest level', G().selLevel === 9);
+check('title defaults selection to furthest level', G().selLevel === 10);
 for (let i = 0; i < 5; i++) { tap('ArrowLeft'); frames(2); }
-check('left arrow moves level selection', G().selLevel === 4);
+check('left arrow moves level selection', G().selLevel === 5);
 tap('Space');
 frames(5);
-check('space starts the SELECTED level, not the last one', G().level.n === 4 && G().state === 'intro');
+check('space starts the SELECTED level, not the last one', G().level.n === 5 && G().state === 'intro');
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 check('tapping a medallion starts that level', (function () {
-  vm.runInContext('game.titleTap({x: W/2 - 340 + 85, y: 688})', sandbox); // medallion 2
+  vm.runInContext('game.titleTap({x: W/2 - 382.5 + 85, y: 688})', sandbox); // medallion 2
   return G().level.n === 2 && G().state === 'intro';
 })());
 vm.runInContext('game.goTitle()', sandbox);
@@ -598,12 +671,12 @@ check('digit key starts that level from title', G().level.n === 3 && G().state =
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 for (let i = 0; i < 5; i++) { tap('ArrowUp'); frames(2); }
-check('Up×5 combo unlocks all worlds', G().unlocked === 9 && sandbox.localStorage.getItem('ffbg_unlocked') === '9' && G().selLevel === 9);
+check('Up×5 combo unlocks all worlds', G().unlocked === 10 && sandbox.localStorage.getItem('ffbg_unlocked') === '10' && G().selLevel === 10);
 for (let i = 0; i < 4; i++) { tap('ArrowDown'); frames(2); }
 frames(90); // > 1.2s gap — the streak must expire
 tap('ArrowDown');
 frames(2);
-check('slow Down presses do not reset the game', G().unlocked === 9);
+check('slow Down presses do not reset the game', G().unlocked === 10);
 frames(90); // let that stray press's streak window expire
 vm.runInContext("game.royal = true; game.setCharacter('girl')", sandbox);
 for (let i = 0; i < 5; i++) { tap('ArrowDown'); frames(2); }
@@ -618,7 +691,7 @@ check('touch-synthesized presses cannot fire combos', (function () {
 })());
 
 // long soak: run each level 12 simulated seconds with chaotic input
-for (let n = 1; n <= 5; n++) {
+for (const n of [1, 2, 3, 4, 5, 10]) {
   vm.runInContext(`game.startLevel(${n})`, sandbox);
   frames(150);
   for (let i = 0; i < 12; i++) {

@@ -9,7 +9,8 @@ const LEVEL_META = {
   6: { name: 'LAVA WORLD', theme: 'lava', music: 'lava' },
   7: { name: 'MONSTER TRUCK RALLY', theme: 'dirt', music: 'dirt' },
   8: { name: 'UNICORN FOREST', theme: 'forest', music: 'forest' },
-  9: { name: 'SPACE MAZE', theme: 'space', music: 'space' }
+  9: { name: 'SPACE MAZE', theme: 'space', music: 'space' },
+  10: { name: 'DINO JUNGLE', theme: 'jungle', music: 'jungle' }
 };
 
 function newLevel(n) {
@@ -436,6 +437,73 @@ function buildLevel(n) {
     lv.hints.push({ x: 420, y: 9 * CELL, icon: 'updown' });
   }
 
+  if (n === 10) { // ---------------- DINO JUNGLE (bonus)
+    lv.w = 5800;
+    addGround(lv, 0, lv.w, G);
+    // canopy platforming (giant leaf platforms)
+    addPlat(lv, 1150, 500, 150, { oneWay: true });
+    addPlat(lv, 1400, 420, 150, { oneWay: true });
+    addPlat(lv, 1650, 500, 150, { oneWay: true });
+    addPlat(lv, 1850, 470, 160, { oneWay: true }); // hop route over fire dino #2
+    // shrine terrace + approach steps
+    addPlat(lv, 3230, 560, 130, { oneWay: true });
+    addPlat(lv, 3340, 495, 130, { oneWay: true });
+    addPlat(lv, 3400, 430, 780, { oneWay: true });
+    // fire-breathing dinos: tutorial, platforms, staggered pair, shrine guard
+    lv.spiders.push(new FireBreather(1000, G, -1));
+    lv.spiders.push(new FireBreather(1950, G, -1, { offset: 1.2 }));
+    lv.spiders.push(new FireBreather(2400, G, -1));
+    lv.spiders.push(new FireBreather(2760, G, -1, { offset: 1.9 }));
+    lv.spiders.push(new FireBreather(3470, 430, -1, { offset: 0.6 })); // guards the shrine
+    // vine spiders (jungle cousins of the hang spider)
+    spider(lv, 1350, 460, 'hang', { webTop: 0 });
+    spider(lv, 3050, 460, 'hang', { webTop: 0 });
+    pick(lv, 700, G - 90, 'rainbow');
+    pick(lv, 2150, G - 80, 'ice');
+    pick(lv, 2950, G - 80, 'rainbow');
+    pick(lv, 1475, 360, 'heart');
+    pick(lv, 4600, G - 80, 'heart');
+    candyRow(lv, 280, 640, G - 55, 4);
+    candyArc(lv, 850, 1090, 410, G - 70, 5); // arcs trace the jump over each flame
+    candyRow(lv, 1180, 1680, 440, 5);
+    candyArc(lv, 1800, 2040, 400, G - 70, 5);
+    candyArc(lv, 2250, 2490, 400, G - 70, 5);
+    candyArc(lv, 2610, 2850, 400, G - 70, 5);
+    candyArc(lv, 3320, 3560, 300, 430 - 60, 5);
+    candyRow(lv, 4400, 5000, G - 60, 5);
+    candyArc(lv, 5050, 5500, 380, G - 70, 6);
+    lv.checks.push(new Checkpoint(1600, G));
+    lv.checks.push(new Checkpoint(2900, G));
+    lv.checks.push(new Checkpoint(4200, G));
+    lv.hints.push({ x: 260, y: G - 190, icon: 'arrows' });
+    lv.hints.push({ x: 850, y: G - 220, icon: 'up' }); // "jump!" — over the fire
+    // ---- Dino Key adventure mission: egg shrine on the terrace, ancient gate below
+    const jGate = new MissionGate(4300, G, { theme: 'jungle' });
+    lv.solids.push(jGate.solid);
+    lv.mission = new Mission('dinokey',
+      jGate,
+      new SequencePuzzle(
+        [new PuzzleSwitch(3660, 430, 'rainbow', 'egg'), new PuzzleSwitch(3810, 430, 'power', 'egg'), new PuzzleSwitch(3960, 430, 'fire', 'egg')],
+        ['rainbow', 'power', 'fire'],
+        { x: 3810, y: 250, style: 'stone', groundY: 430 }),
+      new MissionItem('dinokey'),
+      { cx: 4090, floorY: 430, dropY: 60 });
+    // the secret valley's golden star
+    lv.goalStar = { x: 5600, y: 500 };
+    lv.decor.ferns = []; lv.decor.jflowers = []; lv.decor.shroomsJ = []; lv.decor.prints = [];
+    for (let x = 100; x < 5700; x += rand(220, 420)) lv.decor.ferns.push({ x, s: rand(0.8, 1.5), c: randi(0, 2) });
+    for (let x = 200; x < 5700; x += rand(260, 500)) lv.decor.jflowers.push({ x, s: rand(0.8, 1.3), c: randi(0, 3) });
+    for (let x = 350; x < 5600; x += rand(500, 900)) lv.decor.shroomsJ.push({ x, s: rand(0.8, 1.4), c: randi(0, 2) });
+    for (let x = 400; x < 5600; x += rand(400, 800)) lv.decor.prints.push({ x });
+    lv.decor.longnecks = [{ x: 620, s: 1, c: 0 }, { x: 4750, s: 1.15, c: 1 }];
+    lv.decor.trike = { x: 3150, x0: 3150, dir: 1, t: rand(9) };
+    lv.decor.trex = { x: 5250, t: 0, lastPhase: 0 };
+    lv.decor.bigflowers = [{ x: 4550, c: 0 }, { x: 4980, c: 1 }, { x: 5420, c: 2 }];
+    lv.decor.eggsDecor = [{ x: 3290, s: 0.8 }, { x: 3335, s: 0.6 }];
+    lv.decor.butterflies = [];
+    for (let i = 0; i < 8; i++) lv.decor.butterflies.push({ x: rand(200, 5600), y: rand(250, 560), c: randi(0, 3), sp: rand(20, 50) * (chance(0.5) ? 1 : -1) });
+  }
+
   return lv;
 }
 function buildSpaceMaze() {
@@ -496,6 +564,9 @@ function drawBG(ctx, lv, cam, t) {
   } else if (th === 'space') {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#0a0a1e'); g.addColorStop(1, '#201646');
+  } else if (th === 'jungle') {
+    g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#7ecfe8'); g.addColorStop(0.45, '#a8e8b0'); g.addColorStop(1, '#d8f2c0');
   } else {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#171029'); g.addColorStop(1, '#2c1e4a');
@@ -720,6 +791,83 @@ function drawBG(ctx, lv, cam, t) {
     if (chance(0.008)) {
       Particles.burst(cam.x + rand(0, W), cam.y + rand(0, 300), 1, { colors: ['#fff'], type: 'sparkle', sp0: 500, sp1: 700, a0: 2.6, a1: 2.9, grav: 0, l0: 0.5, l1: 0.8, s1: 10, up: 0 });
     }
+  } else if (th === 'jungle') {
+    // distant smoking volcano with a sleepy face
+    const vx = 900 - cam.x * 0.06;
+    if (vx > -400 && vx < W + 400) {
+      ctx.fillStyle = '#6aa876';
+      ctx.beginPath();
+      ctx.moveTo(vx - 330, 640); ctx.lineTo(vx - 60, 200); ctx.lineTo(vx + 60, 200); ctx.lineTo(vx + 330, 640);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,140,60,' + (0.35 + 0.15 * Math.sin(t * 1.5)) + ')';
+      ctx.beginPath(); ctx.ellipse(vx, 203, 44, 12, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      for (let i = 0; i < 3; i++) {
+        const py = 180 - i * 42 - (t * 18) % 42;
+        ctx.beginPath(); ctx.arc(vx + Math.sin(t + i * 2) * 14, py, 16 + i * 5, 0, TAU); ctx.fill();
+      }
+      drawFace(ctx, vx, 278, 54, 'sleepy', t, 87); // above the canopy line
+    }
+    // two parallax canopy layers of giant round trees + fronds
+    for (const [par, col, sc] of [[0.15, '#8fd8a0', 1.3], [0.3, '#6cc47e', 1]]) {
+      for (let i = -1; i < 8; i++) {
+        const tx2 = i * 310 - (cam.x * par) % 310;
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(tx2, 690 - 250 * sc, 100 * sc, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx2 - 70 * sc, 690 - 170 * sc, 80 * sc, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx2 + 70 * sc, 690 - 180 * sc, 74 * sc, 0, TAU); ctx.fill();
+      }
+    }
+    // hanging vines swaying from the canopy top
+    ctx.strokeStyle = 'rgba(63,156,58,0.55)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i++) {
+      const vx2 = ((i * 420 + 130 - cam.x * 0.45) % (W + 300) + W + 300) % (W + 300) - 150;
+      const vl = 120 + (i % 3) * 60, wob = Math.sin(t * 1.4 + i * 1.7) * 14;
+      ctx.beginPath();
+      ctx.moveTo(vx2, -10);
+      ctx.quadraticCurveTo(vx2 + wob * 0.5, vl * 0.6, vx2 + wob, vl);
+      ctx.stroke();
+    }
+    // drifting mist
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 4; i++) {
+      const mx = ((i * 460 + t * 12 - cam.x * 0.5) % (W + 500) + W + 500) % (W + 500) - 250;
+      ctx.beginPath(); ctx.ellipse(mx, 520 + (i % 2) * 70, 190, 34, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    // the secret valley: waterfall + rainbow behind the far end of the world
+    const wx = 4620 - cam.x;
+    if (wx > -300 && wx < W + 300) {
+      ctx.fillStyle = '#5a8a68';
+      ctx.beginPath();
+      ctx.moveTo(wx - 240, 640); ctx.lineTo(wx - 150, 130); ctx.lineTo(wx + 150, 140); ctx.lineTo(wx + 220, 640);
+      ctx.closePath(); ctx.fill();
+      const wg = ctx.createLinearGradient(0, 130, 0, 620);
+      wg.addColorStop(0, '#bfe8ff'); wg.addColorStop(1, '#7fd8ff');
+      ctx.fillStyle = wg;
+      ctx.fillRect(wx - 46, 140, 92, 480);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      for (let i = 0; i < 5; i++) {
+        const fy = (140 + i * 110 + t * 220) % 480 + 140;
+        ctx.beginPath(); ctx.ellipse(wx + Math.sin(i * 3) * 24, fy, 13, 22, 0, 0, TAU); ctx.fill();
+      }
+      ctx.beginPath(); ctx.ellipse(wx, 622, 110, 16, 0, 0, TAU); ctx.fill();
+      if (chance(0.2)) Particles.burst(4620 + rand(-60, 60), 610, 1, { colors: ['#fff', '#bfe8ff'], type: 'bubble', sp1: 40, grav: -80, l1: 0.8, s1: 8, up: 20 });
+    }
+    const rx3 = 5150 - cam.x * 0.9;
+    if (rx3 > -500 && rx3 < W + 500) {
+      ctx.save();
+      ctx.globalAlpha = 0.4; ctx.lineWidth = 11;
+      RAINBOW.forEach((c, i) => {
+        ctx.strokeStyle = c;
+        ctx.beginPath(); ctx.arc(rx3, 700, 380 - i * 12, Math.PI, TAU); ctx.stroke();
+      });
+      ctx.restore();
+    }
+    // floating spores / fireflies
+    if (chance(0.25)) Particles.burst(cam.x + rand(0, W), cam.y + rand(150, 650), 1, { colors: ['#ffe156', '#d0ffa0', '#fff'], type: 'sparkle', sp1: 15, grav: -25, l0: 1.5, l1: 3, up: 0, s0: 4, s1: 7 });
   } else if (th === 'cave') {
     // stalactites silhouettes
     ctx.fillStyle = '#241640';
@@ -783,7 +931,7 @@ function drawSolids(ctx, lv, cam, t) {
       }
       continue;
     }
-    if (th === 'forest' && s.oneWay) { // leafy branch platform
+    if ((th === 'forest' || th === 'jungle') && s.oneWay) { // leafy branch platform
       ctx.fillStyle = '#57b84a';
       rr(ctx, s.x, s.y, s.w, 22, 11); ctx.fill();
       ctx.fillStyle = '#6fcf5f';
@@ -841,6 +989,7 @@ function drawSolids(ctx, lv, cam, t) {
     else if (th === 'dirt') { fill = '#a8672f'; topFill = '#c9924a'; line = 'rgba(90,50,20,0.3)'; }
     else if (th === 'forest') { fill = '#7a5230'; topFill = '#57b84a'; line = 'rgba(60,35,15,0.3)'; }
     else if (th === 'space') { fill = '#3d3766'; topFill = '#7fd8ff'; line = 'rgba(15,12,35,0.5)'; }
+    else if (th === 'jungle') { fill = '#8a5a34'; topFill = '#3fae5a'; line = 'rgba(60,35,15,0.3)'; }
     else { fill = '#b07845'; topFill = '#5ecb4a'; line = 'rgba(90,50,20,0.25)'; }
     if (s.plat && th !== 'cave') { fill = '#c98f4e'; }
     ctx.fillStyle = fill;
@@ -1310,6 +1459,219 @@ function drawDecor(ctx, lv, cam, t) {
       ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(255,122,43,0.4)'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(r.x - 10 * s, gt - 38 * s); ctx.lineTo(r.x - 4 * s, gt - 10 * s); ctx.stroke();
+    }
+  } else if (th === 'jungle') {
+    const g = 620;
+    // dino footprints stamped in the grass
+    ctx.fillStyle = 'rgba(60,110,60,0.4)';
+    for (const p of d.prints || []) {
+      if (!visible(p.x)) continue;
+      for (const [ox, oy] of [[0, 0], [34, 8]]) {
+        ctx.beginPath(); ctx.ellipse(p.x + ox, g + 10 + oy * 0.4, 14, 8, 0, 0, TAU); ctx.fill();
+        for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(p.x + ox - 10 + i * 10, g + 3 + oy * 0.4, 3.5, 0, TAU); ctx.fill(); }
+      }
+    }
+    // giant ferns
+    for (const f of d.ferns || []) {
+      if (!visible(f.x)) continue;
+      ctx.strokeStyle = ['#3f9c3a', '#57b84a'][f.c]; ctx.lineWidth = 5 * f.s; ctx.lineCap = 'round';
+      for (let i = -2; i <= 2; i++) {
+        const sway = Math.sin(t * 1.3 + f.x + i) * 5;
+        ctx.beginPath();
+        ctx.moveTo(f.x, g + 4);
+        ctx.quadraticCurveTo(f.x + i * 22 * f.s + sway, g - 55 * f.s, f.x + i * 44 * f.s + sway, g - 75 * f.s + Math.abs(i) * 18 * f.s);
+        ctx.stroke();
+      }
+    }
+    // goofy tropical flowers (some with faces)
+    for (const fl of d.jflowers || []) {
+      if (!visible(fl.x)) continue;
+      const s = fl.s, sway = Math.sin(t * 1.6 + fl.x) * 3;
+      ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 4 * s;
+      ctx.beginPath(); ctx.moveTo(fl.x, g + 4); ctx.quadraticCurveTo(fl.x + sway, g - 30 * s, fl.x + sway, g - 52 * s); ctx.stroke();
+      ctx.fillStyle = ['#ff5a8a', '#ffb62b', '#b06cf0', '#ff8fb0'][fl.c];
+      for (let i = 0; i < 6; i++) {
+        const a = i * TAU / 6 + t * 0.3;
+        ctx.beginPath(); ctx.arc(fl.x + sway + Math.cos(a) * 13 * s, g - 52 * s + Math.sin(a) * 13 * s, 8 * s, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(fl.x + sway, g - 52 * s, 8 * s, 0, TAU); ctx.fill();
+      if (fl.c === 0) drawFace(ctx, fl.x + sway, g - 52 * s, 11 * s, 'happy', t, fl.x);
+    }
+    // giant prehistoric mushrooms
+    for (const m of d.shroomsJ || []) {
+      if (!visible(m.x)) continue;
+      const s = m.s;
+      ctx.fillStyle = '#f2e2c0';
+      rr(ctx, m.x - 10 * s, g - 60 * s, 20 * s, 60 * s, 8); ctx.fill();
+      ctx.fillStyle = ['#e86a5a', '#b06cf0'][m.c];
+      ctx.beginPath(); ctx.ellipse(m.x, g - 58 * s, 42 * s, 24 * s, 0, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (const [ox, oy] of [[-20, -8], [4, -14], [24, -6]]) {
+        ctx.beginPath(); ctx.arc(m.x + ox * s, g - 58 * s + oy * s, 5 * s, 0, TAU); ctx.fill();
+      }
+    }
+    // decorative giant eggs near the shrine
+    for (const e of d.eggsDecor || []) {
+      if (!visible(e.x)) continue;
+      ctx.fillStyle = '#fff6e0';
+      ctx.beginPath(); ctx.ellipse(e.x, g - 30 * e.s, 22 * e.s, 30 * e.s, 0.15, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c9b88a'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = '#a8d8a0';
+      for (const [ox, oy] of [[-6, -10], [8, 2], [-2, 14]]) {
+        ctx.beginPath(); ctx.arc(e.x + ox * e.s, g - 30 * e.s + oy * e.s, 5 * e.s, 0, TAU); ctx.fill();
+      }
+    }
+    // friendly long-neck dinos — they lean their heads toward the hero
+    for (const ln of d.longnecks || []) {
+      if (!visible(ln.x)) continue;
+      const s = ln.s, bod = ['#57c2b0', '#8fca5c'][ln.c], dark = ['#2f8a80', '#5a9c3a'][ln.c];
+      const px2 = game.player ? game.player.cx : 0;
+      const near = Math.abs(px2 - ln.x) < 420;
+      const lean = clamp((px2 - ln.x) / 420, -1, 1) * (near ? 1 : 0.2);
+      const bob = Math.sin(t * 1.2 + ln.x) * 4;
+      // legs + body
+      ctx.fillStyle = bod;
+      for (const lx of [-46, -14, 18, 44]) rr(ctx, ln.x + lx * s, g - 46 * s, 16 * s, 46 * s, 7), ctx.fill();
+      ctx.beginPath(); ctx.ellipse(ln.x, g - 62 * s, 66 * s, 34 * s, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+      // spots
+      ctx.fillStyle = dark;
+      for (const [ox, oy] of [[-30, -8], [4, 6], [30, -10]]) {
+        ctx.beginPath(); ctx.arc(ln.x + ox * s, g - 62 * s + oy * s, 6 * s, 0, TAU); ctx.fill();
+      }
+      // tail
+      ctx.strokeStyle = bod; ctx.lineWidth = 14 * s; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(ln.x - 58 * s, g - 62 * s);
+      ctx.quadraticCurveTo(ln.x - 100 * s, g - 50 * s + bob, ln.x - 118 * s, g - 80 * s);
+      ctx.stroke();
+      // neck bends toward the player
+      const hx2 = ln.x + 52 * s + lean * 46 * s, hy2 = g - 190 * s + Math.abs(lean) * 26 * s + bob;
+      ctx.lineWidth = 18 * s;
+      ctx.beginPath();
+      ctx.moveTo(ln.x + 44 * s, g - 72 * s);
+      ctx.quadraticCurveTo(ln.x + 58 * s, g - 150 * s, hx2, hy2);
+      ctx.stroke();
+      ctx.fillStyle = bod;
+      ctx.beginPath(); ctx.ellipse(hx2 + lean * 8 * s, hy2 - 6 * s, 22 * s, 17 * s, lean * 0.2, 0, TAU); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+      drawFace(ctx, hx2 + lean * 10 * s, hy2 - 6 * s, 17 * s, near ? 'grin' : 'happy', t, ln.x, lean, 0);
+      if (near && chance(0.03)) Particles.burst(hx2, hy2 - 26 * s, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 30, grav: -60, l1: 1, s1: 9, up: 10 });
+    }
+    // baby triceratops: wanders, sniffs flowers, hops when you come close
+    if (d.trike) {
+      const tk = d.trike;
+      tk.t += 0.016;
+      const near = game.player && Math.abs(game.player.cx - tk.x) < 170;
+      if (!near) { tk.x += tk.dir * 22 * 0.016; if (tk.x > tk.x0 + 70) tk.dir = -1; if (tk.x < tk.x0 - 70) tk.dir = 1; }
+      if (visible(tk.x)) {
+        const hop = near ? Math.abs(Math.sin(tk.t * 7)) * 10 : 0;
+        const sniff = !near && Math.sin(tk.t * 0.7) > 0.6 ? 6 : 0;
+        const by2 = g - hop;
+        ctx.fillStyle = '#f2b04a';
+        ctx.beginPath(); ctx.ellipse(tk.x, by2 - 24, 30, 20, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 3; ctx.stroke();
+        for (const lx of [-16, 10]) { rr(ctx, tk.x + lx, by2 - 12, 12, 12, 5); ctx.fill(); }
+        // frill + head
+        const hx3 = tk.x + tk.dir * 26, hy3 = by2 - 34 + sniff;
+        ctx.fillStyle = '#ffd24a';
+        ctx.beginPath(); ctx.arc(hx3 - tk.dir * 6, hy3, 17, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#c2831a'; ctx.stroke();
+        ctx.fillStyle = '#f2b04a';
+        ctx.beginPath(); ctx.arc(hx3, hy3 + 2, 13, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(hx3 + tk.dir * 10, hy3 + 6, 8, 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; // little horn nubs
+        for (const ox of [-4, 5]) {
+          ctx.beginPath();
+          ctx.moveTo(hx3 + ox - 3, hy3 - 12); ctx.lineTo(hx3 + ox, hy3 - 20); ctx.lineTo(hx3 + ox + 3, hy3 - 12);
+          ctx.closePath(); ctx.fill();
+        }
+        drawFace(ctx, hx3 - tk.dir * 2, hy3 + 2, 13, near ? 'grin' : 'happy', tk.t, 44, tk.dir, sniff ? 0.6 : 0);
+        if (near && chance(0.04)) Particles.burst(tk.x, by2 - 46, 1, { colors: ['#ff8fb0', '#ffe156'], type: 'heart', sp1: 40, grav: -70, l1: 0.8, s1: 8, up: 10 });
+      }
+    }
+    // goofy T-Rex in the valley: stomps, roars... then sneezes
+    if (d.trex && visible(d.trex.x)) {
+      const tr = d.trex;
+      tr.t += 0.016;
+      const ph = tr.t % 7; // 0-5 stomp, 5-6 roar, 6-6.5 sneeze
+      const stomp = ph < 5 ? Math.abs(Math.sin(tr.t * 3)) * 8 : 0;
+      const roar = ph >= 5 && ph < 6;
+      const sneeze = ph >= 6 && ph < 6.5;
+      if (roar && tr.lastPhase < 5) AudioSys.sfx('roar');
+      if (sneeze && tr.lastPhase < 6) {
+        AudioSys.sfx('hiccup');
+        Particles.burst(tr.x + 60, g - 150, 10, { colors: ['#bfe8ff', '#fff'], type: 'bubble', sp1: 220, l1: 0.8, s1: 10, grav: 100, up: 0 });
+      }
+      tr.lastPhase = ph;
+      const squash = sneeze ? 0.85 : 1;
+      const by3 = g - stomp;
+      ctx.save();
+      // legs
+      ctx.fillStyle = '#7bbf5a';
+      for (const lx of [-30, 8]) rr(ctx, tr.x + lx, by3 - 56, 24, 56, 9), ctx.fill();
+      // body
+      ctx.beginPath(); ctx.ellipse(tr.x, by3 - 92 * squash, 52, 44 * squash, -0.15, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#4a8a34'; ctx.lineWidth = 4; ctx.stroke();
+      // tail
+      ctx.strokeStyle = '#7bbf5a'; ctx.lineWidth = 18; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tr.x - 44, by3 - 84);
+      ctx.quadraticCurveTo(tr.x - 100, by3 - 70 + stomp, tr.x - 128, by3 - 100);
+      ctx.stroke();
+      // comically tiny arms
+      ctx.lineWidth = 8;
+      for (const ay of [-96, -84]) {
+        ctx.beginPath();
+        ctx.moveTo(tr.x + 40, by3 + ay);
+        ctx.lineTo(tr.x + 56, by3 + ay + 8 + Math.sin(tr.t * 5) * 3);
+        ctx.stroke();
+      }
+      // head
+      const hy4 = by3 - 150 * squash + (roar ? -8 : 0);
+      ctx.fillStyle = '#7bbf5a';
+      ctx.beginPath(); ctx.ellipse(tr.x + 26, hy4, 36, 28, roar ? -0.25 : 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#4a8a34'; ctx.lineWidth = 4; ctx.stroke();
+      // open mouth when roaring
+      if (roar || sneeze) {
+        ctx.fillStyle = '#c2451a';
+        ctx.beginPath(); ctx.ellipse(tr.x + 52, hy4 + 12, 16, sneeze ? 6 : 12, 0.3, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#fff';
+        for (const ox of [-8, 0, 8]) {
+          ctx.beginPath();
+          ctx.moveTo(tr.x + 46 + ox, hy4 + 4); ctx.lineTo(tr.x + 49 + ox, hy4 + 11); ctx.lineTo(tr.x + 52 + ox, hy4 + 4);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      drawFace(ctx, tr.x + 18, hy4 - 4, 24, sneeze ? 'surprised' : roar ? 'surprised' : 'happy', tr.t, 66, 1, 0);
+      ctx.restore();
+    }
+    // giant valley flowers
+    for (const bf of d.bigflowers || []) {
+      if (!visible(bf.x)) continue;
+      const sway = Math.sin(t * 1.1 + bf.x) * 5;
+      ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.moveTo(bf.x, g + 4); ctx.quadraticCurveTo(bf.x + sway, g - 90, bf.x + sway, g - 150); ctx.stroke();
+      ctx.fillStyle = ['#ff5a8a', '#ffb62b', '#b06cf0'][bf.c];
+      for (let i = 0; i < 7; i++) {
+        const a = i * TAU / 7 + t * 0.25;
+        ctx.beginPath(); ctx.arc(bf.x + sway + Math.cos(a) * 34, g - 150 + Math.sin(a) * 34, 20, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(bf.x + sway, g - 150, 22, 0, TAU); ctx.fill();
+      drawFace(ctx, bf.x + sway, g - 150, 24, 'happy', t, bf.x);
+    }
+    // butterflies (same friends as the forest)
+    for (const b of d.butterflies || []) {
+      b.x += b.sp * 0.016;
+      if (b.x > 5700) b.x = 200; if (b.x < 200) b.x = 5700;
+      if (!visible(b.x)) continue;
+      const fl2 = Math.sin(t * 10 + b.x) * 6;
+      ctx.fillStyle = ['#ff5a8a', '#ffb62b', '#7fd8ff', '#b06cf0'][b.c];
+      const by4 = b.y + Math.sin(t * 2 + b.x * 0.02) * 12;
+      ctx.beginPath(); ctx.ellipse(b.x - 5, by4, 7, 5 + fl2 * 0.4, -0.4, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x + 5, by4, 7, 5 - fl2 * 0.4, 0.4, 0, TAU); ctx.fill();
     }
   } else if (th === 'cave') {
     for (const c of d.crystals || []) {
