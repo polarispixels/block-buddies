@@ -50,7 +50,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody` |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `PuzzleSwitch`, `SequencePuzzle`) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -64,7 +64,7 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 | 1 | Block Meadow | meadow | tutorial, fire block | star gate |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | star gate |
-| 4 | Mountain World | mountain | power block smashes breakable walls | star gate |
+| 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + 🔥❄️⭐ switch-sequence puzzle in the cave) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
 | 7 | Monster Truck Rally | dirt | `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
@@ -88,6 +88,18 @@ everywhere via `drawBoy`/`drawHead`).
   respawn via `bossKind`. Arena respawn: death during a boss respawns
   *inside* the sealed arena at `arenaL+20` (never at the outside checkpoint —
   that was a real shipped bug).
+- **Adventure missions**: `lv.mission` (built in `buildLevel`, classes at the
+  end of entities.js). `Mission` lifecycle `'puzzle'→'reward'→'carrying'→'done'`;
+  `MissionGate` pushes its own solid into `lv.solids` and clears it with the
+  same `solid.broken = true` trick as smashed walls; `MissionItem` follows the
+  player once touched (survives respawns — mission state lives on the level
+  object, so it resets only when the level restarts); `SequencePuzzle` +
+  `PuzzleSwitch` are the step-plates-in-order puzzle. Gates only check that
+  the mission reached `'carrying'`, so future missions may earn their item
+  differently (other puzzle types, rhythm pads, favors). No text, ever: the
+  door hints with a key thought-bubble; wrong presses boing + wobble + instant
+  reset, zero damage. Keep mission areas enemy-free (jump spiders chase from
+  430px — don't place them near puzzles or gates).
 - **Cutscenes**: `game.cut = {name, t}` handled in `updateCut` (bossintro,
   magmaintro, rumble, chestfall, eruption, coronation). Player input frozen.
 - **Endings**: `game.endPhase` phases → `'party'` (big text per level in
@@ -108,7 +120,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 119 checks; must print
+  goal path) and version/changelog/docs sync checks. 136 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

@@ -2319,3 +2319,342 @@ class Chest {
     ctx.restore();
   }
 }
+
+// ================================================================ adventure missions
+// Small reusable mission kit (first use: Mountain World's Golden Key door).
+//   Mission        — lifecycle: 'puzzle' -> 'reward' -> 'carrying' -> 'done'
+//   MissionGate    — blocks the path until the mission item is brought to it
+//   MissionItem    — the earned thing; floats along behind the player once taken
+//   PuzzleSwitch   — a step-on floor plate wearing a power-block icon
+//   SequencePuzzle — step the plates in the shown order; wrong = funny reset
+// The gate only cares that its mission reaches 'carrying' — future missions
+// can earn their item any other way (different puzzles, rhythm pads, favors).
+// Mission state lives on the level object, so it survives death/respawn and
+// resets with the level, like every other in-level object.
+class MissionItem {
+  constructor(kind) {
+    this.kind = kind;
+    this.state = 'hidden'; // hidden -> waiting -> follow -> flying (into lock) -> used
+    this.x = 0; this.y = 0; this.w = 76; this.h = 60;
+    this.baseY = 0; this.t = rand(9);
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  revealAt(cx, cy) {
+    if (this.state !== 'hidden') return;
+    this.state = 'waiting';
+    this.x = cx - this.w / 2; this.baseY = cy; this.y = cy - this.h / 2;
+    Particles.burst(cx, cy, 14, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 240, l1: 0.8, s1: 10, grav: 150 });
+  }
+  update(dt, pl) {
+    this.t += dt;
+    if (this.state === 'waiting') {
+      this.y = this.baseY - this.h / 2 + Math.sin(this.t * 2.6) * 10;
+      if (chance(0.2)) Particles.burst(this.cx + rand(-30, 30), this.cy + rand(-22, 22), 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 25, grav: -60, l1: 0.8, s1: 8, up: 0 });
+      if (overlaps(this, pl)) {
+        this.state = 'follow';
+        AudioSys.sfx('powerup');
+        pl.setMood('grin', 2);
+        Particles.burst(this.cx, this.cy, 20, { colors: ['#ffe156', '#ffd24a', '#fff'], type: 'star', sp1: 300, l1: 0.9, s1: 12, grav: 220 });
+      }
+    } else if (this.state === 'follow') {
+      // bob along just behind the hero — a walking "I have the key!" badge
+      const tx = pl.cx - pl.facing * 62, ty = pl.y - 34 + Math.sin(this.t * 3) * 8;
+      if (Math.hypot(tx - this.cx, ty - this.cy) > 650) { this.x = tx - this.w / 2; this.y = ty - this.h / 2; } // snap across respawn teleports
+      const k = Math.min(1, dt * 5.5);
+      this.x += (tx - this.cx) * k;
+      this.y += (ty - this.cy) * k;
+      if (chance(0.12)) Particles.burst(this.cx, this.cy + 10, 1, { colors: ['#ffe156'], type: 'sparkle', sp1: 15, grav: -40, l1: 0.7, s1: 7, up: 0 });
+    }
+  }
+  draw(ctx) {
+    if (this.state === 'hidden' || this.state === 'used') return;
+    if (this.state === 'waiting') {
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(this.t * 3);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(this.cx, this.cy, 62, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    drawKey(ctx, this.cx, this.cy, this.state === 'waiting' ? 78 : 58, this.t);
+  }
+}
+
+class PuzzleSwitch {
+  constructor(cx, groundY, kind) {
+    this.cx = cx; this.groundY = groundY; this.kind = kind;
+    this.w = 96;
+    this.lit = false; this.stood = false;
+    this.wobbleT = 0; this.popT = 0; this.t = rand(9);
+  }
+  playerOn(pl) {
+    return pl.onGround && Math.abs(pl.cx - this.cx) < this.w / 2 + 14 && Math.abs(pl.y + pl.h - this.groundY) < 10;
+  }
+  update(dt, pl, puzzle, active) {
+    this.t += dt;
+    this.wobbleT = Math.max(0, this.wobbleT - dt);
+    this.popT = Math.max(0, this.popT - dt);
+    const on = this.playerOn(pl);
+    if (on && !this.stood && active) puzzle.press(this);
+    this.stood = on;
+  }
+  draw(ctx) {
+    const t = this.t, g = this.groundY;
+    const wob = this.wobbleT > 0 ? Math.sin(this.wobbleT * 26) * 0.22 * this.wobbleT : 0;
+    const down = this.stood ? 6 : 0;
+    if (this.lit) {
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 4);
+      ctx.fillStyle = POW[this.kind].c;
+      ctx.beginPath(); ctx.ellipse(this.cx, g - 6, 64, 22, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = this.lit ? '#d8dae8' : '#9a9cb0';
+    rr(ctx, this.cx - this.w / 2, g - 16 + down, this.w, 22 - down, 8); ctx.fill();
+    ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 3;
+    rr(ctx, this.cx - this.w / 2, g - 16 + down, this.w, 22 - down, 8); ctx.stroke();
+    const bs = 46;
+    const by = g - 16 + down - bs - 6 - (this.lit ? 8 + Math.sin(t * 3) * 4 : 0) - this.popT * 30;
+    ctx.save();
+    ctx.translate(this.cx, by + bs / 2);
+    ctx.rotate(wob);
+    drawBlock(ctx, -bs / 2, -bs / 2, bs, this.kind, t, { wobble: this.lit, seed: this.cx });
+    ctx.restore();
+  }
+}
+
+class SequencePuzzle {
+  constructor(switches, seq, sign) { // sign: {x, y, ceilY} — the always-visible clue board
+    this.switches = switches; this.seq = seq; this.sign = sign;
+    this.progress = 0; this.done = false; this.resetT = 0;
+  }
+  press(sw) {
+    if (this.done || this.resetT > 0) return;
+    if (sw.lit) { AudioSys.sfx('candy'); sw.popT = 0.25; return; } // re-stepping a correct plate: friendly, no reset
+    if (sw.kind === this.seq[this.progress]) {
+      sw.lit = true; sw.popT = 0.4; this.progress++;
+      AudioSys.sfx('collect');
+      Particles.burst(sw.cx, sw.groundY - 60, 10, { colors: ['#ffe156', '#fff', POW[sw.kind].c], type: 'star', sp1: 220, l1: 0.8, s1: 10, grav: 240 });
+      if (this.progress >= this.seq.length) {
+        this.done = true;
+        for (const s of this.switches) s.popT = 0.6;
+      }
+    } else {
+      AudioSys.sfx('boing'); // funny, harmless — wobble everything and let them retry
+      this.resetT = 0.7;
+      for (const s of this.switches) s.wobbleT = 0.8;
+      Particles.burst(sw.cx, sw.groundY - 40, 8, { colors: ['#b8bac8', '#fff'], type: 'circle', sp1: 170, l1: 0.5, s1: 8, grav: 260 });
+    }
+  }
+  update(dt, pl, active) {
+    if (this.resetT > 0) {
+      this.resetT -= dt;
+      if (this.resetT <= 0) { this.progress = 0; for (const s of this.switches) s.lit = false; }
+    }
+    for (const s of this.switches) s.update(dt, pl, this, active);
+  }
+  draw(ctx, t) {
+    for (const s of this.switches) s.draw(ctx);
+    const sg = this.sign, n = this.seq.length;
+    const bw = n * 44 + (n - 1) * 30 + 36, bh = 66;
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(sg.x - bw / 2 + 18, sg.y - bh / 2); ctx.lineTo(sg.x - bw / 2 + 18, sg.ceilY);
+    ctx.moveTo(sg.x + bw / 2 - 18, sg.y - bh / 2); ctx.lineTo(sg.x + bw / 2 - 18, sg.ceilY);
+    ctx.stroke();
+    ctx.fillStyle = '#b0743e';
+    rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+    rr(ctx, sg.x - bw / 2, sg.y - bh / 2, bw, bh, 12); ctx.stroke();
+    let ix = sg.x - bw / 2 + 18;
+    for (let i = 0; i < n; i++) {
+      const got = i < this.progress || this.done;
+      ctx.save();
+      ctx.globalAlpha = got ? 1 : 0.55;
+      drawBlock(ctx, ix, sg.y - 22, 44, this.seq[i], t, { wobble: got, seed: i * 7 });
+      ctx.restore();
+      if (got) {
+        ctx.fillStyle = '#ffe156';
+        starPath(ctx, ix + 40, sg.y - 20, 9, 4);
+        ctx.fill();
+      }
+      ix += 44;
+      if (i < n - 1) {
+        ctx.strokeStyle = '#ffe9c0'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(ix + 7, sg.y - 12); ctx.lineTo(ix + 21, sg.y); ctx.lineTo(ix + 7, sg.y + 12);
+        ctx.stroke();
+        ix += 30;
+      }
+    }
+  }
+}
+
+class MissionGate {
+  constructor(cx, groundY) {
+    this.w = 116; this.h = 210;
+    this.x = cx - this.w / 2; this.y = groundY - this.h; this.groundY = groundY;
+    this.t = rand(9);
+    this.state = 'locked'; // locked -> unlocking -> open
+    this.bumpT = 0; this.bumpCd = 0; this.hintT = 0; this.unlockT = 0; this.openT = 0;
+    this.keyFly = null;
+    this.solid = { x: this.x + 12, y: this.y, w: this.w - 24, h: this.h, skipDraw: true };
+  }
+  get cx() { return this.x + this.w / 2; }
+  khY() { return this.y + 132; }
+  update(dt, pl, mission) {
+    this.t += dt;
+    this.bumpT = Math.max(0, this.bumpT - dt);
+    this.bumpCd = Math.max(0, this.bumpCd - dt);
+    this.hintT = Math.max(0, this.hintT - dt);
+    if (this.state === 'locked') {
+      const near = Math.abs(pl.cx - this.cx) < 170 && pl.y + pl.h > this.y + 30 && pl.y < this.groundY + 40;
+      if (mission.state === 'carrying' && near) {
+        // the door notices the key!
+        this.state = 'unlocking'; this.unlockT = 0;
+        mission.item.state = 'flying';
+        this.keyFly = { x: mission.item.cx, y: mission.item.cy };
+        AudioSys.sfx('switch');
+        Particles.burst(this.cx, this.khY(), 10, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 80, grav: -60, l1: 0.8, s1: 9, up: 0 });
+      } else if (near && this.bumpCd <= 0) {
+        const s = this.solid;
+        const pushR = keys.ArrowRight && pl.cx < this.cx && pl.x + pl.w > s.x - 8;
+        const pushL = keys.ArrowLeft && pl.cx > this.cx && pl.x < s.x + s.w + 8;
+        if (pushR || pushL) {
+          this.bumpT = 0.55; this.bumpCd = 1.4; this.hintT = 2.4;
+          AudioSys.sfx('thud');
+          game.shake = Math.max(game.shake, 0.15);
+          Particles.burst(pushR ? s.x : s.x + s.w, pl.cy, 6, { colors: ['#d9b98a', '#fff'], sp1: 130, l1: 0.5, s1: 7 });
+        }
+      }
+    } else if (this.state === 'unlocking') {
+      this.unlockT += dt;
+      const it = mission.item;
+      if (it.state === 'flying') {
+        const p = Math.min(1, this.unlockT / 0.9);
+        const e = p * p * (3 - 2 * p);
+        it.x = lerp(this.keyFly.x, this.cx, e) - it.w / 2;
+        it.y = lerp(this.keyFly.y, this.khY(), e) - it.h / 2 - Math.sin(p * Math.PI) * 60;
+        if (p >= 1) {
+          it.state = 'used';
+          AudioSys.sfx('chest');
+          game.shake = Math.max(game.shake, 0.25);
+          Particles.burst(this.cx, this.khY(), 16, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 260, l1: 0.8, s1: 11, grav: 200 });
+        }
+      }
+      if (this.unlockT > 1.5) {
+        this.state = 'open'; this.openT = 0;
+        this.solid.broken = true; // same removal trick the smashable walls use
+        AudioSys.sfx('fanfare');
+        Particles.burst(this.cx, this.y + 60, 26, { colors: RAINBOW, type: 'confetti', sp1: 300, l1: 1.6, s1: 11, grav: 260, up: 200 });
+      }
+    } else this.openT += dt;
+  }
+  draw(ctx) {
+    const t = this.t, cx = this.cx;
+    const bx = this.bumpT > 0 ? Math.sin(this.bumpT * 34) * 7 * this.bumpT : 0;
+    ctx.save();
+    ctx.translate(bx, 0);
+    // stone frame + dark doorway behind the panel
+    ctx.fillStyle = '#8d8fa0';
+    rr(ctx, this.x - 16, this.y - 16, this.w + 32, this.h + 16, 26); ctx.fill();
+    ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 5;
+    rr(ctx, this.x - 16, this.y - 16, this.w + 32, this.h + 16, 26); ctx.stroke();
+    ctx.fillStyle = '#2a2140';
+    rr(ctx, this.x, this.y, this.w, this.h, 18); ctx.fill();
+    // wooden panel swings away once open
+    const swg = this.state === 'open' ? Math.max(0.1, 1 - this.openT * 1.6) : 1;
+    if (swg > 0.11) {
+      ctx.save();
+      ctx.translate(this.x, 0); ctx.scale(swg, 1); ctx.translate(-this.x, 0);
+      ctx.fillStyle = '#b0743e';
+      rr(ctx, this.x, this.y, this.w, this.h, 18); ctx.fill();
+      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+      rr(ctx, this.x, this.y, this.w, this.h, 18); ctx.stroke();
+      for (const px of [this.x + this.w / 3, this.x + this.w * 2 / 3]) {
+        ctx.beginPath(); ctx.moveTo(px, this.y + 8); ctx.lineTo(px, this.y + this.h - 8); ctx.stroke();
+      }
+      ctx.fillStyle = '#ffd24a';
+      for (const hy of [this.y + 30, this.y + this.h - 42]) { rr(ctx, this.x + 4, hy, 20, 12, 5); ctx.fill(); }
+      let mood = 'sleepy';
+      if (this.state === 'open') mood = 'grin';
+      else if (this.state === 'unlocking') mood = this.unlockT < 0.9 ? 'surprised' : 'grin';
+      else if (this.bumpT > 0) mood = 'surprised';
+      else if (this.hintT > 0) mood = 'worried';
+      drawFace(ctx, cx, this.y + 60, 46, mood, t, 77);
+      // big golden keyhole
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath(); ctx.arc(cx, this.khY(), 26, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = '#6a4020';
+      ctx.beginPath(); ctx.arc(cx, this.khY() - 5, 8, 0, TAU); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, this.khY() - 2); ctx.lineTo(cx + 5, this.khY() - 2);
+      ctx.lineTo(cx + 8, this.khY() + 16); ctx.lineTo(cx - 8, this.khY() + 16);
+      ctx.closePath(); ctx.fill();
+      if (this.state === 'locked' && chance(0.02)) {
+        Particles.burst(cx + rand(-12, 12), this.khY() + rand(-12, 12), 1, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 15, grav: -30, l1: 0.7, s1: 7, up: 0 });
+      }
+      ctx.restore();
+    }
+    // "I need a key" thought bubble
+    if (this.hintT > 0 && this.state === 'locked') {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.hintT * 2);
+      const by = this.y - 66 + Math.sin(t * 5) * 5;
+      ctx.fillStyle = '#fff';
+      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, by + 32); ctx.lineTo(cx + 12, by + 32); ctx.lineTo(cx, by + 52);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      rr(ctx, cx - 56, by - 34, 112, 68, 22); ctx.stroke();
+      drawKey(ctx, cx, by, 62, t, false);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
+
+class Mission {
+  constructor(id, gate, puzzle, item, rewardSpot) { // rewardSpot: {cx, floorY, dropY}
+    this.id = id;
+    this.state = 'puzzle'; // -> 'reward' -> 'carrying' -> 'done'
+    this.gate = gate; this.puzzle = puzzle; this.item = item;
+    this.rewardSpot = rewardSpot;
+    this.chest = null; this.chestWait = 0;
+  }
+  update(dt, pl) {
+    this.puzzle.update(dt, pl, this.state === 'puzzle');
+    if (this.state === 'puzzle' && this.puzzle.done) {
+      this.state = 'reward';
+      AudioSys.sfx('fanfare');
+      game.shake = Math.max(game.shake, 0.2);
+      for (const s of this.puzzle.switches)
+        Particles.burst(s.cx, s.groundY - 70, 10, { colors: RAINBOW, type: 'confetti', sp1: 240, l1: 1.3, s1: 10, grav: 260, up: 170 });
+      this.chest = new Chest(this.rewardSpot.cx, this.rewardSpot.floorY);
+      this.chest.y = this.rewardSpot.dropY;
+    }
+    if (this.chest) {
+      this.chest.update(dt);
+      if (this.chest.landed && !this.chest.open) {
+        this.chestWait += dt;
+        if (this.chestWait > 0.5) {
+          this.chest.open = true;
+          AudioSys.sfx('chest');
+          this.item.revealAt(this.chest.cx, this.chest.y - 70);
+        }
+      }
+    }
+    this.item.update(dt, pl);
+    if (this.state === 'reward' && this.item.state === 'follow') this.state = 'carrying';
+    this.gate.update(dt, pl, this);
+    if (this.state !== 'done' && this.gate.state === 'open') this.state = 'done';
+  }
+  draw(ctx, t) {
+    this.gate.draw(ctx);
+    this.puzzle.draw(ctx, t);
+    if (this.chest) this.chest.draw(ctx);
+    this.item.draw(ctx);
+  }
+}

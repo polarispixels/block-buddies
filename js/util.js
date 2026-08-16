@@ -1,6 +1,6 @@
 'use strict';
 // ---------------------------------------------------------------- basics
-const GAME_VERSION = '1.2.0'; // SEMVER — bump with every release (see docs/index.html + CHANGELOG.md)
+const GAME_VERSION = '1.3.0'; // SEMVER — bump with every release (see docs/index.html + CHANGELOG.md)
 const W = 1280, H = 720, TAU = Math.PI * 2;
 const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -256,6 +256,31 @@ function drawCandy(ctx, x, y, s, kind = 0, t = 0) {
 }
 
 // ---------------------------------------------------------------- royal crown
+function drawKey(ctx, cx, cy, s, t = 0, glint = true) { // s ≈ total length; bow left, teeth right
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(Math.sin(t * 2.2) * 0.09);
+  const lw = Math.max(2.5, s * 0.07);
+  ctx.strokeStyle = '#c8861b'; ctx.fillStyle = '#ffd24a'; ctx.lineWidth = lw; ctx.lineJoin = 'round';
+  // shaft
+  rr(ctx, -s * 0.14, -s * 0.085, s * 0.62, s * 0.17, s * 0.08); ctx.fill(); ctx.stroke();
+  // teeth
+  rr(ctx, s * 0.30, 0, s * 0.115, s * 0.24, s * 0.045); ctx.fill(); ctx.stroke();
+  rr(ctx, s * 0.44, 0, s * 0.115, s * 0.30, s * 0.045); ctx.fill(); ctx.stroke();
+  // bow ring
+  ctx.beginPath(); ctx.arc(-s * 0.30, 0, s * 0.26, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#b06a10';
+  ctx.beginPath(); ctx.arc(-s * 0.30, 0, s * 0.115, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#8a5208'; ctx.lineWidth = lw * 0.7; ctx.stroke();
+  // sparkle glint
+  if (glint) {
+    const gp = (t * 0.9) % 1;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.5 + 0.5 * Math.sin(t * 5)) + ')';
+    starPath(ctx, -s * 0.30 + gp * s * 0.7, -s * 0.16, s * 0.085, s * 0.035, 4);
+    ctx.fill();
+  }
+  ctx.restore();
+}
 function drawCrown(ctx, cx, y, s) { // y = base of the crown band
   ctx.fillStyle = '#ffd24a';
   ctx.beginPath();

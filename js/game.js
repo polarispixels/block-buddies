@@ -459,6 +459,7 @@ function updatePlay(dt) {
   for (const p of game.pickups) p.update(dt);
   for (const c of lv.checks) c.update(dt);
   if (lv.gate) lv.gate.update(dt);
+  if (lv.mission) lv.mission.update(dt, pl);
   for (const sh of game.shoes) if (!sh.dead) sh.update(dt);
   if (game.zombie && !game.cut) game.zombie.update(dt);
   if (game.chest) game.chest.update(dt);
@@ -919,6 +920,7 @@ function renderWorld() {
   drawHints(ctx, lv, t);
   for (const c of lv.checks) c.draw(ctx);
   if (lv.gate) lv.gate.draw(ctx);
+  if (lv.mission) lv.mission.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);
   for (const sp of game.spiders) sp.draw(ctx);

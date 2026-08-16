@@ -8,6 +8,37 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.3.0] - 2026-08-16
+
+### Added
+- **Adventure mission system** — a small reusable framework in `js/entities.js`:
+  `Mission` (lifecycle `'puzzle' → 'reward' → 'carrying' → 'done'`), `MissionGate`
+  (blocks the path, hints its need visually, unlocks when the item arrives),
+  `MissionItem` (floats behind the player once acquired — a wordless "I have it"),
+  `PuzzleSwitch` + `SequencePuzzle` (step-on plates, shown order, funny harmless
+  resets). Gates only care that the mission reaches `'carrying'`, so future
+  missions can earn their item any other way (other puzzles, rhythm pads, favors).
+- **Mountain World: the Golden Key Door.** A big wooden door with googly eyes and
+  a golden keyhole blocks the path between the smashable wall and the star gate;
+  bumping it shakes it (CLUNK) and pops a key thought-bubble. The old spider cave
+  is now an enemy-free puzzle chamber: three floor plates (🔥 ❄️ ⭐) under a
+  hanging sign showing the order. Right steps ding and light up; wrong steps
+  boing and wobble everything, then reset instantly — no damage, no respawn,
+  unlimited tries. Solving drops a treasure chest that opens into a huge golden
+  key; the key follows the hero (and survives death/respawn) until the door
+  notices it, pulls it into the lock, and swings open for good — confetti,
+  fanfare, and a candy waiting inside the doorway.
+- `drawKey` helper in `js/util.js` (item, keyhole, hint bubble all share it).
+- 17 harness checks covering the full mission flow and its edge cases (blocked
+  door, wrong/repeat switch presses, streak reset, chest/key reveal, follow
+  behavior, death with key, unlock, stay-open, level still completable).
+
+### Changed
+- Mountain World enemy placement: hang spiders moved from the cave (now the
+  puzzle chamber) to under the high ledge; the chamber-side jump spider became a
+  short-range walker parked outside the cave mouth so nothing can chase the
+  player into the puzzle.
+
 ## [1.2.0] - 2026-08-16
 
 ### Added

@@ -21,7 +21,7 @@ function newLevel(n) {
     decor: {}, lights: [], lava: null,
     ramps: null, turbos: null, finishX: null,
     centipedes: [], castleX: null,
-    space: false, mazeGrid: null, goalStar: null,
+    space: false, mazeGrid: null, goalStar: null, mission: null,
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -185,14 +185,31 @@ function buildLevel(n) {
     spider(lv, 820, G, 'walk', { range: 170 });
     spider(lv, 1500, 572, 'jump');
     spider(lv, 2250, 524, 'walk', { range: 160 });
-    spider(lv, 3200, 480, 'hang', { webTop: 350 });
-    spider(lv, 3500, 480, 'hang', { webTop: 350 });
-    spider(lv, 3650, 572, 'jump');
-    spider(lv, 4450, 524, 'walk', { range: 140 });
+    // both hang spiders dangle under the high ledge — the puzzle cave stays
+    // completely enemy-free so nothing interrupts solving it
+    spider(lv, 2170, 508, 'hang', { webTop: 446 });
+    spider(lv, 2330, 508, 'hang', { webTop: 446 });
+    // short patrols only past the cave: walkers can't wander in (jump spiders
+    // chase from 430px away, so none live near the chamber or the door)
+    spider(lv, 3860, 572, 'walk', { range: 80 });
+    spider(lv, 4100, 524, 'walk', { range: 60 });
     lv.checks.push(new Checkpoint(1750, 572));
     lv.checks.push(new Checkpoint(3850, 524));
     lv.gate = new Gate(4700, 524);
     lv.hints.push({ x: 2530, y: 350, icon: 'power' });
+    // ---- Golden Key adventure mission: the overhang cave is the puzzle
+    // chamber (step the plates in the shown order -> chest -> key), and a
+    // locked door blocks the path between the smashable wall and the gate.
+    const mGate = new MissionGate(4480, 524);
+    lv.solids.push(mGate.solid);
+    lv.mission = new Mission('goldenkey',
+      mGate,
+      new SequencePuzzle(
+        [new PuzzleSwitch(3260, 572, 'fire'), new PuzzleSwitch(3420, 572, 'ice'), new PuzzleSwitch(3580, 572, 'power')],
+        ['fire', 'ice', 'power'],
+        { x: 3420, y: 424, ceilY: 350 }),
+      new MissionItem('key'),
+      { cx: 3130, floorY: 572, dropY: 330 });
     lv.decor.pines = []; lv.decor.peaks = true;
     for (let x = 120; x < lv.w; x += rand(300, 650)) lv.decor.pines.push({ x, s: rand(0.8, 1.4) });
   }

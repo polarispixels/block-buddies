@@ -252,6 +252,59 @@ check('super mode smashes breakable wall', wallsAfter < wallsBefore);
 frames(100, { ArrowRight: 1 });
 check('level 4 plays without crash', G().state === 'play');
 
+// ---------------- level 4: golden key adventure mission ----------------
+vm.runInContext('game.startLevel(4)', sandbox);
+frames(150); // intro -> play
+const put = (x, y) => vm.runInContext(`game.player.x = ${x}; game.player.y = ${y}; game.player.vx = 0; game.player.vy = 0`, sandbox);
+const MIS = () => vm.runInContext('game.level.mission', sandbox);
+check('mission exists with a locked gate', MIS() && MIS().state === 'puzzle' && MIS().gate.state === 'locked');
+put(4340, 524 - 94);
+frames(50, { ArrowRight: 1 });
+check('locked door blocks the player', G().player.x + G().player.w <= MIS().gate.solid.x + 2 && G().state === 'play');
+check('door bump gives key hint, costs nothing', MIS().gate.hintT > 0 && G().player.hearts === 3);
+// wrong switch: funny reset, no harm
+put(3580 - 28, 572 - 94);
+frames(8);
+check('wrong switch resets sequence harmlessly', MIS().puzzle.progress === 0 && MIS().puzzle.resetT > 0 && G().player.hearts === 3);
+frames(80); // reset settles
+// correct sequence with a re-step in the middle
+put(3260 - 28, 572 - 94); frames(8);
+check('first correct switch lights up', MIS().puzzle.progress === 1);
+put(3140, 572 - 94); frames(8); // step off (clear of every plate)
+put(3260 - 28, 572 - 94); frames(8); // re-step the lit plate
+check('re-stepping a lit switch does not reset', MIS().puzzle.progress === 1);
+put(3420 - 28, 572 - 94); frames(8);
+put(3580 - 28, 572 - 94); frames(8);
+check('full sequence completes the puzzle', MIS().puzzle.done && MIS().state !== 'puzzle');
+frames(180); // chest falls, opens, key pops out
+check('chest opened and golden key waits', MIS().chest && MIS().chest.open && MIS().item.state === 'waiting');
+put(MIS().item.x, MIS().item.y);
+frames(8);
+check('touching the key starts follow mode', MIS().item.state === 'follow' && MIS().state === 'carrying');
+put(3900, 524 - 94);
+frames(60);
+check('key floats along with the player', Math.abs(MIS().item.cx - G().player.cx) < 200 && Math.abs(MIS().item.cy - G().player.cy) < 200);
+// dying must not lose the key
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60); // past the 0.8s dead-screen delay
+check('death with key -> dead state', G().state === 'dead');
+tap('Space');
+frames(30);
+check('respawn keeps the key following', G().state === 'play' && MIS().item.state === 'follow' && MIS().state === 'carrying');
+// bring the key home
+put(4340, 524 - 94);
+frames(10);
+check('door notices the key and starts unlocking', MIS().gate.state !== 'locked');
+frames(150);
+check('door opens and unblocks the path', MIS().gate.state === 'open' && MIS().gate.solid.broken === true && MIS().state === 'done');
+frames(40, { ArrowRight: 1 }); // through the door but short of the star gate
+check('player walks through the open door', G().player.cx > 4480);
+put(4200, 524 - 94); frames(5); put(4340, 524 - 94);
+frames(45, { ArrowRight: 1 });
+check('door stays open on revisit', MIS().gate.state === 'open' && G().player.cx > 4480);
+frames(140, { ArrowRight: 1 });
+check('mountain world still completable past the door', ['complete', 'intro', 'play'].includes(G().state) && (G().state !== 'play' || G().player.cx > 4600));
+
 // ---------------- level 5: boss ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
 frames(150);
