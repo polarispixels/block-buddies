@@ -970,8 +970,8 @@ function renderTitle() {
   ctx.fillStyle = '#5ecb4a';
   rr(ctx, -20, 616, W + 40, 40, 8); ctx.fill();
   // title
-  outlineText(ctx, 'FUNNY FACE', W / 2, 135 + Math.sin(t * 2) * 5, 92, '#ffd24a', '#5a4a86');
-  outlineText(ctx, 'BLOCK GAME', W / 2, 235 + Math.sin(t * 2 + 0.6) * 5, 92, '#ff8fb0', '#5a4a86');
+  outlineText(ctx, 'BLOCK BUDDIES', W / 2, 145 + Math.sin(t * 2) * 5, 92, '#ffd24a', '#5a4a86');
+  outlineText(ctx, 'The Adventures of Jack-Jack and Becca', W / 2, 232 + Math.sin(t * 2 + 0.6) * 4, 40, '#ff8fb0', '#5a4a86');
   // bouncing blocks
   ['fire', 'ice', 'rainbow', 'power'].forEach((k, i) => {
     const bx = W / 2 - 165 + i * 110;
@@ -996,6 +996,7 @@ function renderTitle() {
     ctx.strokeStyle = sel ? '#ffa726' : '#8a7fae'; ctx.lineWidth = sel ? 6 : 4;
     ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, TAU); ctx.stroke();
     drawHead(ctx, pt.x, pt.y + 4, pt.who, t, sel);
+    outlineText(ctx, pt.who === 'girl' ? 'BECCA' : 'JACK-JACK', pt.x, pt.y + pt.r + 16, 17, sel ? '#ffe156' : '#fff', '#5a4a86');
     ctx.restore();
   }
   drawKeycap(ctx, 259, 538, 36, 'up', t);

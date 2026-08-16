@@ -1,7 +1,7 @@
 {
-  "name": "Funny Face Block Game",
-  "short_name": "Block Game",
-  "description": "Ride the Block Wheel through five worlds, befriend spiders, and win the Golden Candy Treasure.",
+  "name": "Block Buddies: The Adventures of Jack-Jack and Becca",
+  "short_name": "Block Buddies",
+  "description": "Jack-Jack and Becca ride the Block Wheel through nine worlds, befriend everyone, and win crowns and candy.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

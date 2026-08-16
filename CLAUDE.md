@@ -1,4 +1,9 @@
-# Funny Face Block Game
+# Block Buddies: The Adventures of Jack-Jack and Becca
+
+(Formerly "Funny Face Block Game" — internal names like `ffbg_*` localStorage
+keys and the `ffbg-v1` SW cache keep the old prefix; renaming them would break
+saves.) The playable heroes are Jack-Jack (`'boy'`, cap) and Becca (`'girl'`,
+curly blonde hair).
 
 A 2D platformer built for Jack (Ryan's ~5-year-old). Nine worlds, zero build
 step, zero dependencies. The design doc's success metric governs everything:

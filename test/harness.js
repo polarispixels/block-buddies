@@ -503,6 +503,13 @@ check('docs page reports the current version', (function () {
   return doc.includes('v' + vm.runInContext('GAME_VERSION', sandbox));
 })());
 
+check('game is titled Block Buddies everywhere', (function () {
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const man = fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8');
+  return idx.includes('<title>Block Buddies: The Adventures of Jack-Jack and Becca</title>') &&
+    JSON.parse(man).name === 'Block Buddies: The Adventures of Jack-Jack and Becca';
+})());
+
 // ---------------- title: character select + level select ----------------
 check('default character is boy', G().character === 'boy');
 tap('ArrowUp');

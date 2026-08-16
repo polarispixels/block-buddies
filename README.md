@@ -1,4 +1,4 @@
-# Funny Face Block Game
+# Block Buddies: The Adventures of Jack-Jack and Becca
 
 A zero-build, zero-dependency 2D canvas platformer built for a five-year-old.
 Nine worlds, two bosses, three vehicles, procedural art and audio, installable PWA.

@@ -1,12 +1,25 @@
 # Changelog
 
-All notable changes to Funny Face Block Game are documented here.
+All notable changes to Block Buddies are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/); versioning: [SEMVER](https://semver.org/).
 
 Policy: **MAJOR** = breaks saved progress (`localStorage` keys/format) or the documented
 architecture; **MINOR** = new player-visible content (level, vehicle, enemy, power);
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
+
+## [1.1.0] - 2026-08-16
+
+Renamed the game: **Block Buddies: The Adventures of Jack-Jack and Becca**
+(formerly "Funny Face Block Game").
+
+### Changed
+- Title screen: new title and subtitle; the hero portraits are now labeled
+  with the heroes' names, JACK-JACK and BECCA.
+- Page title, PWA manifest (`name`, `short_name` "Block Buddies", refreshed
+  nine-world description), docs, README, and CLAUDE.md all renamed.
+- Internal identifiers intentionally unchanged (`ffbg_*` localStorage keys,
+  `ffbg-v1` service-worker cache) so saved progress survives the rename.
 
 ## [1.0.0] - 2026-08-16
 

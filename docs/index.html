@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Funny Face Block Game — Developer &amp; Agent Documentation</title>
-<meta name="description" content="Complete technical and design documentation for Funny Face Block Game: architecture, all nine levels, core systems, versioning, and collaboration workflow.">
+<title>Block Buddies — Developer &amp; Agent Documentation</title>
+<meta name="description" content="Complete technical and design documentation for Block Buddies: architecture, all nine levels, core systems, versioning, and collaboration workflow.">
 <style>
   :root {
     --bg: #fdf9f0; --panel: #ffffff; --ink: #33294a; --soft: #6b5f85;
@@ -73,9 +73,9 @@
 </head>
 <body>
 <header>
-  <h1>🙂 Funny Face Block Game</h1>
+  <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.0.0</span>
+  <span class="badge">v1.1.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -98,7 +98,7 @@
 </nav>
 
 <h2 id="overview">Overview &amp; design north star</h2>
-<p><strong>Funny Face Block Game</strong> is a 2D cartoon platformer built for Jack, a five-year-old. It is a
+<p><strong>Block Buddies</strong> is a 2D cartoon platformer built for Jack, a five-year-old. It is a
 single HTML page plus six plain JavaScript files — <em>no build step, no dependencies, no asset files</em>.
 All art is procedural canvas drawing and all audio is procedural WebAudio. It runs from
 <code>file://</code>, from GitHub Pages, and as an installable PWA (fullscreen "Add to Home Screen" play,
@@ -333,7 +333,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 <ul>
   <li><strong>Base game:</strong> star gates advance 1 → 2 → 3 → 4 → 5.</li>
   <li><strong>Unlock chain:</strong> beating each boss/finale unlocks the next bonus world — Zombie → 6, King Magma → 7, Rally finish → 8, Coronation → 9. Party exits chain 5 → 6 → 7 → 8 → 9 → title.</li>
-  <li><strong>Title screen:</strong> hero picker (boy/girl — Up/Down or tap a portrait) and a level picker of nine medallions (Left/Right, tap, or digit keys 1–9; locked worlds show a padlock). Selection defaults to the furthest unlocked level.</li>
+  <li><strong>Title screen:</strong> hero picker — <strong>Jack-Jack</strong> (cap) or <strong>Becca</strong> (curly blonde hair), stored internally as <code>'boy'</code>/<code>'girl'</code>; Up/Down or tap a portrait — and a level picker of nine medallions (Left/Right, tap, or digit keys 1–9; locked worlds show a padlock). Selection defaults to the furthest unlocked level.</li>
 </ul>
 <div class="tablewrap"><table>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
@@ -372,7 +372,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Funny Face Block Game v1.0.0 · built for Jack ·
+  Block Buddies v1.1.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.
