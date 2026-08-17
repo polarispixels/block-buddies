@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.8.3</span>
+  <span class="badge">v1.9.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -111,7 +111,7 @@ volcano, a planet. No gore, ever: enemies "poof" into stars and candy, or better
 <ul>
   <li><strong>Live URL:</strong> <a href="https://polarispixels.github.io/block-buddies/">polarispixels.github.io/block-buddies</a> (GitHub Pages, <code>main</code> branch, repo root; deploy = push, rebuild ~40–60&nbsp;s)</li>
   <li><strong>Canvas:</strong> 1280 × 720 logical pixels (<code>W</code>/<code>H</code> in <code>js/util.js</code>), scaled to fit the screen</li>
-  <li><strong>Controls:</strong> Arrow keys move/jump/duck (or swim/fly), <kbd>Space</kbd> = action (throw power, advance dialogs, open things). Touch: left-thumb ◀▶▼ cluster, right-thumb JUMP + ★ action (becomes ▲▼ underwater/space). Digits 1–9 (and 0 for world 10) jump to a level from the title.</li>
+  <li><strong>Controls:</strong> Arrow keys move/jump/duck (or swim/fly), <kbd>Space</kbd> = action (throw power, advance dialogs, open things). Touch: left-thumb ◀▶▼ cluster, right-thumb JUMP + ★ action (becomes ▲▼ underwater/space). Worlds are numbered <strong>0–9</strong> (0 = the training meadow); digits 0–9 jump straight to that world from the title.</li>
 </ul>
 
 <h2 id="versioning">Versioning (SEMVER)</h2>
@@ -161,6 +161,7 @@ changelog lacks an entry for it, or if this page doesn't mention it.</p>
 <ul>
   <li><strong>Entities:</strong> <code>x, y</code> is the top-left corner of a <code>w × h</code> box; <code>cx</code>/<code>cy</code> getters give the center. World units are pixels.</li>
   <li><strong>Ground:</strong> the walkable ground top is <code>y = 620</code> in most levels (1000 in Unicorn Forest; Space Maze is a 130&nbsp;px cell grid).</li>
+  <li><strong>Numbering (since v1.9.0):</strong> players see worlds <strong>0–9</strong>; ALL code, saves, and tests still use internal <code>n = 1–10</code> (<code>buildLevel(n)</code>, <code>ffbg_unlocked</code>, the harness). Displayed number = <code>n − 1</code>, applied only at the display layer: intro card, medallion badges, and title digit keys. Never renumber the internals — that breaks saves.</li>
   <li><strong>Levels</strong> are plain objects from <code>buildLevel(n)</code>: arrays of <code>solids</code>, <code>spiders</code>, <code>pickups</code>, <code>checks</code> (checkpoints), <code>hints</code>, plus theme flags (<code>water</code>, <code>dark</code>, <code>fallCatch</code>, <code>space</code>, <code>boss</code>…) and optional structures (<code>lava</code>, <code>ramps</code>, <code>turbos</code>, <code>bridges</code>, <code>centipedes</code>, <code>mazeGrid</code>, <code>goalStar</code>, <code>castleX</code>, <code>finishX</code>).</li>
   <li><strong>PWA:</strong> <code>manifest.webmanifest</code> + <code>sw.js</code> (network-first cache named <code>ffbg-v1</code>) — one refresh picks up a new deploy; the game keeps working offline afterwards.</li>
 </ul>
@@ -290,12 +291,12 @@ sequencer reading per-theme note tables in <code>SONGS</code> (every world has i
 unlocks on the first user input, as browsers require.</p>
 
 <h2 id="levels">The ten worlds, level by level</h2>
-<p>Worlds 1–5 are the base game, advanced by star gates; 6–9 are bonus worlds unlocked by beating the
+<p>Headers below show the <strong>displayed</strong> number with the internal <code>n</code> beside it. Worlds 0–4 are the base run, advanced by star gates; 5–9 unlock by beating the
 previous world's boss or finale. Every level ends in a celebration. "New here" lists mechanics that
 did not exist in any earlier level; "Cameos" lists returning elements from earlier worlds.</p>
 
 <div class="level" style="--lc:#5ecb4a">
-<h3>1 · Block Meadow <small>(theme <code>meadow</code>)</small></h3>
+<h3>0 · Block Meadow <small>(theme <code>meadow</code>, internal <code>n=1</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Sunny grass meadow: smiling sun with rotating rays, rolling hills, flowers, round trees, drifting clouds. World 4200&nbsp;px wide, flat ground at y=620.</dd>
   <dt>Objective</dt><dd>Tutorial run to the star gate. Floating keycap hints teach ◀▶ movement, ▲ jump, and Space to throw.</dd>
@@ -307,46 +308,46 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 </div>
 
 <div class="level" style="--lc:#2fa7d9">
-<h3>2 · Underwater World <small>(theme <code>water</code>)</small></h3>
+<h3>1 · Underwater World <small>(theme <code>water</code>, internal <code>n=2</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Deep blue sea: light rays, swaying seaweed, coral, background fish, rising bubbles. 4200 × 1200 world (taller than the screen), seabed at y=1130, sandy ruins columns.</dd>
   <dt>Objective</dt><dd>Swim to the star gate on the seabed.</dd>
   <dt>Enemies</dt><dd>5 swimming spiders patrolling open water.</dd>
   <dt>New here</dt><dd><strong>4-direction swimming</strong> (<code>lv.water</code>: ▲▼ ascend/descend, gravity off), the ❄️ ice block, and a physics gag: frozen swim-spiders float upward like ice cubes.</dd>
   <dt>Pickups</dt><dd>Ice ×2, heart ×1, candy.</dd>
-  <dt>Cameos</dt><dd>Checkpoints, candy trails, star gate. The swim movement introduced here returns as zero-gravity flight in Space Maze (level 9).</dd>
+  <dt>Cameos</dt><dd>Checkpoints, candy trails, star gate. The swim movement introduced here returns as zero-gravity flight in Space Maze.</dd>
   <dt>Secret</dt><dd>A seaweed-framed cave on the seafloor breathes a strange <em>stream of bubbles</em> — swimming in discovers the <strong>Secret Bubble Maze</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#6ec6ff">
-<h3>3 · Cloud World <small>(theme <code>cloud</code>)</small></h3>
+<h3>2 · Cloud World <small>(theme <code>cloud</code>, internal <code>n=3</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Sky kingdom: fluffy sleepy-faced cloud platforms, background rainbow arcs, flapping birds. 4600&nbsp;px wide with <em>no ground</em> — only floating platforms.</dd>
   <dt>Objective</dt><dd>Hop the cloud islands and one-way platforms, activate two rainbow bridges to span the gaps, reach the star gate.</dd>
   <dt>Enemies</dt><dd>2 jumping spiders (new) and 2 walking spiders.</dd>
   <dt>New here</dt><dd>🌈 rainbow block (the <strong>befriending</strong> mechanic), one-way pass-through platforms, pink bouncy spring blocks, rainbow bridges, and <strong>cloud-catch</strong> (<code>lv.fallCatch</code>): falling never hurts — a smiling cloud scoops the player back up.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2, heart ×1, candy.</dd>
-  <dt>Cameos</dt><dd>Walk spiders from level 1. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches.</dd>
+  <dt>Cameos</dt><dd>Walk spiders from the meadow. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches.</dd>
   <dt>Mini-game</dt><dd>A cloud-swirl <code>SubDoor</code> on the middle island leads into <strong>Cloud Climb</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#8d8fa0">
-<h3>4 · Mountain World <small>(theme <code>mountain</code>)</small></h3>
+<h3>3 · Mountain World <small>(theme <code>mountain</code>, internal <code>n=4</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Snowy alpine terraces: parallax peaks, falling snow, pine trees, a rocky cave overhang. 4800&nbsp;px wide, climbing ground tiers (620 → 572 → 524).</dd>
   <dt>Objective</dt><dd>Climb the terraces, use ⭐ power blocks to smash breakable walls, collect the <strong>three Mountain Crystals</strong> for the shrine to earn the Golden Key, open the locked door, reach the star gate.</dd>
   <dt>Enemies</dt><dd>5 walking, 1 jumping, and 2 <strong>hanging spiders</strong> (new: dangle on webs under the high ledge and drop on you). The puzzle cave and door approach are deliberately enemy-free.</dd>
   <dt>New here</dt><dd>The ⭐ <strong>power block / super mode</strong> (6&nbsp;s of speed, big jumps, shielding, wall-smashing), breakable cracked walls with worried faces — and the game's first <strong>adventure mission</strong>: a big googly-eyed locked door (bump it → CLUNK + key thought-bubble) between the smashable wall and the gate. The cave under the overhang holds the <strong>crystal Shrine</strong> — a chest with three empty sockets showing ghost crystals. The three Mountain Crystals are scattered nearby: ice on a block pile at the cave mouth (easy hops), fire on a high ledge reached by a <strong>spring-block launch</strong>, power sealed in a pocket behind a cracked wall (its glow sparkles over the top — smash through with the power block). Bring all three back and the ceremony opens the chest into a huge Golden Key; it follows the hero to the door, flies into the lock, and the door swings open forever (a candy waits in the doorway).</dd>
   <dt>Pickups</dt><dd>Power ×2, ice ×2, heart ×1, candy, and the mission's Golden Key.</dd>
-  <dt>Cameos</dt><dd>Ice blocks from level 2; the crystal icons are the familiar power-block colors; the shrine chest is Zombie Cave's treasure chest making an early appearance. The super-mode ram introduced here is later required against King Magma (level 6).</dd>
+  <dt>Cameos</dt><dd>Ice blocks from Underwater World; the crystal icons are the familiar power-block colors; the shrine chest is Zombie Cave's treasure chest making an early appearance. The super-mode ram introduced here is later required against King Magma (Lava World).</dd>
   <dt>Mini-game</dt><dd>The spring → stepping-stone → cave-roof route ends at a sparkling cave-mouth <code>SubDoor</code> into the <strong>Secret Ascent</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#6a4fa0">
-<h3>5 · Zombie Cave <small>(theme <code>cave</code>)</small> — first boss</h3>
+<h3>4 · Zombie Cave <small>(theme <code>cave</code>, internal <code>n=5</code>)</small> — first boss</h3>
 <dl>
   <dt>Biome</dt><dd>Dark purple cavern: glowing crystals, cartoon skulls, stalactites, sparkle motes. 5000&nbsp;px wide. The screen is <strong>dark</strong> (<code>lv.dark</code>) with light pools around the player, crystals, and pickups; a 22-candy trail lights the way.</dd>
   <dt>Objective</dt><dd>Cross the cave and beat the ZOMBIE boss. Three icon-hinted stages: 🔥 fire ×3 → ❄️ ice freeze (he shatters out and stumbles) → 🌈 rainbow, which transforms him into a friend.</dd>
@@ -354,12 +355,12 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>Darkness + light-source rendering, boss fights (<code>game.bossPlan</code>, staged powers, hint bubbles, respawning boss pickups), cutscenes.</dd>
   <dt>Ending</dt><dd>A treasure chest tumbles from the ceiling (<code>chestfall</code>); opening it reveals the <strong>GOLDEN CANDY TREASURE</strong> → party → unlocks Lava World.</dd>
   <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy trail; boss-stage blocks respawn in the arena.</dd>
-  <dt>Cameos</dt><dd>The boss plan is a deliberate reprise of the first three worlds' powers in order: fire (1), ice (2), rainbow (3). Hang spiders from level 4.</dd>
+  <dt>Cameos</dt><dd>The boss plan is a deliberate reprise of the first three worlds' powers in order: fire (meadow), ice (underwater), rainbow (clouds). Hang spiders from Mountain World.</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#ff7a2b">
-<h3>6 · Lava World <small>(theme <code>lava</code>)</small> — bonus, second boss</h3>
+<h3>5 · Lava World <small>(theme <code>lava</code>, internal <code>n=6</code>)</small> — second boss</h3>
 <dl>
   <dt>Biome</dt><dd>Volcanic badlands: parallax volcano silhouettes with glowing mouths, rising embers, and the huge sleepy-faced <strong>Candy Volcano</strong> looming behind the boss arena. 5000&nbsp;px wide, four glowing lava pools splitting the ground.</dd>
   <dt>Objective</dt><dd>Cross the lava gaps and beat KING MAGMA. His stages invert expectations: 🔥 fire only <em>feeds</em> him — you need ❄️ ice ×3 → a ⭐ super-mode <strong>power ram</strong> → 🌈 rainbow to befriend him.</dd>
@@ -367,13 +368,13 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd><strong>Ignition chains:</strong> in this world fire doesn't pop spiders — it sets them burning; they panic-run, explode, and ignite neighbors for firework chain reactions. Lava pools: falling in bounces you out at the cost of one heart (no deaths).</dd>
   <dt>Ending</dt><dd>The befriended Magma triggers the volcano: rumble → <strong>CANDY VOLCANO</strong> eruption raining candy → party → unlocks Monster Truck Rally.</dd>
   <dt>Pickups</dt><dd>Fire ×2, ice ×1, heart ×2, candy; boss-stage blocks in the arena.</dd>
-  <dt>Cameos</dt><dd>The pink spring block from Cloud World; block piles from Block Meadow; the boss plan reprises ice (2), super mode (4), and rainbow (3). Lava pools go on to reappear as hazards in the Truck Rally.</dd>
+  <dt>Cameos</dt><dd>The pink spring block from Cloud World; block piles from Block Meadow; the boss plan reprises ice (underwater), super mode (mountain), and rainbow (clouds). Lava pools go on to reappear as hazards in the Truck Rally.</dd>
   <dt>Secret</dt><dd>A glowing <em>cracked volcanic wall</em> right before the first lava pool opens into the <strong>Secret Volcano Escape</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#c9924a">
-<h3>7 · Monster Truck Rally <small>(theme <code>dirt</code>)</small> — bonus</h3>
+<h3>6 · Monster Truck Rally <small>(theme <code>dirt</code>, internal <code>n=7</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Desert rally course: smiling desert sun, flat-top mesas, drifting dust, pennant flags along the track, and a grandstand full of cheering fans at the finish. The longest world: 7200&nbsp;px.</dd>
   <dt>Objective</dt><dd><strong>Build your truck first (since v1.8.0):</strong> the monster truck starts <em>broken</em> — slumped on the dirt, no wheels, empty engine bay, coughing sadly, with a sign showing ghost silhouettes of the three missing parts. Find the giant wheels (easy hops up a block pile), the engine (it hangs from a crane — step the big yellow floor switch to lower it), and the power core (sealed behind a cracked wall on a high ledge; the respawning power block nearby smashes it — the learned mechanic). Return with all three for the assembly ceremony: BOOM, wheels; clunk, engine; bzzt, lights on — VROOOOOM. Then board it and race the course — six jump ramps (including THE giant 210&nbsp;px-tall ramp), a turbo pad, three lava pools to clear — and cross the finish line at x=6420.</dd>
@@ -386,7 +387,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 </div>
 
 <div class="level" style="--lc:#b06cf0">
-<h3>8 · Unicorn Forest <small>(theme <code>forest</code>)</small> — bonus</h3>
+<h3>7 · Unicorn Forest <small>(theme <code>forest</code>, internal <code>n=8</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Enchanted deep forest: two parallax layers of giant trees, soft god-rays, glowing mushrooms, butterflies, floating rainbow sparkle motes. 5600 × 1100 world with the ground at y=1000 and a pink castle at the far end (x=5060).</dd>
   <dt>Objective</dt><dd>Mount the unicorn and travel the forest — along the ground past centipedes or up through the leafy branch canopy — to the castle, where the royals crown you.</dd>
@@ -394,13 +395,13 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>The <strong>unicorn vehicle</strong>: mash ▲ to flap winged <strong>flight</strong> with glitter trails, and its horn fires rainbow shots <em>without needing a block</em>. Pink booster mushrooms (bouncy) launch you into the canopy.</dd>
   <dt>Ending</dt><dd>The <strong>coronation</strong> cutscene at the castle: you are crowned, and the crown is <em>permanent</em> — <code>game.royal</code> persists in <code>localStorage</code> and the hero wears the crown in every level and on the title screen forever after. Party → unlocks Space Maze.</dd>
   <dt>Pickups</dt><dd>Rainbow ×3, heart ×2, candy arcs through the treetops.</dd>
-  <dt>Cameos</dt><dd>Cloud World's one-way platforms return as leafy branches and its spring blocks as pink mushrooms; walk/jump spiders from the base game; the befriending mechanic (level 3) becomes the level's main verb.</dd>
+  <dt>Cameos</dt><dd>Cloud World's one-way platforms return as leafy branches and its spring blocks as pink mushrooms; walk/jump spiders from the base game; the befriending mechanic (Cloud World) becomes the level's main verb.</dd>
   <dt>Mini-game</dt><dd>A shimmering rainbow-ring <code>SubDoor</code> before the castle leads into <strong>Unicorn Sky Flight</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
 <div class="level" style="--lc:#4aa3ff">
-<h3>9 · Space Maze <small>(theme <code>space</code>)</small> — bonus finale</h3>
+<h3>8 · Space Maze <small>(theme <code>space</code>, internal <code>n=9</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Outer space: twinkling parallax starfield, nebula wisps, a sleepy-faced ringed planet, a little red planet, occasional shooting stars. The world is a <strong>44 × 19 cell maze</strong> (130&nbsp;px cells → 5720 × 2470&nbsp;px) whose connectivity is verified by BFS in the test harness — no sealed rooms, and a long path to the goal.</dd>
   <dt>Objective</dt><dd>Float through the maze — following a candy breadcrumb trail, with hearts and power blocks hidden in dead ends — and touch the giant grinning <strong>golden star</strong>.</dd>
@@ -413,7 +414,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 </div>
 
 <div class="level" style="--lc:#57c25c">
-<h3>10 · Dino Jungle <small>(theme <code>jungle</code>)</small> — bonus</h3>
+<h3>9 · Dino Jungle <small>(theme <code>jungle</code>, internal <code>n=10</code>)</small></h3>
 <dl>
   <dt>Biome</dt><dd>Goofy prehistoric jungle: teal-to-green sky, two parallax canopy layers, swaying hanging vines, drifting mist, giant ferns, tropical flowers with faces, prehistoric mushrooms, dino footprints, a distant smoking volcano with a sleepy face — and past the gate, a <strong>Secret Dino Valley</strong> with a waterfall, a rainbow, and giant flowers. 5800&nbsp;px wide, ground at y=620 with an elevated shrine terrace at y=430.</dd>
   <dt>Objective</dt><dd>Cross the jungle (jumping the fire-breathers' flames), discover the Ancient Jungle Gate, find the three lost dinosaur eggs and return them to the Nest Shrine to earn the <strong>Dino Key</strong>, open the gate, and touch the golden star in the Secret Dino Valley.</dd>
@@ -554,9 +555,9 @@ secret; see the secret design rules above).</p>
 
 <h2 id="progression">Progression &amp; persistence</h2>
 <ul>
-  <li><strong>Base game:</strong> star gates advance 1 → 2 → 3 → 4 → 5.</li>
-  <li><strong>Unlock chain:</strong> beating each boss/finale unlocks the next bonus world — Zombie → 6, King Magma → 7, Rally finish → 8, Coronation → 9, Maze star → 10. Party exits chain 5 → 6 → 7 → 8 → 9 → 10 → title.</li>
-  <li><strong>Title screen:</strong> hero picker — <strong>Jack-Jack</strong> (cap) or <strong>Becca</strong> (curly blonde hair), stored internally as <code>'boy'</code>/<code>'girl'</code>; Up/Down or tap a portrait — and a level picker of ten medallions (Left/Right, tap, digit keys 1–9 or 0 for world 10; locked worlds show a padlock). Selection defaults to the furthest unlocked level.</li>
+  <li><strong>Base run:</strong> star gates advance worlds 0 → 1 → 2 → 3 → 4 (internal <code>n</code> 1 → 5).</li>
+  <li><strong>Unlock chain:</strong> beating each boss/finale unlocks the next world — Zombie Cave → world 5, King Magma → 6, Rally finish → 7, Coronation → 8, Maze star → 9. (Internally these write <code>ffbg_unlocked</code> = 6–10, unchanged — saves intact.) Party exits chain from Zombie Cave straight through to Dino Jungle and back to the title.</li>
+  <li><strong>Title screen:</strong> hero picker — <strong>Jack-Jack</strong> (cap) or <strong>Becca</strong> (curly blonde hair), stored internally as <code>'boy'</code>/<code>'girl'</code>; Up/Down or tap a portrait — and a level picker of ten medallions (Left/Right, tap, digit keys 0–9; locked worlds show a padlock). Selection defaults to the furthest unlocked level.</li>
 </ul>
 <h3>Secret keyboard combos (title screen, parents/developers only)</h3>
 <p>Physical keyboard only — touch-synthesized presses use <code>justP</code> but never the
@@ -568,17 +569,17 @@ Presses must be ≤1.2&nbsp;s apart:</p>
 </ul>
 <div class="tablewrap"><table>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
-  <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code></td></tr>
+  <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code> (internal — one higher than the displayed world number)</td></tr>
   <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
   <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze</code>) — a gold star appears over a completed door</td></tr>
-  <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the level-8 coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
+  <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the Unicorn Forest coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
 </table></div>
 <p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
 it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 265 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 266 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -593,6 +594,7 @@ it breaks Jack's saved progress.</p>
   <li><strong>Harness coverage</strong> for the new mechanic, enemy, and ending; then screenshots of every new visual.</li>
   <li>Bump <code>GAME_VERSION</code> (MINOR), update <code>CHANGELOG.md</code> and this page, tag, push, verify live.</li>
 </ol>
+<p>A new world takes the next internal <code>n</code>; players will see <code>n − 1</code> — the display layer subtracts one automatically, so never bake displayed numbers into level data.</p>
 <p>Design guardrails for anything new: it must be understandable without reading (icons/faces/color),
 losable without punishment (checkpoint + retry), and it should end in a celebration, not a "game over".</p>
 <h3>Adding an adventure mission to a world</h3>
@@ -634,7 +636,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.8.3 · built for Jack ·
+  Block Buddies v1.9.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

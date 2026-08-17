@@ -749,10 +749,11 @@ function updateTitle(dt) {
   // Left/Right (or tapping a medallion) picks the level to play
   if (justP.ArrowLeft && game.selLevel > 1) { game.selLevel--; AudioSys.sfx('candy'); }
   if (justP.ArrowRight && game.selLevel < game.unlocked) { game.selLevel++; AudioSys.sfx('candy'); }
-  for (let i = 1; i <= 9; i++) {
-    if (justP['Digit' + i] && i <= game.unlocked) { game.selLevel = i; game.startLevel(i); return; }
+  // digit keys use the DISPLAYED world numbers 0-9 (0 = the training meadow);
+  // internally worlds stay n = 1-10 (saves, buildLevel, harness — display = n-1)
+  for (let d = 0; d <= 9; d++) {
+    if (justP['Digit' + d] && d + 1 <= game.unlocked) { game.selLevel = d + 1; game.startLevel(d + 1); return; }
   }
-  if (justP.Digit0 && game.unlocked >= 10) { game.selLevel = 10; game.startLevel(10); return; }
   if (justP.Space) game.startLevel(clamp(game.selLevel, 1, game.unlocked));
 }
 function update(dt) {
@@ -1078,7 +1079,8 @@ function drawIntroCard() {
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.fill();
   ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 6;
   rr(ctx, W / 2 - 330, y - 140, 660, 280, 30); ctx.stroke();
-  outlineText(ctx, lv.n >= 6 ? 'BONUS LEVEL!' : 'LEVEL ' + lv.n, W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
+  // worlds are shown as 0-9 (display = internal n - 1); mini-games get a label
+  outlineText(ctx, typeof lv.n === 'number' ? 'LEVEL ' + (lv.n - 1) : 'MINI-GAME!', W / 2, y - 75, 56, '#ffd24a', '#5a4a86');
   outlineText(ctx, lv.name, W / 2, y, 44, '#5a4a86', '#fff');
   drawLevelIcon(ctx, W / 2, y + 85, 38, lv.theme, game.t);
   ctx.restore();
@@ -1337,7 +1339,7 @@ function renderTitle() {
       ctx.beginPath(); ctx.arc(m.x + 22, my - 22, 11, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(m.x + 22, my - 22, 11, 0, TAU); ctx.stroke();
-      outlineText(ctx, String(i), m.x + 22, my - 21, 16, '#5a4a86', '#fff');
+      outlineText(ctx, String(i - 1), m.x + 22, my - 21, 16, '#5a4a86', '#fff'); // displayed 0-9
     } else {
       ctx.fillStyle = '#8a8a9a';
       rr(ctx, m.x - 10, my - 6, 20, 15, 4); ctx.fill();

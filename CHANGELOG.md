@@ -8,6 +8,21 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.9.0] - 2026-08-17
+
+### Changed
+- **Worlds are now numbered 0-9** (Ryan's call): with five "bonus" levels the
+  bonus framing stopped making sense. World 0 is the training meadow, world 9
+  is Dino Jungle. Intro cards now say "LEVEL 0"-"LEVEL 9" for every world (no
+  more "BONUS LEVEL!"), medallion badges show 0-9, and the title digit keys
+  match what's shown (0 starts the meadow, 9 the jungle). This is display-only:
+  internally everything stays n = 1-10 (`buildLevel`, `ffbg_unlocked`, the
+  harness), so saved progress is untouched — displayed number = n - 1.
+
+### Fixed
+- Mini-game intro cards used to render "LEVEL cloudclimb"; they now say
+  "MINI-GAME!" above the sublevel's name.
+
 ## [1.8.3] - 2026-08-16
 
 ### Fixed

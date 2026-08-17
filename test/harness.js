@@ -1044,10 +1044,15 @@ check('tapping a medallion starts that level', (function () {
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
-// title level select
+// title level select — digit keys use DISPLAYED world numbers (0-9 = internal 1-10)
 tap('Digit3');
 frames(5);
-check('digit key starts that level from title', G().level.n === 3 && G().state === 'intro');
+check('digit 3 starts displayed world 3 (internal 4, Mountain)', G().level.n === 4 && G().state === 'intro');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+tap('Digit0');
+frames(5);
+check('digit 0 starts the training meadow (internal 1)', G().level.n === 1 && G().state === 'intro');
 
 // ---------------- secret title combos (keyboard only) ----------------
 vm.runInContext('game.goTitle()', sandbox);

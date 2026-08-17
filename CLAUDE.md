@@ -59,7 +59,12 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 
 ## The ten worlds
 
-| # | Name | Theme key | Gimmick | Ending |
+PLAYERS SEE WORLDS **0-9** (display = n-1, applied only in the display layer:
+intro card, medallion number badges, title digit keys — since v1.9.0). ALL
+code, saves, and harness checks use internal n = 1-10 as in this table; never
+renumber the internals (breaks `ffbg_unlocked` saves).
+
+| # (internal n) | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
 | 1 | Block Meadow | meadow | tutorial, fire block | star gate |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
@@ -74,7 +79,7 @@ Entity convention: `x,y` = top-left, `w,h` box, `cx/cy` getters. World units
 
 Progression: gates advance 1→5; beating each boss/finale unlocks the next
 bonus world (zombie→6, magma→7, rally→8, coronation→9, maze star→10) and party
-exits chain 5→6→7→8→9→10→title. Digit 0 on the title jumps to world 10.
+exits chain 5→6→7→8→9→10→title (internal n). Title digit keys use DISPLAYED numbers: 0 = meadow … 9 = jungle (digit d starts internal d+1).
 Persistence (localStorage): `ffbg_unlocked` (1-10),
 `ffbg_char` ('boy'/'girl'), `ffbg_royal` ('1' after coronation → crown drawn
 everywhere via `drawBoy`/`drawHead`).
@@ -154,7 +159,7 @@ everywhere via `drawBoy`/`drawHead`).
   anywhere = action (menus work by tapping). Title has tappable portraits
   and level medallions via `game.titleTap`.
 - **Title**: hero picker (Up/Down or tap; girl has curly blonde hair), level
-  picker (Left/Right ring or tap medallion, digits 1-9 jump, Space = play
+  picker (Left/Right ring or tap medallion, digits 0-9 [displayed numbers] jump, Space = play
   selected). Secret combos (physical keyboard only, via `justK` — touch
   presses can't fire them; ≤1.2s between presses): Up×5 = unlock all worlds
   (`game.unlockAll`), Down×5 = wipe saves & reset (`game.resetProgress`).
@@ -165,7 +170,7 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 265 checks; must print
+  goal path) and version/changelog/docs sync checks. 266 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).
