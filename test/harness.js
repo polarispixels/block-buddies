@@ -1000,6 +1000,210 @@ check('no currents or switches leak back into the host', G().level.currents === 
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: PIPE ROOM (cause & effect) ----------------
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(150);
+check('the meadow hides a burping pipe door', vm.runInContext("game.level.subDoors.some(d => d.sub === 'piperoom')", sandbox));
+put(2950 - 28, 620 - 94);
+frames(10);
+check('the giant pipe swallows the hero into the SECRET PIPE ROOM', G().level.n === 'piperoom');
+frames(150);
+const PW = () => vm.runInContext('game.level.puzzle', sandbox);
+check('machine loaded: chutes mis-aimed, all bulbs dark, no goal star yet',
+  PW().state === 'run' && JSON.stringify(PW().aims) === '[1,2,0]' && PW().bulbs.every(b => !b) && G().level.goalStar === null);
+// stepping a button swings that pipe to the next machine (edge-triggered)
+put(190, 620 - 94);
+frames(6);
+check('stepping the fire button swings the fire pipe', PW().aims[0] === 2);
+put(400, 620 - 94);
+frames(5);
+put(190, 620 - 94);
+frames(6);
+check('stepping it again cycles onward (and only once per step)', PW().aims[0] === 0);
+// wrong feeds are comedy, never failure
+vm.runInContext('game.level.puzzle.aims = [1, 2, 0]; game.level.puzzle.visAim = [1, 2, 0]; game.level.puzzle.dropT = [0.05, 99, 99];', sandbox);
+put(640, 620 - 94);
+frames(130); // fire block drops and lands in the freezer
+check('fire into the freezer = steam gag, machine unharmed and running',
+  PW().state === 'run' && PW().bulbs.every(b => !b) && PW().fx.some(f => f.type === 'steam'));
+// solve: aim every pipe straight down at its match
+vm.runInContext('game.level.puzzle.aims = [0, 1, 2]; game.level.puzzle.visAim = [0, 1, 2]; game.level.puzzle.dropT = [0.05, 0.5, 0.95];', sandbox);
+put(1150, 620 - 94); // stand clear of buttons and the star spot
+frames(200);
+check('three correct feeds latch all three bulbs', PW().bulbs.every(b => b));
+frames(200);
+check('KA-CHUNK finale erupts candy and reveals the golden star', PW().state === 'done' && !!G().level.goalStar);
+put(640 - 28, 500);
+frames(20);
+check('the machine star starts the celebration', G().endPhase === 'party' && G().level.n === 'piperoom');
+check('pipe room completion is remembered', G().miniDone.piperoom === true && sandbox.localStorage.getItem('ffbg_mini').includes('piperoom'));
+frames(320);
+tap('Space');
+frames(5);
+check('pipe room exits back to the meadow', G().level.n === 1 && G().state === 'play');
+check('no machine state leaks into the meadow', G().level.puzzle === null);
+put(2800, 620 - 94);
+frames(45, { ArrowRight: 1 });
+check('walking over the completed pipe never re-swallows', G().level.n === 1 && G().player.x > 2960);
+
+// ---------------- secret: TORCH CAVERN (observation & matching) ----------------
+vm.runInContext('game.startLevel(5)', sandbox);
+frames(150);
+check('the zombie cave hides the glowing-eyes tunnel', vm.runInContext("game.level.subDoors.some(d => d.sub === 'torchcave')", sandbox));
+put(660 - 28, 620 - 94);
+frames(10);
+check('the eye tunnel leads into the TORCH CAVERN', G().level.n === 'torchcave');
+frames(150);
+const TC = () => vm.runInContext('game.level.puzzle', sandbox);
+check('cavern is dark: five unlit torches, sealed stone door',
+  G().level.dark === true && TC().torches.length === 5 && TC().torches.every(o => !o.lit) && !TC().doorSolid.broken);
+put(1560, 620 - 94);
+frames(40, { ArrowRight: 1 });
+check('the stone door blocks the way onward', G().player.x + G().player.w <= 1642);
+// touch a torch -> it lights -> its symbol wisps home to the door
+put(400, 620 - 94);
+frames(10);
+check('touching the heart torch lights it', TC().torches[0].lit === true);
+frames(100);
+check('the heart symbol flies home and fills its door slot', TC().filled.heart === true);
+// a FIRED fireball lights a torch from across the room (projectile-height rule)
+vm.runInContext('game.player.x = 1300; game.player.y = 620 - 94; game.player.vy = 0; game.player.facing = 1; game.player.power = "fire"; game.player.cool = 0; game.projectiles = [];', sandbox);
+frames(3);
+tap('Space');
+frames(40);
+check('a fired fireball lights the snore torch from range', TC().torches[4].lit === true);
+check('the snore torch gag plays (Zzz from behind the door)', TC().zzzT > 0);
+// an ice shot re-douses it — funny, harmless, relightable
+vm.runInContext('game.player.power = "ice"; game.player.cool = 0;', sandbox);
+tap('Space');
+frames(40);
+check('an ice shot re-douses the torch (no punishment, no lost progress)', TC().torches[4].lit === false && TC().filled.heart === true);
+put(760 - 20, 620 - 94);
+frames(8);
+check('the bat torch wakes the goofy stone bat', TC().bat.awake === true);
+// the two high symbol torches: RIDE the jumps for real (never teleport a traversal)
+put(1050, 620 - 94);
+frames(5);
+tap('ArrowUp');
+frames(60);
+check('a jump from the floor lands on the lower ledge', Math.abs(G().player.y + 94 - 490) < 5);
+check('the star torch lights on the ledge', TC().torches[2].lit === true);
+put(1160, 490 - 94);
+frames(3);
+tap('ArrowUp');
+frames(30, { ArrowRight: 1 });
+frames(40);
+check('a hop carries on up to the high ledge', Math.abs(G().player.y + 94 - 355) < 5);
+put(1350 - 20, 355 - 94);
+frames(8);
+check('the candy torch lights up top', TC().torches[3].lit === true);
+frames(110);
+check('all three symbols home — the door starts to open', TC().state !== 'explore');
+frames(120);
+check('door grinds open and the cavern floods with light', TC().doorSolid.broken === true && TC().reveal === true);
+frames(150);
+check('the scary secret is a baby-zombie slumber party (chest opens, star appears)',
+  TC().state === 'done' && TC().chest.open === true && TC().babies.every(b2 => b2.mood === 'grin') && !!G().level.goalStar);
+put(1790 - 28, 500);
+frames(20);
+check('the slumber-party star starts the celebration', G().endPhase === 'party' && G().miniDone.torchcave === true);
+frames(320);
+tap('Space');
+frames(5);
+check('torch cavern exits back into the Zombie Cave', G().level.n === 5 && G().state === 'play');
+check('no torch state leaks into the cave', G().level.puzzle === null && G().level.dark === true);
+
+// ---------------- secret: ZERO-G STAR CHAMBER (spatial transport) ----------------
+vm.runInContext('game.startLevel(9)', sandbox);
+frames(150);
+check('the space maze hides a cracked asteroid door', vm.runInContext("game.level.subDoors.some(d => d.sub === 'zerog')", sandbox));
+put(180 - 28, 2250);
+frames(10);
+check('the cracked asteroid pulls the hero into the ZERO-G STAR CHAMBER', G().level.n === 'zerog');
+frames(150);
+const SC = () => vm.runInContext('game.level.puzzle', sandbox);
+check('chamber is weightless: five stars, none placed, no goal star',
+  G().level.space === true && SC().stars.length === 5 && SC().placed === 0 && G().level.goalStar === null);
+// star 1 teaches the loop: grab -> it tails you -> bring it home
+put(600 - 28, 780 - 47);
+frames(6);
+check('touching a star attaches it to the hero', SC().stars[0].state === 'carry');
+frames(50, { ArrowRight: 1 });
+check('the carried star tails the hero through real swimming', Math.hypot(SC().stars[0].x - G().player.cx, SC().stars[0].y - G().player.cy) < 260);
+put(2000, 400); // yank the hero far away — the star must never be lost
+frames(10);
+check('a carried star can never be left behind', Math.hypot(SC().stars[0].x - G().player.cx, SC().stars[0].y - G().player.cy) < 300);
+put(1300 - 28, 610 - 47);
+frames(40);
+check('the star snaps into its matching socket', SC().stars[0].state === 'set' && SC().placed === 1);
+// star 2: swim INTO the asteroid pocket for real
+put(1860, 355 - 47);
+frames(110, { ArrowRight: 1 });
+check('swimming into the asteroid pocket grabs star 2', SC().stars[1].state === 'carry');
+put(1090 - 28, 760 - 47);
+frames(40);
+check('star 2 delivered', SC().placed === 2);
+// star 3: cross the solar-wind current for real
+put(795, 1200);
+frames(15);
+check('the solar wind blows the hero upward', G().player.vy < 0 || G().player.y < 1180);
+put(950, 1290 - 47);
+frames(90, { ArrowLeft: 1 });
+check('the hero can cross the solar wind', G().player.x < 700);
+put(580, 1240);
+frames(55, { ArrowLeft: 1, ArrowDown: 1 });
+check('crossing the solar wind reaches star 3', SC().stars[2].state === 'carry');
+put(1510 - 28, 760 - 47);
+frames(40);
+check('star 3 delivered', SC().placed === 3);
+// star 4: the energy gate blocks until the big button pops it
+put(650, 300);
+frames(50, { ArrowLeft: 1 });
+check('the energy gate blocks the pocket', G().player.x >= 554);
+put(590, 610);
+frames(8);
+check('the big button pops the energy gate', SC().button.on === true && vm.runInContext("game.level.solids.find(s => s.gate === 'energy').broken", sandbox) === true);
+put(650, 300);
+frames(100, { ArrowLeft: 1 });
+check('hero swims through the open gate and grabs star 4', SC().stars[3].state === 'carry');
+put(1180 - 28, 970 - 47);
+frames(40);
+check('star 4 delivered', SC().placed === 4);
+// star 5: the silly alien keeps its star through bumps...
+put(2180, 1290);
+frames(25, { ArrowRight: 1 });
+check('bumping the alien only makes it giggle (it keeps the star)', SC().stars[4].state === 'held' && SC().alien.happy === false);
+check('constellation stays unfinished until every star is home', SC().state === 'build');
+// ...but a FIRED rainbow melts its heart
+put(1900 - 28, 1250 - 47);
+frames(8);
+check('the floating rainbow block grants rainbow power', G().player.power === 'rainbow');
+vm.runInContext('game.player.cool = 0; game.projectiles = [];', sandbox);
+put(2050, 1260);
+frames(3);
+vm.runInContext('game.player.facing = 1;', sandbox);
+tap('Space');
+frames(60);
+check('a fired rainbow makes the alien happily hand over star 5', SC().alien.happy === true && SC().stars[4].state !== 'held');
+put(2250 - 28, 1190 - 47);
+frames(10);
+check('the gifted star attaches', SC().stars[4].state === 'carry' || SC().stars[4].state === 'set');
+put(1420 - 28, 970 - 47); // its socket: the right foot
+frames(40);
+check('all five stars placed — the constellation activates', SC().placed === 5 && SC().state !== 'build');
+frames(300);
+check('the constellation resolves and reveals the golden star', SC().state === 'done' && !!G().level.goalStar);
+put(1300 - 28, 1040 - 47);
+frames(20);
+check('the constellation star starts the celebration', G().endPhase === 'party' && G().miniDone.zerog === true);
+frames(320);
+tap('Space');
+frames(5);
+check('the chamber exits back into the Space Maze', G().level.n === 9 && G().state === 'play');
+check('no chamber state leaks into the maze', G().level.puzzle === null && G().level.currents === null);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {

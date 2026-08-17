@@ -16,7 +16,10 @@ const LEVEL_META = {
   ascent: { name: 'SECRET ASCENT', theme: 'mountain', music: 'mountain' },
   skyflight: { name: 'SKY FLIGHT', theme: 'cloud', music: 'forest' },
   volcanoescape: { name: 'VOLCANO ESCAPE', theme: 'lava', music: 'cave' },
-  bubblemaze: { name: 'BUBBLE MAZE', theme: 'water', music: 'water' }
+  bubblemaze: { name: 'BUBBLE MAZE', theme: 'water', music: 'water' },
+  piperoom: { name: 'SECRET PIPE ROOM', theme: 'cave', music: 'dirt' },
+  torchcave: { name: 'TORCH CAVERN', theme: 'cave', music: 'cave' },
+  zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' }
 };
 
 function newLevel(n) {
@@ -32,6 +35,7 @@ function newLevel(n) {
     subDoors: [], flight: false,
     truckBuild: null, vents: null, risingLava: null,
     currents: null, shellSwitches: null, goldRush: null,
+    puzzle: null, // secret-room machine (PipeWorks / TorchCavern / StarChamber)
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -94,6 +98,9 @@ function buildLevel(n) {
     spider(lv, 1350, G, 'walk', { range: 160 });
     spider(lv, 2250, G, 'walk', { range: 170 });
     spider(lv, 3700, G, 'walk', { range: 150 });
+    // the SECRET PIPE ROOM: a suspiciously oversized pipe that keeps burping
+    // candy — walk into it and FWOOOP, you're inside the machine room
+    lv.subDoors.push(new SubDoor(2950, G, 'piperoom', 'pipe'));
     lv.checks.push(new Checkpoint(1800, G));
     lv.checks.push(new Checkpoint(3100, G));
     lv.gate = new Gate(4080, G);
@@ -269,6 +276,9 @@ function buildLevel(n) {
     pick(lv, 480, G - 90, 'fire');
     pick(lv, 2050, G - 80, 'fire');
     pick(lv, 2650, G - 70, 'heart');
+    // the SECRET TORCH CAVERN: a low side tunnel where two glowing eyes blink
+    // in the dark next to a tiny flickering torch — "something is over here"
+    lv.subDoors.push(new SubDoor(660, G, 'torchcave', 'eyes'));
     candyRow(lv, 300, 3900, G - 55, 22); // candy clues lead the way
     spider(lv, 1200, 420, 'hang', { webTop: 0 });
     spider(lv, 1600, G, 'walk', { range: 160 });
@@ -509,6 +519,12 @@ function buildLevel(n) {
     // THE GOLDEN STAR
     lv.goalStar = { x: P(41, 9)[0], y: P(41, 9)[1] };
     lv.hints.push({ x: 420, y: 9 * CELL, icon: 'updown' });
+    // the SECRET ZERO-G STAR CHAMBER: a cracked asteroid on the floor of the
+    // open pocket below the start — golden sparkles leak out of the crack and
+    // a little candy trail drifts down toward it
+    // (offset left of the spawn column so the door arms itself immediately)
+    lv.subDoors.push(new SubDoor(180, 18 * CELL, 'zerog', 'asteroid'));
+    pick(lv, 265, 1760, 'candy'); pick(lv, 230, 1990, 'candy'); pick(lv, 200, 2200, 'candy');
   }
 
   if (n === 10) { // ---------------- DINO JUNGLE (bonus)
@@ -853,6 +869,71 @@ function buildLevel(n) {
     lv.decor.weeds = []; lv.decor.fish = [];
     for (let x = 60; x < 2560; x += rand(160, 320)) lv.decor.weeds.push({ x, h: rand(50, 120), seed: rand(9) });
     for (let i = 0; i < 8; i++) lv.decor.fish.push({ x: rand(100, 2500), y: rand(300, 1700), s: rand(0.6, 1.1), sp: rand(25, 60) * (chance(0.5) ? 1 : -1), c: randi(0, 3) });
+  }
+
+  if (n === 'piperoom') { // ---------------- SECRET PIPE ROOM (cause & effect)
+    // One single non-scrolling screen so the whole machine is observable at
+    // once: hoppers up top, eater machines below, mis-aimed chutes between.
+    // Everything happens on the flat floor — this is a puzzle room, not a
+    // platforming challenge. The machine itself is lv.puzzle (PipeWorks).
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 70, y: 460 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new PipeWorks(G);
+    lv.checks.push(new Checkpoint(120, G)); // heart refill on the way in
+    lv.decor.stals = [];
+    for (let x = 40; x < 1280; x += rand(150, 280)) lv.decor.stals.push({ x, h: rand(30, 80), w: rand(22, 40) });
+    lv.decor.crystals = [{ x: 90, y: G - 30, s: 1.1, c: 0 }, { x: 1190, y: G - 30, s: 1.3, c: 1 }];
+  }
+
+  if (n === 'torchcave') { // ---------------- TORCH CAVERN (observation & matching)
+    lv.w = 1920; lv.h = 720; lv.dark = true;
+    lv.playerStart = { x: 70, y: 460 };
+    addGround(lv, 0, 1920, G);
+    // two one-way ledges climb toward the higher torches; every step stays
+    // under the 148px jump rise (620 -> 490 -> 355)
+    addPlat(lv, 960, 490, 220, { oneWay: true });
+    addPlat(lv, 1250, 355, 220, { oneWay: true });
+    lv.puzzle = new TorchCavern(G);
+    lv.solids.push(lv.puzzle.doorSolid); // the sealed stone door
+    lv.checks.push(new Checkpoint(140, G));
+    pick(lv, 250, G - 84, 'fire'); // torches also light from a fireball — learned in this very cave
+    lv.decor.stals = []; lv.decor.crystals = [];
+    for (let x = 60; x < 1920; x += rand(140, 260)) lv.decor.stals.push({ x, h: rand(40, 110), w: rand(24, 46) });
+    lv.decor.crystals.push({ x: 200, y: G - 30, s: 1, c: 0 }); // one glow near the entrance
+  }
+
+  if (n === 'zerog') { // ---------------- ZERO-G STAR CHAMBER (spatial planning)
+    lv.w = 2600; lv.h = 1560;
+    lv.water = true; lv.space = true; // weightless swim, same as the maze
+    lv.playerStart = { x: 170, y: 720 };
+    // chamber shell
+    lv.solids.push({ x: 0, y: 0, w: 2600, h: 90, pile: true });
+    lv.solids.push({ x: 0, y: 1470, w: 2600, h: 90, pile: true });
+    lv.solids.push({ x: 0, y: 0, w: 70, h: 1560, pile: true });
+    lv.solids.push({ x: 2530, y: 0, w: 70, h: 1560, pile: true });
+    // STAR 2's asteroid pocket (top right): a C-shaped nest, open on the left
+    lv.solids.push({ x: 1980, y: 190, w: 480, h: 70, pile: true });   // pocket roof
+    lv.solids.push({ x: 1980, y: 450, w: 480, h: 70, pile: true });   // pocket floor
+    lv.solids.push({ x: 2390, y: 260, w: 70, h: 190, pile: true });   // sealed far side
+    // STAR 3's solar-wind curtain (bottom left): an up-blowing stream between
+    // the middle of the room and the star's nook — crossing it is a playful
+    // deflection, never a wall (push 1300 < swim thrust 1400)
+    lv.currents = [{ x: 700, y: 950, w: 190, h: 520, dir: 'up' }];
+    // STAR 4's energy gate (top left pocket)
+    lv.solids.push({ x: 90, y: 190, w: 420, h: 60, pile: true });     // pocket roof lip
+    lv.solids.push({ x: 90, y: 470, w: 420, h: 60, pile: true });     // pocket floor lip
+    const zGate = { x: 510, y: 190, w: 46, h: 340, gate: 'energy', kind: 'ice' };
+    lv.solids.push(zGate);
+    lv.puzzle = new StarChamber(1300, 800, zGate);
+    // the rainbow block for the silly alien (STAR 5) floats near it
+    pick(lv, 1900, 1250, 'rainbow');
+    // candy sprinkles trace the room's corners
+    candyRow(lv, 500, 700, 500, 3);
+    candyRow(lv, 1600, 1800, 950, 3);
+    pick(lv, 350, 1050, 'candy'); pick(lv, 2250, 800, 'candy');
+    lv.checks.push(new Checkpoint(240, 1470));
+    lv.hints.push({ x: 320, y: 560, icon: 'updown' });
   }
 
   return lv;
@@ -1288,6 +1369,24 @@ function drawSolids(ctx, lv, cam, t) {
         Particles.burst(mx + rand(-18, 18), s.y + 2, 1, { colors: ['#ff9f43', '#ffe156'], type: 'circle', sp1: 40, grav: -140, l1: 0.5, s1: 8, up: 0 });
       }
       drawFace(ctx, mx, s.y + s.h - 14, 20, erupt ? 'surprised' : warn ? 'grin' : 'sleepy', t, s.x);
+      continue;
+    }
+    if (s.gate === 'energy') { // Star Chamber: a humming striped energy field
+      const p = POW[s.kind] || POW.ice;
+      ctx.save();
+      ctx.globalAlpha = 0.55 + 0.15 * Math.sin(t * 4);
+      ctx.fillStyle = p.c;
+      rr(ctx, s.x, s.y, s.w, s.h, 14); ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 4;
+      rr(ctx, s.x, s.y, s.w, s.h, 14); ctx.stroke();
+      // scrolling energy stripes
+      ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+      for (let yy = s.y + ((t * 40) % 34); yy < s.y + s.h - 4; yy += 34) {
+        ctx.beginPath(); ctx.moveTo(s.x + 6, yy); ctx.lineTo(s.x + s.w - 6, yy + 10); ctx.stroke();
+      }
+      ctx.restore();
       continue;
     }
     if (s.valve) { // bubble valve: a shimmering membrane sealing the shaft

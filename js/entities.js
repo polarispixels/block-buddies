@@ -3471,6 +3471,8 @@ class SubDoor {
       // Replay is deliberate: stand on the trophy marker and press Space/★.
       if (!done || justP.Space) {
         this.armed = false;
+        if (this.style === 'pipe') AudioSys.sfx('blorp'); // FWOOOP — sucked in!
+        if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
         game.enterSub(this.sub);
         return;
       }
@@ -3480,6 +3482,9 @@ class SubDoor {
       const cols = this.style === 'rainbow' ? RAINBOW
         : this.style === 'cave' ? ['#ffe156', '#d0a0ff']
         : this.style === 'crack' ? ['#ff9f43', '#ffe156']
+        : this.style === 'pipe' ? ['#ffd24a', '#7be07b']
+        : this.style === 'eyes' ? ['#ffe156', '#ff9f43']
+        : this.style === 'asteroid' ? ['#ffd24a', '#ffe156']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -3487,6 +3492,21 @@ class SubDoor {
     // cave — the invitation stops once the secret has been found
     if (this.style === 'bubble' && !done && chance(0.4)) {
       Particles.burst(this.cx + rand(-14, 14), this.y + 30, 1, { color: 'rgba(255,255,255,0.75)', type: 'bubble', sp1: 25, grav: -170, l0: 2, l1: 3.4, up: 0, s1: 10 });
+    }
+    // the pipe's clue: every few seconds it BURPS a piece of candy into the air
+    if (this.style === 'pipe' && !done) {
+      this.burpT = (this.burpT ?? rand(1, 3)) - dt;
+      if (this.burpT <= 0) {
+        this.burpT = rand(2.6, 4.4);
+        this.burpAnim = 0.5;
+        Particles.burst(this.cx, this.y - 8, 1, { colors: ['#ffd24a'], type: 'candy', sp1: 140, grav: 500, l0: 1, l1: 1.6, up: 260, s1: 18 });
+        if (Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.8) AudioSys.sfx('hiccup');
+      }
+      this.burpAnim = Math.max(0, (this.burpAnim || 0) - dt);
+    }
+    // the asteroid crack's clue: golden candy sparkles drift out through it
+    if (this.style === 'asteroid' && !done && chance(0.25)) {
+      Particles.burst(this.cx + rand(-20, 20), this.y + rand(10, 40), 1, { colors: ['#ffd24a', '#ffe156'], type: 'sparkle', sp1: 45, grav: -55, l0: 1.2, l1: 2.2, up: 0, s1: 10 });
     }
   }
   draw(ctx) {
@@ -3574,6 +3594,102 @@ class SubDoor {
         const bph = (t * 0.5 + i * 0.33) % 1;
         ctx.beginPath(); ctx.arc(cx + Math.sin(i * 4 + t) * 12, g - 14 - bph * (this.h - 40), 6 + i * 2, 0, TAU); ctx.stroke();
       }
+    } else if (this.style === 'pipe') {
+      // a suspiciously oversized green pipe sticking out of the meadow, with a
+      // face and a wobble — it clearly ate too much candy
+      const burp = this.burpAnim > 0 ? Math.sin(this.burpAnim * 20) * 3 * this.burpAnim : 0;
+      const wob = Math.sin(t * 1.8) * 0.03;
+      ctx.save();
+      ctx.translate(cx, g);
+      ctx.rotate(wob);
+      ctx.translate(-cx, -g);
+      // pipe body
+      const pw = this.w + 18, ph = this.h - 8;
+      const grad = ctx.createLinearGradient(cx - pw / 2, 0, cx + pw / 2, 0);
+      grad.addColorStop(0, '#57b84a'); grad.addColorStop(0.5, '#7be07b'); grad.addColorStop(1, '#3f9c3a');
+      ctx.fillStyle = grad;
+      rr(ctx, cx - pw / 2, g - ph + burp, pw, ph + 6, 10); ctx.fill();
+      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 4;
+      rr(ctx, cx - pw / 2, g - ph + burp, pw, ph + 6, 10); ctx.stroke();
+      // fat rim on top
+      const rw = pw + 22;
+      ctx.fillStyle = grad;
+      rr(ctx, cx - rw / 2, g - ph - 34 + burp, rw, 42, 12); ctx.fill();
+      ctx.strokeStyle = '#2f8a3c';
+      rr(ctx, cx - rw / 2, g - ph - 34 + burp, rw, 42, 12); ctx.stroke();
+      // dark mouth with a candy glint deep inside
+      ctx.fillStyle = '#143a18';
+      ctx.beginPath(); ctx.ellipse(cx, g - ph - 30 + burp, rw / 2 - 12, 12, 0, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.6 + 0.3 * Math.sin(t * 5);
+      drawCandy(ctx, cx + Math.sin(t * 1.3) * 10, g - ph - 28 + burp, 9, 1, t);
+      ctx.restore();
+      // sleepy-then-surprised pipe face
+      drawFace(ctx, cx, g - ph * 0.45 + burp, 42, this.burpAnim > 0 ? 'surprised' : 'happy', t, 61);
+      ctx.restore();
+    } else if (this.style === 'eyes') {
+      // a low dark side-tunnel: two glowing eyes blink inside, and a tiny
+      // torch flickers by the entrance — "something is over here"
+      ctx.fillStyle = '#2a2140';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 + 16, this.h - 4, 0, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = '#453563'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 + 16, this.h - 4, 0, Math.PI, TAU); ctx.stroke();
+      ctx.fillStyle = '#0c0618';
+      ctx.beginPath(); ctx.ellipse(cx, g - 2, this.w / 2 - 4, this.h - 26, 0, Math.PI, TAU); ctx.fill();
+      // the two glowing eyes (they blink)
+      if (((t * 0.9) % 3.1) > 0.18) {
+        for (const sd of [-1, 1]) {
+          ctx.save();
+          ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 3 + sd);
+          ctx.fillStyle = '#ffe156';
+          ctx.beginPath(); ctx.ellipse(cx + sd * 16, g - this.h * 0.52, 8, 11, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#3a2a3a';
+          ctx.beginPath(); ctx.arc(cx + sd * 16, g - this.h * 0.5, 3.5, 0, TAU); ctx.fill();
+          ctx.restore();
+        }
+      }
+      // tiny wall torch beside the mouth
+      const tx = cx - this.w / 2 - 30;
+      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(tx, g - 44); ctx.lineTo(tx, g - 70); ctx.stroke();
+      const fl = 1 + Math.sin(t * 11) * 0.2;
+      ctx.fillStyle = '#ff9f43';
+      ctx.beginPath(); ctx.ellipse(tx, g - 80, 7 * fl, 11 * fl, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.ellipse(tx, g - 78, 3.5 * fl, 6 * fl, 0, 0, TAU); ctx.fill();
+    } else if (this.style === 'asteroid') {
+      // a cracked asteroid boulder — golden light leaks through the zigzag
+      // cracks, and candy sparkles drift out
+      ctx.fillStyle = '#5f5a78';
+      ctx.beginPath();
+      ctx.moveTo(cx - this.w / 2 - 16, g);
+      ctx.quadraticCurveTo(cx - this.w / 2 - 24, g - this.h * 0.7, cx - 16, g - this.h - 10);
+      ctx.quadraticCurveTo(cx + 30, g - this.h - 22, cx + this.w / 2 + 20, g - this.h * 0.55);
+      ctx.quadraticCurveTo(cx + this.w / 2 + 26, g - 10, cx + this.w / 2 - 6, g);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#3d3766'; ctx.lineWidth = 4; ctx.stroke();
+      // craters
+      ctx.fillStyle = '#4a4560';
+      for (const [ox, oy, r2] of [[-26, -84, 9], [24, -34, 12], [-8, -20, 7]]) {
+        ctx.beginPath(); ctx.arc(cx + ox, g + oy, r2, 0, TAU); ctx.fill();
+      }
+      // the glowing golden crack
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,210,74,' + (0.65 + 0.3 * Math.sin(t * 3)) + ')';
+      ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, g - this.h - 2);
+      ctx.lineTo(cx + 10, g - this.h * 0.72);
+      ctx.lineTo(cx - 12, g - this.h * 0.5);
+      ctx.lineTo(cx + 8, g - this.h * 0.26);
+      ctx.lineTo(cx - 4, g - 6);
+      ctx.stroke();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.3 * Math.sin(t * 3 + 1)) + ')';
+      ctx.stroke();
+      ctx.restore();
+      // sleepy rock face, dreaming of candy
+      drawFace(ctx, cx - 30, g - this.h * 0.62, 26, 'sleepy', t, 62);
     } else { // cloud swirl archway
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       for (let i = 0; i < 7; i++) {
@@ -3877,5 +3993,991 @@ class TruckBuild {
     ctx.rotate(0.35);
     rr(ctx, -4, -18, 9, 26, 3); ctx.fill();
     ctx.restore();
+  }
+}
+
+// ================================================================ pipe works
+// The Secret Pipe Room machine (Level 0's secret): a cause-and-effect toy.
+// Three hoppers hang from an overhead deck, each dropping funny-face blocks of
+// its color (fire / ice / rainbow) down a fat visible chute. Three eater
+// machines wait on the floor. The chutes start aimed WRONG; three color-ringed
+// floor buttons each swing their pipe's mouth to the next machine (CLUNK).
+// A correctly-fed machine gulps happily and its bulb latches ON forever
+// (progress can never be lost); wrong feeds are pure entertainment — steam
+// puffs, melting puddles with eyes, confetti sneezes. All three bulbs lit ->
+// KA-CHUNK finale -> candy eruption -> the golden star pops out.
+// Lives on the sublevel object as lv.puzzle (exitSub leak rule).
+class PipeWorks {
+  constructor(groundY) {
+    this.g = groundY;
+    this.cols = [350, 680, 1010];
+    this.kinds = ['fire', 'ice', 'rainbow'];
+    this.deckY = 190;              // deck underside; far above any jump apex
+    this.aims = [1, 2, 0];         // source i pours into machine aims[i] — starts scrambled
+    this.visAim = [1, 2, 0];       // drawn aim (lerps toward aims for the swing)
+    this.buttons = this.cols.map((c, i) => ({ x: c - 180, y: groundY - 26, w: 96, h: 30, kind: this.kinds[i], armed: true }));
+    this.bulbs = [false, false, false];   // per MACHINE, latched
+    this.blocks = [];              // {kind, srcI, destI, t, dur}
+    this.dropT = [1.0, 2.4, 3.8];  // staggered so cause->effect is easy to watch
+    this.fx = [];                  // {type:'steam'|'melt'|'confetti'|'shiver', x, y, t}
+    this.destMood = [null, null, null]; // {mood, t}
+    this.state = 'run';            // -> 'finale' -> 'done'
+    this.finT = 0;
+    this.t = rand(9);
+  }
+  machineTop() { return this.g - 128; }
+  chutePoint(srcI, aimX, k) { // bezier from hopper mouth down to a machine mouth
+    const x0 = this.cols[srcI], y0 = this.deckY + 52;
+    const x1 = aimX, y1 = this.machineTop() - 6;
+    const cx1 = x0, cy1 = y0 + 130, cx2 = x1, cy2 = y1 - 120;
+    const u = 1 - k;
+    return {
+      x: u * u * u * x0 + 3 * u * u * k * cx1 + 3 * u * k * k * cx2 + k * k * k * x1,
+      y: u * u * u * y0 + 3 * u * u * k * cy1 + 3 * u * k * k * cy2 + k * k * k * y1
+    };
+  }
+  aimX(i) { // where source i's chute mouth currently points (smooth swing)
+    const v = this.visAim[i];
+    const lo = clamp(Math.floor(v), 0, 2), hi = clamp(Math.ceil(v), 0, 2);
+    return lerp(this.cols[lo], this.cols[hi], v - lo);
+  }
+  update(dt, pl) {
+    this.t += dt;
+    // buttons: stepping on one swings that pipe to its next machine (edge-triggered)
+    for (let i = 0; i < 3; i++) {
+      const b = this.buttons[i];
+      const over = overlaps(b, pl);
+      if (over && b.armed && this.state === 'run') {
+        b.armed = false;
+        this.aims[i] = (this.aims[i] + 1) % 3;
+        AudioSys.sfx('switch');
+        AudioSys.sfx('thud'); // CLUNK
+        game.shake = Math.max(game.shake, 0.12);
+        Particles.burst(b.x + b.w / 2, b.y, 8, { colors: [POW[b.kind].c, '#fff'], type: 'star', sp1: 180, l1: 0.5, s1: 8 });
+      }
+      if (!over) b.armed = true;
+      // the swing itself
+      this.visAim[i] += (this.aims[i] - this.visAim[i]) * Math.min(1, 7 * dt);
+    }
+    // hoppers drop blocks on a friendly cadence
+    if (this.state === 'run') {
+      for (let i = 0; i < 3; i++) {
+        this.dropT[i] -= dt;
+        if (this.dropT[i] <= 0) {
+          this.dropT[i] = 4.5;
+          this.blocks.push({ kind: this.kinds[i], srcI: i, destI: this.aims[i], t: 0, dur: 1.6 });
+          if (this.nearCam()) AudioSys.sfx('boing');
+        }
+      }
+    }
+    // blocks ride their chutes
+    for (const bl of this.blocks) {
+      bl.t += dt;
+      if (bl.t >= bl.dur && !bl.done) { bl.done = true; this.arrive(bl); }
+    }
+    this.blocks = this.blocks.filter(b => !b.done);
+    // transient fx + machine moods tick down
+    for (const f of this.fx) f.t -= dt;
+    this.fx = this.fx.filter(f => f.t > 0);
+    for (let i = 0; i < 3; i++) {
+      const m = this.destMood[i];
+      if (m && (m.t -= dt) <= 0) this.destMood[i] = null;
+    }
+    // FINALE: the machine comes alive
+    if (this.state === 'finale') {
+      const prev = this.finT;
+      this.finT += dt;
+      if (this.finT < 1) game.shake = Math.max(game.shake, 0.18);
+      for (const tt of [1.0, 1.35, 1.7]) { // KA-CHUNK ×3
+        if (prev < tt && this.finT >= tt) {
+          AudioSys.sfx('thud'); AudioSys.sfx('switch');
+          game.shake = Math.max(game.shake, 0.3);
+          Particles.burst(640, this.deckY + 20, 10, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 260, l1: 0.6, s1: 10 });
+        }
+      }
+      if (prev < 2.4 && this.finT >= 2.4) { // CANDY ERUPTION
+        AudioSys.sfx('chest'); AudioSys.sfx('cheer'); AudioSys.sfx('launch');
+        game.shake = Math.max(game.shake, 0.5);
+        Particles.candyBurst(640, this.deckY - 40, 26);
+        Particles.burst(640, this.deckY - 20, 30, { colors: RAINBOW, type: 'confetti', sp1: 420, l0: 1, l1: 2.2, s1: 12, grav: 300, up: 320 });
+        for (let i = 0; i < 8; i++) { // real, collectible candy rains down
+          const c = new Pickup(640 + rand(-40, 40), this.deckY - 20, 'candy');
+          c.physics = true; c.vx = rand(-260, 260); c.vy = rand(-620, -260);
+          game.pickups.push(c);
+        }
+        // the golden star pops out of the machine
+        game.level.goalStar = { x: 640, y: 470 };
+        Particles.burst(640, 470, 22, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 320, l1: 1, s1: 12, grav: 120 });
+        this.state = 'done';
+      }
+    }
+  }
+  nearCam() { return true; } // single-screen room — everything is always on camera
+  arrive(bl) {
+    const destKind = this.kinds[bl.destI];
+    const x = this.cols[bl.destI], y = this.machineTop() + 40;
+    if (bl.kind === destKind) { // GULP — happy machine, bulb latches on
+      AudioSys.sfx('blorp'); AudioSys.sfx('collect');
+      this.destMood[bl.destI] = { mood: 'grin', t: 1.6 };
+      Particles.burst(x, y, 10, { colors: [POW[destKind].c, '#ffe156', '#fff'], type: 'star', sp1: 220, l1: 0.7, s1: 10 });
+      if (!this.bulbs[bl.destI]) {
+        this.bulbs[bl.destI] = true;
+        AudioSys.sfx('powerup');
+        Particles.burst(x, this.machineTop() - 36, 14, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 240, l1: 0.9, s1: 10 });
+        if (this.bulbs.every(b => b) && this.state === 'run') {
+          this.state = 'finale'; this.finT = 0;
+          AudioSys.sfx('fanfare');
+        }
+      }
+      return;
+    }
+    // wrong feeds are comedy, never punishment
+    this.destMood[bl.destI] = { mood: bl.kind === 'rainbow' ? 'dizzy' : 'surprised', t: 1.8 };
+    if (bl.kind === 'fire' && destKind === 'ice') { // steam cough
+      this.fx.push({ type: 'steam', x, y: y - 30, t: 1.6 });
+      AudioSys.sfx('steam');
+    } else if (bl.kind === 'ice' && destKind === 'fire') { // melts into a puddle with eyes
+      this.fx.push({ type: 'melt', x, y: this.g - 8, t: 2.6 });
+      AudioSys.sfx('steam'); AudioSys.sfx('blorp');
+    } else if (bl.kind === 'rainbow') { // harmless rainbow explosion
+      this.fx.push({ type: 'confetti', x, y: y - 20, t: 1 });
+      Particles.burst(x, y - 20, 22, { colors: RAINBOW, type: 'confetti', sp1: 320, l0: 0.8, l1: 1.8, s1: 11, grav: 300, up: 220 });
+      AudioSys.sfx('rainbow');
+    } else { // ice into the rainbow box: brrrr
+      this.fx.push({ type: 'shiver', x, y, t: 1.2 });
+      AudioSys.sfx('freeze');
+    }
+  }
+  lights() { return []; }
+  draw(ctx, t) {
+    const g = this.g, top = this.machineTop();
+    // ceiling deck the hoppers hang from
+    ctx.fillStyle = '#3d3255';
+    rr(ctx, 180, this.deckY - 54, 920, 60, 14); ctx.fill();
+    ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 4;
+    rr(ctx, 180, this.deckY - 54, 920, 60, 14); ctx.stroke();
+    // rivets
+    ctx.fillStyle = '#8a7fae';
+    for (let x = 210; x < 1080; x += 62) { ctx.beginPath(); ctx.arc(x, this.deckY - 24, 4, 0, TAU); ctx.fill(); }
+    // the machine's big friendly boiler face, center deck
+    drawFace(ctx, 640, this.deckY - 24, 34, this.state !== 'run' ? 'grin' : 'happy', t, 71);
+    // chutes (drawn behind machines/hoppers)
+    for (let i = 0; i < 3; i++) {
+      const ax = this.aimX(i), p = POW[this.kinds[i]];
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = p.c2; ctx.globalAlpha = 0.9; ctx.lineWidth = 30;
+      ctx.beginPath();
+      for (let k = 0; k <= 1.001; k += 1 / 14) {
+        const pt = this.chutePoint(i, ax, Math.min(1, k));
+        if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = p.c; ctx.lineWidth = 20;
+      ctx.stroke();
+      // a bright travel stripe so the flow direction reads at a glance
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5;
+      ctx.setLineDash([14, 22]); ctx.lineDashOffset = -t * 60;
+      ctx.stroke();
+      ctx.restore();
+    }
+    // blocks riding the chutes
+    for (const bl of this.blocks) {
+      const k = clamp(bl.t / bl.dur, 0, 1);
+      const pt = this.chutePoint(bl.srcI, this.cols[bl.destI], k);
+      drawBlock(ctx, pt.x - 19, pt.y - 19, 38, bl.kind, t, { seed: bl.srcI * 7 });
+    }
+    // hoppers
+    for (let i = 0; i < 3; i++) {
+      const x = this.cols[i], p = POW[this.kinds[i]];
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.moveTo(x - 52, this.deckY - 6); ctx.lineTo(x + 52, this.deckY - 6);
+      ctx.lineTo(x + 24, this.deckY + 52); ctx.lineTo(x - 24, this.deckY + 52);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 4; ctx.stroke();
+      drawBlock(ctx, x - 17, this.deckY + 2, 34, this.kinds[i], t, { seed: i });
+    }
+    // eater machines
+    for (let i = 0; i < 3; i++) {
+      const x = this.cols[i], kind = this.kinds[i], p = POW[kind];
+      const shiver = this.fx.some(f => f.type === 'shiver' && f.x === x) ? Math.sin(t * 40) * 3 : 0;
+      ctx.save();
+      ctx.translate(shiver, 0);
+      ctx.fillStyle = p.c;
+      rr(ctx, x - 75, top, 150, g - top, 16); ctx.fill();
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 5;
+      rr(ctx, x - 75, top, 150, g - top, 16); ctx.stroke();
+      // kind decoration: chimney flame / ice cubes / rainbow arc
+      if (kind === 'fire') {
+        ctx.fillStyle = p.c2; rr(ctx, x + 38, top - 26, 22, 30, 5); ctx.fill();
+        const fh = 12 + Math.sin(t * 9) * 4;
+        ctx.fillStyle = '#ffce54';
+        ctx.beginPath(); ctx.ellipse(x + 49, top - 30, 8, fh, 0, 0, TAU); ctx.fill();
+      } else if (kind === 'ice') {
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        for (const ox of [-40, -10, 22]) { rr(ctx, x + ox, top - 16, 20, 16, 4); ctx.fill(); }
+      } else {
+        ctx.lineWidth = 5;
+        RAINBOW.slice(0, 4).forEach((c, ri) => {
+          ctx.strokeStyle = c;
+          ctx.beginPath(); ctx.arc(x, top + 2, 40 - ri * 7, Math.PI, TAU); ctx.stroke();
+        });
+      }
+      // the mouth: opens wide when a block is incoming
+      let openK = 0;
+      for (const bl of this.blocks) if (bl.destI === i) openK = Math.max(openK, clamp((bl.t / bl.dur - 0.55) / 0.45, 0, 1));
+      ctx.fillStyle = '#3a2a3a';
+      ctx.beginPath(); ctx.ellipse(x, top + 34, 30, 8 + openK * 20, 0, 0, TAU); ctx.fill();
+      const mood = this.destMood[i] ? this.destMood[i].mood : (this.bulbs[i] ? 'happy' : 'sleepy');
+      drawFace(ctx, x, top + 72, 40, mood, t, 30 + i);
+      // ghost silhouette of the wanted block on the machine's tummy
+      ctx.save();
+      ctx.globalAlpha = this.bulbs[i] ? 0.9 : 0.35 + 0.12 * Math.sin(t * 3 + i);
+      drawBlock(ctx, x - 46, g - 52, 30, kind, t, { seed: i + 5 });
+      ctx.restore();
+      // the progress bulb on top
+      ctx.fillStyle = this.bulbs[i] ? '#ffe156' : '#4a4560';
+      ctx.beginPath(); ctx.arc(x - 52, top - 14, 11, 0, TAU); ctx.fill();
+      ctx.strokeStyle = this.bulbs[i] ? '#c8861b' : '#2a2140'; ctx.lineWidth = 3; ctx.stroke();
+      if (this.bulbs[i]) {
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * 5 + i);
+        ctx.fillStyle = '#ffe156';
+        ctx.beginPath(); ctx.arc(x - 52, top - 14, 22, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    // floor buttons (color says WHICH pipe they turn; arrow says "it rotates")
+    for (const b of this.buttons) {
+      const p = POW[b.kind];
+      const down = !b.armed ? 6 : 0;
+      ctx.fillStyle = '#8a8a9a';
+      rr(ctx, b.x - 8, g - 12, b.w + 16, 12, 5); ctx.fill();
+      ctx.fillStyle = p.c;
+      rr(ctx, b.x, b.y + down, b.w, b.h - down, 9); ctx.fill();
+      ctx.strokeStyle = p.c2; ctx.lineWidth = 3.5;
+      rr(ctx, b.x, b.y + down, b.w, b.h - down, 9); ctx.stroke();
+      // circular "turn" arrow
+      const mx = b.x + b.w / 2, my = b.y + down + (b.h - down) / 2;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(mx, my, 10, -0.6, Math.PI + 0.9); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(mx + 13, my - 8); ctx.lineTo(mx + 3, my - 9); ctx.lineTo(mx + 10, my + 2);
+      ctx.closePath(); ctx.fill();
+    }
+    // transient comedy fx
+    for (const f of this.fx) {
+      if (f.type === 'steam') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, f.t);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        for (const [ox, oy, r2] of [[0, 0, 34], [-30, 14, 22], [30, 12, 24], [8, -26, 20]]) {
+          ctx.beginPath(); ctx.arc(f.x + ox, f.y + oy - (1.6 - f.t) * 40, r2, 0, TAU); ctx.fill();
+        }
+        drawFace(ctx, f.x, f.y - (1.6 - f.t) * 40, 30, 'dizzy', t, 44);
+        ctx.restore();
+      } else if (f.type === 'melt') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, f.t * 1.2);
+        ctx.fillStyle = '#7fd8ff';
+        ctx.beginPath(); ctx.ellipse(f.x, f.y, 40 + (2.6 - f.t) * 10, 10, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#3fa9e8'; ctx.lineWidth = 3; ctx.stroke();
+        drawFace(ctx, f.x, f.y - 4, 20, 'sad', t, 45);
+        ctx.restore();
+      }
+      // confetti + shiver render via particles / machine wobble
+    }
+  }
+}
+
+// ================================================================ torch cavern
+// The Zombie Torch Puzzle (Level 4's secret): darkness, light, observation and
+// matching — never sequence memory. A big stone door shows three dim symbol
+// slots (star / heart / candy). Five torches wait in the dark (their embers
+// glow faintly so they're findable): three carry matching carved symbols and
+// send a glowing wisp to the door when lit; two are pure comedy (a goofy stone
+// bat wakes up; a giant Zzz drifts from behind the door). Touch a torch OR hit
+// it with a fireball to light it; an ice shot re-douses it with a steam puff
+// (harmless — filled door slots stay filled forever). All three symbols home
+// -> the door grinds open, the whole cavern lights up, and the "scary" secret
+// turns out to be four baby zombies having a slumber party.
+class TorchCavern {
+  constructor(groundY) {
+    this.g = groundY;
+    this.doorX = 1640;
+    this.doorSolid = { x: this.doorX, y: groundY - 250, w: 64, h: 250, skipDraw: true };
+    this.syms = ['star', 'heart', 'candy'];
+    this.filled = { star: false, heart: false, candy: false };
+    this.torches = [
+      { x: 420,  baseY: groundY, sym: 'heart', lit: false, litT: 0, armed: true },
+      { x: 760,  baseY: groundY, gag: 'bat',   lit: false, litT: 0, armed: true },
+      { x: 1060, baseY: 490,     sym: 'star',  lit: false, litT: 0, armed: true },
+      { x: 1350, baseY: 355,     sym: 'candy', lit: false, litT: 0, armed: true },
+      { x: 1520, baseY: groundY, gag: 'snore', lit: false, litT: 0, armed: true }
+    ];
+    this.wisps = [];        // {sym, x0, y0, t}
+    this.bat = { awake: false, t: rand(9), x: 780, y: 210 };
+    this.zzzT = 0;          // big Zzz gag from behind the door
+    this.snoreT = rand(2, 4);
+    this.state = 'explore'; // -> 'opening' -> 'done'
+    this.openT = 0;
+    this.reveal = false;    // true = the whole cavern is lit
+    this.chest = new Chest(1830, groundY);
+    this.chest.y = this.chest.targetY;
+    this.chest.landed = true;
+    this.babies = [
+      { x: 1740, mood: 'sleepy', seed: 1, cap: true },
+      { x: 1800, mood: 'sleepy', seed: 2, cap: false },
+      { x: 1875, mood: 'sleepy', seed: 3, cap: true },
+      { x: 1770, mood: 'sleepy', seed: 4, cap: false, back: true }
+    ];
+    this.t = rand(9);
+  }
+  torchBox(to) { return { x: to.x - 34, y: to.baseY - 116, w: 68, h: 116 }; }
+  slotPos(i) { return { x: this.doorX + 32, y: this.g - 250 + 44 + i * 62 }; }
+  lightTorch(to) {
+    if (to.lit) return;
+    to.lit = true; to.litT = 0;
+    AudioSys.sfx('fire');
+    Particles.burst(to.x, to.baseY - 100, 12, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 160, grav: -120, l1: 0.6, s1: 11 });
+    if (to.sym && !this.filled[to.sym]) {
+      this.wisps.push({ sym: to.sym, x0: to.x, y0: to.baseY - 150, t: -0.4 }); // brief pause, then fly
+    }
+    if (to.gag === 'bat' && !this.bat.awake) {
+      this.bat.awake = true;
+      AudioSys.sfx('whoosh'); AudioSys.sfx('hiccup');
+    }
+    if (to.gag === 'snore') {
+      this.zzzT = 2.4;
+      AudioSys.sfx('snore'); AudioSys.sfx('hiccup');
+    }
+  }
+  douseTorch(to) {
+    if (!to.lit) return;
+    to.lit = false;
+    AudioSys.sfx('steam');
+    Particles.burst(to.x, to.baseY - 100, 10, { colors: ['#fff', '#d6f4ff'], type: 'circle', sp1: 90, grav: -140, l1: 0.7, s1: 10 });
+    // note: an already-filled door slot STAYS filled — dousing is pure comedy
+  }
+  update(dt, pl) {
+    this.t += dt;
+    this.zzzT = Math.max(0, this.zzzT - dt);
+    this.chest.update(dt);
+    for (const to of this.torches) {
+      to.litT += dt;
+      const box = this.torchBox(to);
+      const over = overlaps(box, pl);
+      if (over && to.armed && !to.lit) { to.armed = false; this.lightTorch(to); }
+      if (!over) to.armed = true;
+      // fired projectiles: fire lights, ice douses
+      for (const pr of game.projectiles) {
+        if (pr.dead || pr.hitSet.has(to)) continue;
+        if (!overlaps(pr, box)) continue;
+        pr.hitSet.add(to);
+        if (pr.kind === 'fire' && !to.lit) { this.lightTorch(to); pr.impact(true); }
+        else if (pr.kind === 'ice' && to.lit) { this.douseTorch(to); pr.impact(true); }
+      }
+      if (to.lit && chance(4 * dt)) {
+        Particles.burst(to.x + rand(-8, 8), to.baseY - 108, 1, { colors: ['#ff9f43', '#ffe156'], type: 'flame', sp1: 40, grav: -140, l1: 0.5, s1: 9, up: 0 });
+      }
+    }
+    // wisps fly their symbol home to the door
+    for (const wsp of this.wisps) {
+      wsp.t += dt;
+      if (wsp.t >= 1.1 && !wsp.done) {
+        wsp.done = true;
+        this.filled[wsp.sym] = true;
+        AudioSys.sfx('collect');
+        const i = this.syms.indexOf(wsp.sym);
+        const sp = this.slotPos(i);
+        Particles.burst(sp.x, sp.y, 12, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 200, l1: 0.7, s1: 9, grav: 150 });
+        if (this.syms.every(s2 => this.filled[s2]) && this.state === 'explore') {
+          this.state = 'opening'; this.openT = 0;
+          AudioSys.sfx('rumble');
+          game.shake = Math.max(game.shake, 0.35);
+        }
+      }
+    }
+    this.wisps = this.wisps.filter(w => !w.done);
+    // the sleepy bat loops the ceiling once woken
+    if (this.bat.awake) {
+      this.bat.t += dt;
+      this.bat.x = 780 + Math.sin(this.bat.t * 0.9) * 420;
+      this.bat.y = 190 + Math.sin(this.bat.t * 2.3) * 70;
+    }
+    // muffled snores leak through the closed door — the audio clue
+    if (this.state === 'explore') {
+      this.snoreT -= dt;
+      if (this.snoreT <= 0) {
+        this.snoreT = rand(3, 5);
+        if (Math.abs(pl.cx - this.doorX) < 620) AudioSys.sfx('snore');
+      }
+    }
+    // THE REVEAL
+    if (this.state === 'opening') {
+      const prev = this.openT;
+      this.openT += dt;
+      if (this.openT < 1) game.shake = Math.max(game.shake, 0.2);
+      if (prev < 1.0 && this.openT >= 1.0) { // the slab grinds up into the rock
+        this.doorSolid.broken = true;
+        AudioSys.sfx('grind'); AudioSys.sfx('fanfare');
+      }
+      if (prev < 1.5 && this.openT >= 1.5) { // LIGHTS ON — and it's... babies?!
+        this.reveal = true;
+        AudioSys.sfx('bells');
+        for (const b of this.babies) b.mood = 'surprised';
+        Particles.burst(1800, this.g - 120, 20, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 260, l1: 1, s1: 10 });
+      }
+      if (prev < 2.6 && this.openT >= 2.6) { // ...who immediately start dancing
+        for (const b of this.babies) b.mood = 'grin';
+        AudioSys.sfx('cheer');
+        Particles.burst(1800, this.g - 140, 24, { colors: RAINBOW, type: 'confetti', sp1: 320, l0: 1, l1: 2, s1: 11, grav: 260, up: 220 });
+      }
+      if (prev < 3.2 && this.openT >= 3.2) { // treasure + the golden star
+        this.chest.open = true;
+        AudioSys.sfx('chest');
+        Particles.candyBurst(this.chest.cx, this.chest.y - 20, 14);
+        game.level.goalStar = { x: 1790, y: 500 };
+        Particles.burst(1790, 500, 20, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 300, l1: 1, s1: 12, grav: 120 });
+        this.state = 'done';
+      }
+    }
+  }
+  lights() {
+    if (this.reveal) return [{ x: 960, y: 360, r: 2800 }]; // the whole cavern, lit
+    const L = [];
+    for (const to of this.torches) {
+      L.push(to.lit ? { x: to.x, y: to.baseY - 100, r: 300, a: 0.95 } : { x: to.x, y: to.baseY - 100, r: 80, a: 0.6 });
+    }
+    for (const wsp of this.wisps) {
+      const p = this.wispPos(wsp);
+      L.push({ x: p.x, y: p.y, r: 120, a: 0.9 });
+    }
+    L.push({ x: this.doorX + 32, y: this.g - 130, r: 190, a: 0.8 }); // the door glow
+    return L;
+  }
+  wispPos(wsp) {
+    const k = clamp(wsp.t / 1.1, 0, 1);
+    const e = k * k * (3 - 2 * k);
+    const i = this.syms.indexOf(wsp.sym);
+    const sp = this.slotPos(i);
+    return { x: lerp(wsp.x0, sp.x, e), y: lerp(wsp.y0, sp.y, e) - Math.sin(k * Math.PI) * 90 };
+  }
+  drawSym(ctx, x, y, s, sym, gold) {
+    ctx.save();
+    if (sym === 'star') {
+      ctx.fillStyle = gold ? '#ffd24a' : 'rgba(255,255,255,0.28)';
+      starPath(ctx, x, y, s, s * 0.45);
+      ctx.fill();
+      if (gold) { ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke(); }
+    } else if (sym === 'heart') {
+      heartPath(ctx, x, y - s * 0.3, s);
+      ctx.fillStyle = gold ? '#ff7d92' : 'rgba(255,255,255,0.28)';
+      ctx.fill();
+      if (gold) { ctx.strokeStyle = '#8e1030'; ctx.lineWidth = 2.5; ctx.stroke(); }
+    } else { // candy
+      if (gold) drawCandy(ctx, x, y, s * 0.9, 1, this.t);
+      else {
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.beginPath(); ctx.ellipse(x, y, s * 0.55, s * 0.4, 0, 0, TAU); ctx.fill();
+        for (const sd of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(x + sd * s * 0.45, y);
+          ctx.lineTo(x + sd * s * 0.8, y - s * 0.32); ctx.lineTo(x + sd * s * 0.8, y + s * 0.32);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+  }
+  drawBaby(ctx, b, t) {
+    const g = this.g;
+    const dance = b.mood === 'grin';
+    const bob = dance ? Math.abs(Math.sin(t * 6 + b.seed * 2)) * 14 : 0;
+    const x = b.x, y = g - 44 - bob;
+    ctx.save();
+    if (dance) {
+      ctx.translate(x, g);
+      ctx.rotate(Math.sin(t * 6 + b.seed) * 0.12);
+      ctx.translate(-x, -g);
+    }
+    // little green body in jammies
+    ctx.fillStyle = b.cap ? '#b06cf0' : '#4aa3ff';
+    rr(ctx, x - 15, y + 16, 30, 26, 9); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,50,0.4)'; ctx.lineWidth = 2.5;
+    rr(ctx, x - 15, y + 16, 30, 26, 9); ctx.stroke();
+    // arms: up and wiggling when dancing, tucked when asleep
+    ctx.strokeStyle = '#8fd08f'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    const wig = dance ? Math.sin(t * 10 + b.seed * 3) * 6 : 0;
+    ctx.beginPath();
+    if (dance) {
+      ctx.moveTo(x - 12, y + 22); ctx.lineTo(x - 22, y + 8 - wig);
+      ctx.moveTo(x + 12, y + 22); ctx.lineTo(x + 22, y + 8 + wig);
+    } else {
+      ctx.moveTo(x - 12, y + 26); ctx.lineTo(x - 20, y + 34);
+      ctx.moveTo(x + 12, y + 26); ctx.lineTo(x + 20, y + 34);
+    }
+    ctx.stroke();
+    // round green head with a hair tuft
+    ctx.fillStyle = '#8fd08f';
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,50,0.4)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#57b84a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y - 17); ctx.quadraticCurveTo(x + 5, y - 26, x + 10, y - 22); ctx.stroke();
+    // nightcap on some
+    if (b.cap) {
+      ctx.fillStyle = '#ff8fb0';
+      ctx.beginPath();
+      ctx.moveTo(x - 14, y - 10); ctx.lineTo(x + 2, y - 30); ctx.lineTo(x + 15, y - 12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(x + 3, y - 30, 4.5, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, x, y + 3, 26, b.mood, t, b.seed * 9);
+    ctx.restore();
+    // sleepy Zzz
+    if (b.mood === 'sleepy' && chance(0.012)) {
+      Particles.burst(x + 12, y - 20, 1, { colors: ['#cfe9ff'], type: 'sparkle', sp1: 15, grav: -55, l0: 1.4, l1: 2.2, s1: 8, up: 0 });
+    }
+  }
+  draw(ctx, t) {
+    const g = this.g;
+    // stone plaques with the carved symbols above the symbol torches
+    for (const to of this.torches) {
+      if (!to.sym) continue;
+      const py = to.baseY - 168;
+      ctx.fillStyle = '#3d3255';
+      rr(ctx, to.x - 30, py - 28, 60, 56, 10); ctx.fill();
+      ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 3;
+      rr(ctx, to.x - 30, py - 28, 60, 56, 10); ctx.stroke();
+      this.drawSym(ctx, to.x, py, 16, to.sym, to.lit || this.filled[to.sym]);
+    }
+    // torches
+    for (const to of this.torches) {
+      const ty = to.baseY;
+      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(to.x, ty); ctx.lineTo(to.x, ty - 78); ctx.stroke();
+      ctx.fillStyle = '#5f4a35';
+      ctx.beginPath(); ctx.ellipse(to.x, ty - 82, 22, 12, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#3d2f22'; ctx.lineWidth = 3; ctx.stroke();
+      if (to.lit) {
+        const fl = 1 + Math.sin(t * 12 + to.x) * 0.18;
+        ctx.fillStyle = '#ff9f43';
+        ctx.beginPath(); ctx.ellipse(to.x, ty - 108, 15 * fl, 26 * fl, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffe156';
+        ctx.beginPath(); ctx.ellipse(to.x, ty - 102, 8 * fl, 15 * fl, 0, 0, TAU); ctx.fill();
+      } else {
+        // the faint ember — the "something is here" beacon in the dark
+        ctx.save();
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 2.4 + to.x);
+        ctx.fillStyle = '#ff9f43';
+        ctx.beginPath(); ctx.arc(to.x, ty - 88, 4.5, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // the sealed stone door (or its open frame)
+    const dX = this.doorX;
+    ctx.fillStyle = '#3d3255';
+    rr(ctx, dX - 18, g - 268, 100, 268, 16); ctx.fill();
+    ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 5;
+    rr(ctx, dX - 18, g - 268, 100, 268, 16); ctx.stroke();
+    const rise = this.state === 'explore' ? 0 : Math.min(1, this.openT) * 230;
+    if (rise < 228) {
+      ctx.save();
+      rr(ctx, dX - 6, g - 250, 76, 250, 10); ctx.clip();
+      const sy = g - 250 - rise;
+      ctx.fillStyle = '#75778a';
+      rr(ctx, dX - 6, sy, 76, 250, 10); ctx.fill();
+      ctx.strokeStyle = '#4a4c5c'; ctx.lineWidth = 3;
+      rr(ctx, dX - 6, sy, 76, 250, 10); ctx.stroke();
+      // the door's goofy stone face at the bottom
+      drawFace(ctx, dX + 32, sy + 214, 34, this.state === 'explore' ? 'sleepy' : 'grin', t, 66);
+      // three symbol slots down the slab
+      for (let i = 0; i < 3; i++) {
+        const sp = { x: dX + 32, y: sy + 44 + i * 62 };
+        ctx.fillStyle = this.filled[this.syms[i]] ? '#4a4560' : '#2a2140';
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, 24, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 2.5; ctx.stroke();
+        if (this.filled[this.syms[i]]) {
+          ctx.save();
+          ctx.globalAlpha = 0.45 + 0.25 * Math.sin(t * 4 + i);
+          ctx.fillStyle = '#ffe156';
+          ctx.beginPath(); ctx.arc(sp.x, sp.y, 32, 0, TAU); ctx.fill();
+          ctx.restore();
+        }
+        this.drawSym(ctx, sp.x, sp.y, 13, this.syms[i], this.filled[this.syms[i]]);
+      }
+      ctx.restore();
+    }
+    // wisps in flight
+    for (const wsp of this.wisps) {
+      if (wsp.t < 0) continue;
+      const p = this.wispPos(wsp);
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 22, 0, TAU); ctx.fill();
+      ctx.restore();
+      this.drawSym(ctx, p.x, p.y, 14, wsp.sym, true);
+      if (chance(0.5)) Particles.burst(p.x, p.y, 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 30, grav: 30, l1: 0.5, s1: 7, up: 0 });
+    }
+    // the goofy stone bat (hangs asleep near its torch, loops when woken)
+    const bat = this.bat;
+    ctx.save();
+    if (!bat.awake) {
+      ctx.translate(780, 96);
+      ctx.rotate(Math.PI); // snoozing upside down under the ceiling
+    } else {
+      ctx.translate(bat.x, bat.y);
+      ctx.rotate(Math.sin(bat.t * 4) * 0.15);
+    }
+    const flap = bat.awake ? Math.sin(bat.t * 14) * 0.8 : 0.15;
+    ctx.fillStyle = '#8d8fa0';
+    for (const sd of [-1, 1]) { // stubby stone wings
+      ctx.save();
+      ctx.rotate(sd * flap * 0.5);
+      ctx.beginPath(); ctx.ellipse(sd * 24, 0, 18, 9, sd * 0.5, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#5f6070'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.stroke();
+    for (const sd of [-1, 1]) { // pointy ears
+      ctx.beginPath();
+      ctx.moveTo(sd * 6, -13); ctx.lineTo(sd * 12, -24); ctx.lineTo(sd * 14, -12);
+      ctx.closePath(); ctx.fill();
+    }
+    drawFace(ctx, 0, 2, 22, bat.awake ? 'grin' : 'sleepy', t, 88);
+    ctx.restore();
+    // the big Zzz gag drifting up from behind the door
+    if (this.zzzT > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.zzzT);
+      outlineText(ctx, 'Z z z', 1800, g - 300 - (2.4 - this.zzzT) * 40, 40, '#cfe9ff', '#3d3766');
+      ctx.restore();
+    }
+    // the slumber party behind the door
+    ctx.fillStyle = '#b06cf0'; // pillows
+    for (const px of [1725, 1855]) {
+      ctx.beginPath(); ctx.ellipse(px, g - 8, 30, 11, 0, 0, TAU); ctx.fill();
+    }
+    this.chest.draw(ctx);
+    for (const b of this.babies) this.drawBaby(ctx, b, t);
+  }
+}
+
+// ================================================================ star chamber
+// The Zero-G Star Chamber (Level 8's secret): a spatial transport puzzle in
+// weightless space. Five colored stars float around a big chamber; the center
+// holds an unfinished constellation with five color-matched sockets (the ghost
+// of each star pulses in its ring). Touch a star and it TAILS you — carry it
+// home and it snaps into its socket with a chime. One star teaches the loop,
+// one hides in an asteroid pocket, one sits past a solar-wind current, one
+// waits behind an energy gate (big yellow button pops it), and a silly alien
+// holds the last one — a fired rainbow makes it so happy it hands the star
+// over. All five home -> the constellation connects, resolves into Jack-Jack
+// or Becca made of stars, and erupts in candy. Stars can never be lost:
+// carried stars snap-teleport to you if they fall behind, and everything
+// lives on the sublevel object.
+class StarChamber {
+  constructor(cx, cy, gateSolid) {
+    this.cx = cx; this.cy = cy;
+    this.gate = gateSolid;
+    this.nodes = [ // hero-figure sockets: head, hands, feet
+      { ox: 0, oy: -190 }, { ox: -210, oy: -40 }, { ox: 210, oy: -40 },
+      { ox: -120, oy: 170 }, { ox: 120, oy: 170 }
+    ];
+    this.edges = [[0, 1], [0, 2], [1, 3], [2, 4], [3, 4]];
+    this.colors = ['#ff4d4d', '#ff9f43', '#57d357', '#4aa3ff', '#b06cf0'];
+    this.stars = [
+      { i: 0, x: 600, y: 780, state: 'free' },    // teach: grab -> bring home
+      { i: 1, x: 2210, y: 355, state: 'free' },   // asteroid pocket
+      { i: 2, x: 500, y: 1290, state: 'free' },   // past the solar wind
+      { i: 3, x: 300, y: 320, state: 'free' },    // behind the energy gate
+      { i: 4, x: 2250, y: 1210, state: 'held' }   // the silly alien's treasure
+    ];
+    for (const st of this.stars) { st.t = rand(9); st.setK = 0; }
+    this.carried = [];
+    this.button = { x: 580, y: 600, w: 76, h: 76, armed: true, on: false };
+    this.alien = { x: 2250, y: 1310, happy: false, t: rand(9), giggleT: 0, armed: true };
+    this.placed = 0;
+    this.state = 'build'; // -> 'finale' -> 'done'
+    this.finT = 0;
+    this.t = rand(9);
+  }
+  socketPos(i) { return { x: this.cx + this.nodes[i].ox, y: this.cy + this.nodes[i].oy }; }
+  starBox(st) { return { x: st.x - 48, y: st.y - 48, w: 96, h: 96 }; } // generous grab
+  update(dt, pl) {
+    this.t += dt;
+    // the energy-gate button: one big obvious press
+    const b = this.button;
+    if (!b.on && overlaps(b, pl) && b.armed) {
+      b.on = true;
+      this.gate.broken = true;
+      AudioSys.sfx('switch'); AudioSys.sfx('shatter');
+      game.shake = Math.max(game.shake, 0.2);
+      Particles.burst(this.gate.x + this.gate.w / 2, this.gate.y + this.gate.h / 2, 22, { colors: ['#7fd8ff', '#fff'], type: 'sparkle', sp1: 300, grav: 0, l1: 1, s1: 10, up: 0 });
+      Particles.burst(b.x + b.w / 2, b.y + b.h / 2, 10, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 200, l1: 0.6, s1: 9 });
+    }
+    // the silly alien: bumping = giggles and keeps it; a rainbow = pure joy
+    const al = this.alien;
+    al.t += dt;
+    al.giggleT = Math.max(0, al.giggleT - dt);
+    const alBox = { x: al.x - 46, y: al.y - 60, w: 92, h: 110 };
+    if (!al.happy) {
+      const over = overlaps(alBox, pl);
+      if (over && al.armed) {
+        al.armed = false; al.giggleT = 0.9;
+        AudioSys.sfx('hiccup');
+      }
+      if (!over) al.armed = true;
+      for (const pr of game.projectiles) {
+        if (pr.dead || pr.kind !== 'rainbow' || pr.hitSet.has(al)) continue;
+        if (!overlaps(pr, alBox)) continue;
+        pr.hitSet.add(al);
+        al.happy = true;
+        AudioSys.sfx('friend'); AudioSys.sfx('cheer');
+        Particles.burst(al.x, al.y - 20, 16, { colors: ['#ff8fb0', '#fff'], type: 'heart', sp1: 220, grav: -40, l1: 1, s1: 11 });
+        const st = this.stars[4]; // the gift
+        st.state = 'free'; st.x = al.x; st.y = al.y - 120;
+        Particles.burst(st.x, st.y, 14, { colors: [this.colors[4], '#fff'], type: 'star', sp1: 240, grav: 0, l1: 0.8, s1: 10, up: 0 });
+      }
+    }
+    // stars: grab, carry, deliver
+    for (const st of this.stars) {
+      st.t += dt;
+      if (st.state === 'free') {
+        st.y += Math.sin(st.t * 1.8) * 6 * dt; // gentle drift
+        if (chance(1.4 * dt)) Particles.burst(st.x + rand(-24, 24), st.y + rand(-24, 24), 1, { colors: [this.colors[st.i], '#fff'], type: 'sparkle', sp1: 22, grav: 0, l1: 0.8, s1: 8, up: 0 });
+        if (overlaps(this.starBox(st), pl)) {
+          st.state = 'carry';
+          this.carried.push(st);
+          AudioSys.sfx('powerup');
+          pl.setMood('grin', 1.2);
+          Particles.burst(st.x, st.y, 14, { colors: [this.colors[st.i], '#ffe156', '#fff'], type: 'star', sp1: 260, grav: 0, l1: 0.8, s1: 11, up: 0 });
+        }
+      } else if (st.state === 'carry') {
+        // tail the hero (or the star ahead of you — a little star train)
+        const idx = this.carried.indexOf(st);
+        const lead = idx <= 0 ? { x: pl.cx - pl.facing * 58, y: pl.cy - 14 } : { x: this.carried[idx - 1].x - pl.facing * 44, y: this.carried[idx - 1].y + 8 };
+        if (Math.hypot(lead.x - st.x, lead.y - st.y) > 700) { st.x = lead.x; st.y = lead.y; } // never lost
+        const k = Math.min(1, dt * 6);
+        st.x += (lead.x - st.x) * k;
+        st.y += (lead.y - st.y) * k + Math.sin(st.t * 3) * 10 * dt;
+        if (chance(0.2)) Particles.burst(st.x, st.y + 8, 1, { colors: [this.colors[st.i]], type: 'sparkle', sp1: 16, grav: 0, l1: 0.6, s1: 7, up: 0 });
+        // home! (generous snap radius, color-matched socket)
+        const sp = this.socketPos(st.i);
+        if (Math.hypot(sp.x - st.x, sp.y - st.y) < 120) {
+          st.state = 'set'; st.setFrom = { x: st.x, y: st.y }; st.setK = 0;
+          this.carried.splice(this.carried.indexOf(st), 1);
+          AudioSys.sfx('collect'); AudioSys.sfx('candy');
+          pl.setMood('grin', 1);
+        }
+      } else if (st.state === 'set') {
+        if (st.setK < 1) {
+          st.setK = Math.min(1, st.setK + dt * 3);
+          const sp = this.socketPos(st.i), e = st.setK * st.setK * (3 - 2 * st.setK);
+          st.x = lerp(st.setFrom.x, sp.x, e); st.y = lerp(st.setFrom.y, sp.y, e);
+          if (st.setK >= 1) {
+            this.placed++;
+            game.shake = Math.max(game.shake, 0.12);
+            Particles.burst(sp.x, sp.y, 16, { colors: [this.colors[st.i], '#ffe156', '#fff'], type: 'star', sp1: 260, grav: 0, l1: 0.9, s1: 11, up: 0 });
+            if (this.placed === 5 && this.state === 'build') {
+              this.state = 'finale'; this.finT = 0;
+              AudioSys.sfx('fanfare');
+            }
+          }
+        }
+      }
+    }
+    // FINALE: the constellation comes alive
+    if (this.state === 'finale') {
+      const prev = this.finT;
+      this.finT += dt;
+      for (let e = 0; e < this.edges.length; e++) { // lines connect one by one
+        const tt = 0.5 + e * 0.4;
+        if (prev < tt && this.finT >= tt) {
+          AudioSys.sfx('candy');
+          const [a, bb] = this.edges[e];
+          const pa = this.socketPos(a), pb = this.socketPos(bb);
+          Particles.burst((pa.x + pb.x) / 2, (pa.y + pb.y) / 2, 8, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 120, grav: 0, l1: 0.7, s1: 8, up: 0 });
+        }
+      }
+      if (prev < 2.9 && this.finT >= 2.9) { // ...and becomes YOU
+        AudioSys.sfx('bells');
+        game.shake = Math.max(game.shake, 0.25);
+        Particles.burst(this.cx, this.cy - 190, 24, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 320, grav: 0, l1: 1.2, s1: 11, up: 0 });
+      }
+      if (prev < 4.0 && this.finT >= 4.0) { // candy fireworks + the golden star
+        AudioSys.sfx('chest'); AudioSys.sfx('cheer');
+        Particles.candyBurst(this.cx, this.cy - 60, 22);
+        Particles.burst(this.cx, this.cy, 30, { colors: RAINBOW.concat(['#ffe156', '#fff']), type: 'star', sp1: 420, grav: 0, l0: 0.8, l1: 1.8, s1: 12, up: 0 });
+        game.level.goalStar = { x: this.cx, y: this.cy + 240 };
+        this.state = 'done';
+      }
+    }
+  }
+  drawStarShape(ctx, x, y, r, color, t, face) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(t * 1.4) * 0.18);
+    ctx.fillStyle = color;
+    starPath(ctx, 0, 0, r, r * 0.46);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,50,0.5)'; ctx.lineWidth = 3; ctx.stroke();
+    if (face) drawFace(ctx, 0, 2, r * 0.85, 'happy', t, x);
+    ctx.restore();
+  }
+  draw(ctx, t) {
+    const cx = this.cx, cy = this.cy;
+    const litK = this.state === 'build' ? 0 : Math.min(1, this.finT / 2.5);
+    // the constellation frame: a faint dashed ring plus the machine base
+    ctx.save();
+    ctx.strokeStyle = 'rgba(127,216,255,0.35)'; ctx.lineWidth = 5;
+    ctx.setLineDash([16, 20]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.arc(cx, cy, 300, 0, TAU); ctx.stroke();
+    ctx.restore();
+    // connected edges (finale)
+    if (this.state !== 'build') {
+      for (let e = 0; e < this.edges.length; e++) {
+        const on = this.finT >= 0.5 + e * 0.4;
+        if (!on) continue;
+        const [a, b] = this.edges[e];
+        const pa = this.socketPos(a), pb = this.socketPos(b);
+        ctx.save();
+        ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4 + e);
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // sockets with ghost stars
+    for (let i = 0; i < 5; i++) {
+      const sp = this.socketPos(i);
+      const st = this.stars[i];
+      ctx.save();
+      ctx.strokeStyle = this.colors[i]; ctx.lineWidth = 4;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, 40, 0, TAU); ctx.stroke();
+      if (st.state !== 'set') { // pulsing ghost: "a star belongs HERE"
+        ctx.globalAlpha = 0.25 + 0.12 * Math.sin(t * 3 + i);
+        ctx.fillStyle = this.colors[i];
+        starPath(ctx, sp.x, sp.y, 24, 11);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // the energy-gate button
+    const b = this.button;
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 3);
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + b.h / 2, 56, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = b.on ? '#57d357' : '#ffe156';
+    ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + b.h / 2, 34, 0, TAU); ctx.fill();
+    ctx.strokeStyle = b.on ? '#2f8a3c' : '#c8861b'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + b.h / 2, 34, 0, TAU); ctx.stroke();
+    drawFace(ctx, b.x + b.w / 2, b.y + b.h / 2 + 2, 30, b.on ? 'grin' : 'surprised', t, 93);
+    // the silly alien
+    const al = this.alien;
+    ctx.save();
+    ctx.translate(al.x, al.y + Math.sin(al.t * 1.7) * 10);
+    if (al.giggleT > 0) ctx.rotate(Math.sin(al.giggleT * 24) * 0.25 * al.giggleT);
+    if (al.happy) ctx.rotate(Math.sin(al.t * 5) * 0.15);
+    // saucer
+    ctx.fillStyle = '#8a5fd0';
+    ctx.beginPath(); ctx.ellipse(0, 26, 52, 17, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#5a3a90'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.ellipse(0, 26, 52, 17, 0, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#ffe156';
+    for (const lx of [-30, 0, 30]) { ctx.beginPath(); ctx.arc(lx, 30, 5, 0, TAU); ctx.fill(); }
+    // dome + green pilot
+    ctx.fillStyle = 'rgba(190,232,255,0.35)';
+    ctx.beginPath(); ctx.arc(0, 4, 34, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 4, 34, Math.PI, TAU); ctx.stroke();
+    ctx.fillStyle = '#7be07b';
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, TAU); ctx.fill();
+    for (const sd of [-1, 1]) { // antennae
+      ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(sd * 8, -16); ctx.lineTo(sd * 14, -30); ctx.stroke();
+      ctx.fillStyle = '#ff8fb0';
+      ctx.beginPath(); ctx.arc(sd * 14, -32, 4, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, 0, 2, 28, al.happy ? 'grin' : (al.giggleT > 0 ? 'surprised' : 'happy'), t, 94);
+    // little arms holding the star overhead (until it's gifted)
+    if (!al.happy) {
+      ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-14, -6); ctx.lineTo(-24, -52);
+      ctx.moveTo(14, -6); ctx.lineTo(24, -52);
+      ctx.stroke();
+    }
+    ctx.restore();
+    if (al.happy && chance(0.06)) {
+      Particles.burst(al.x + rand(-30, 30), al.y - 40, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 30, grav: -40, l1: 1.2, s1: 9, up: 0 });
+    }
+    // the stars themselves (held star rides above the alien's arms)
+    for (const st of this.stars) {
+      if (st.state === 'held') {
+        this.drawStarShape(ctx, al.x, al.y - 74 + Math.sin(al.t * 1.7) * 10, 26, this.colors[st.i], st.t, true);
+        continue;
+      }
+      const r = st.state === 'set' ? 24 : 26;
+      if (st.state === 'set') {
+        ctx.save();
+        ctx.globalAlpha = 0.4 + 0.2 * Math.sin(t * 4 + st.i);
+        ctx.fillStyle = this.colors[st.i];
+        ctx.beginPath(); ctx.arc(st.x, st.y, 42, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      this.drawStarShape(ctx, st.x, st.y, r, this.colors[st.i], st.t, st.state !== 'set');
+    }
+    // the hero constellation resolving — drawn LAST so the face reads over the
+    // set head star: the head node becomes Jack-Jack or Becca made of stars
+    if (this.state !== 'build' && this.finT >= 2.9) {
+      const hp = this.socketPos(0);
+      const k = Math.min(1, (this.finT - 2.9) / 0.9);
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.fillStyle = 'rgba(23,16,41,0.88)'; // the head disc — a night-sky face
+      ctx.beginPath(); ctx.arc(hp.x, hp.y - 8, 62, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(hp.x, hp.y - 8, 62, 0, TAU); ctx.stroke();
+      if (game.character === 'girl') { // Becca: a ring of starry curls + her bow
+        ctx.fillStyle = '#ffe156';
+        for (let i = 0; i <= 6; i++) {
+          const a = Math.PI + i * Math.PI / 6;
+          starPath(ctx, hp.x + Math.cos(a) * 62, hp.y - 8 + Math.sin(a) * 62, 13, 6);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ff8fb0';
+        starPath(ctx, hp.x + 44, hp.y - 56, 15, 7);
+        ctx.fill();
+      } else { // Jack-Jack: his cap, in glowing gold
+        ctx.save();
+        ctx.beginPath(); ctx.arc(hp.x, hp.y - 8, 62, 0, TAU); ctx.clip();
+        ctx.fillStyle = '#ffa62b';
+        ctx.beginPath(); ctx.arc(hp.x, hp.y - 16, 60, Math.PI, TAU); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#ffa62b';
+        rr(ctx, hp.x + 36, hp.y - 28, 52, 15, 7); ctx.fill();
+        ctx.fillStyle = '#ffe156';
+        starPath(ctx, hp.x, hp.y - 78, 14, 6.5);
+        ctx.fill();
+      }
+      if (game.royal) drawCrown(ctx, hp.x, hp.y - (game.character === 'girl' ? 76 : 80), 20);
+      drawFace(ctx, hp.x, hp.y + 8, 52, 'grin', t, 91);
+      // twinkles around the new constellation friend
+      if (chance(0.2)) Particles.burst(hp.x + rand(-70, 70), hp.y + rand(-70, 50), 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 25, grav: 0, l1: 0.9, s1: 8, up: 0 });
+      ctx.restore();
+    }
   }
 }

@@ -595,6 +595,7 @@ function updatePlay(dt) {
   for (const sd of lv.subDoors) sd.update(dt);
   if (lv.mission) lv.mission.update(dt, pl);
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
+  if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber)
   // steam vents (Volcano Escape): idle platform -> bubbling warning -> blast.
   // The eruption phase turns the solid bouncy, and anyone already standing on
   // it gets launched too — timing stays forgiving either way.
@@ -981,6 +982,8 @@ function drawDarkness() {
   for (const p of game.pickups) if (!p.dead) light(p.cx, p.cy, 130, 0.9);
   for (const pr of game.projectiles) light(pr.cx, pr.cy, 150);
   for (const c of lv.checks) light(c.x, c.y + 30, 130, 0.85);
+  for (const sd of lv.subDoors) light(sd.cx, sd.cy, 170, 0.9); // secrets must be findable in the dark
+  if (lv.puzzle && lv.puzzle.lights) for (const L of lv.puzzle.lights()) light(L.x, L.y, L.r, L.a ?? 1);
   if (game.zombie) light(game.zombie.cx, game.zombie.cy, 260, 0.9);
   if (game.chest) light(game.chest.cx, game.chest.y + 40, 340);
   if (game.endPhase === 'party') light(cam.x + W / 2, cam.y + H / 2, 950);
@@ -1135,6 +1138,15 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'bubblemaze') {
       outlineText(ctx, 'THE GIANT PEARL!', W / 2, 140, 76, '#e8ecff', '#2a4a86');
       outlineText(ctx, 'YOU SOLVED THE BUBBLE MAZE!', W / 2, 212, 34, '#7fd8ff', '#2a4a86');
+    } else if (game.level.n === 'piperoom') {
+      outlineText(ctx, 'THE CANDY MACHINE!', W / 2, 140, 76, '#ffd24a', '#5a4a86');
+      outlineText(ctx, 'YOU FIXED ALL THE PIPES!', W / 2, 212, 34, '#7fd8ff', '#5a4a86');
+    } else if (game.level.n === 'torchcave') {
+      outlineText(ctx, 'BABY ZOMBIE PARTY!', W / 2, 140, 74, '#7be07b', '#3d3766');
+      outlineText(ctx, 'THE SPOOKY CAVE WAS A SLUMBER PARTY!', W / 2, 212, 32, '#ffe156', '#3d3766');
+    } else if (game.level.n === 'zerog') {
+      outlineText(ctx, game.character === 'girl' ? 'BECCA IN THE STARS!' : 'JACK-JACK IN THE STARS!', W / 2, 140, 66, '#ffe156', '#3d3766');
+      outlineText(ctx, 'YOU BUILT THE CONSTELLATION!', W / 2, 212, 34, '#7fd8ff', '#3d3766');
     } else if (game.level.n === 'skyflight') {
       outlineText(ctx, 'TO THE MOON!', W / 2, 132, 80, '#ffe9a0', '#5a4a86');
       for (let i = 0; i < 5; i++) { // the stars you gathered on the way
@@ -1182,6 +1194,7 @@ function renderWorld() {
   for (const sd of lv.subDoors) sd.draw(ctx);
   if (lv.mission) lv.mission.draw(ctx, t);
   if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
+  if (lv.puzzle) lv.puzzle.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);
   for (const sp of game.spiders) sp.draw(ctx);

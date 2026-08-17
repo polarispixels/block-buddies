@@ -1,7 +1,8 @@
 # Block Buddies: The Adventures of Jack-Jack and Becca
 
 A zero-build, zero-dependency 2D canvas platformer built for a five-year-old.
-Ten worlds, two bosses, three vehicles, procedural art and audio, installable PWA.
+Ten worlds, three bosses, three vehicles, eight secret mini-games, procedural
+art and audio, installable PWA.
 
 - **Play:** https://polarispixels.github.io/block-buddies/
 - **Developer & agent docs:** https://polarispixels.github.io/block-buddies/docs/

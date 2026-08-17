@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.9.0</span>
+  <span class="badge">v1.10.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -153,7 +153,7 @@ changelog lacks an entry for it, or if this page doesn't mention it.</p>
   <tr><td><code>js/util.js</code></td><td><code>GAME_VERSION</code>, constants (<code>W=1280</code>, <code>H=720</code>), drawing helpers (<code>rr</code>, <code>drawFace</code>, <code>drawBlock</code>, <code>drawCrown</code>, keycaps, candy), palettes (<code>POW</code>, <code>RAINBOW</code>), keyboard input (<code>keys</code>/<code>justP</code>), <code>TouchUI</code> (two-thumb layout + fullscreen button + title tap hook)</td></tr>
   <tr><td><code>js/audio.js</code></td><td><code>AudioSys</code>: procedural sound effects (one <code>sfx(name)</code> switch) and step-sequenced music (<code>SONGS</code> table, midi-note arrays per theme). Unlocked on first user input.</td></tr>
   <tr><td><code>js/particles.js</code></td><td><code>Particles</code> pool (star / sparkle / heart / block / confetti / candy / flame / bubble), <code>candyBurst</code></td></tr>
-  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>, <code>TruckBuild</code>), <code>FireBreather</code>, the <code>Spino</code> boss, and <code>SubDoor</code> (mini-game entrances)</td></tr>
+  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>, <code>TruckBuild</code>), <code>FireBreather</code>, the <code>Spino</code> boss, <code>SubDoor</code> (mini-game entrances), and the secret-room machines (<code>PipeWorks</code>, <code>TorchCavern</code>, <code>StarChamber</code> — attached as <code>lv.puzzle</code>)</td></tr>
   <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star, steam vents, rising lava, bubble currents, valves, shell switches), <code>drawDecor</code> (incl. castle, grandstand, royals, mini-game landmarks)</td></tr>
   <tr><td><code>js/game.js</code></td><td>The <code>game</code> state machine, boss and ending flows, cutscenes (<code>updateCut</code>), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop</td></tr>
 </table></div>
@@ -304,6 +304,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>Everything foundational: running/jumping, candy collecting, hearts, checkpoints, block piles, platforms, the 🔥 fire block and throwing, the star gate.</dd>
   <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy rows and arcs.</dd>
   <dt>Cameos</dt><dd>None — this is the origin. Its walk spider, candy trails, checkpoints, and star gate recur in every later world.</dd>
+  <dt>Secret</dt><dd>A suspiciously oversized green pipe (x≈2950) with a face keeps <em>burping candy</em> — walk into it and FWOOOP: the <strong>Secret Pipe Room</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -356,6 +357,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Ending</dt><dd>A treasure chest tumbles from the ceiling (<code>chestfall</code>); opening it reveals the <strong>GOLDEN CANDY TREASURE</strong> → party → unlocks Lava World.</dd>
   <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy trail; boss-stage blocks respawn in the arena.</dd>
   <dt>Cameos</dt><dd>The boss plan is a deliberate reprise of the first three worlds' powers in order: fire (meadow), ice (underwater), rainbow (clouds). Hang spiders from Mountain World.</dd>
+  <dt>Secret</dt><dd>Early in the cave (x≈660, well before the boss), a low side tunnel where <em>two glowing eyes blink</em> beside a tiny flickering torch — walking in discovers the <strong>Torch Cavern</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -410,6 +412,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Ending</dt><dd>Touching the star → <strong>MAZE MASTER!</strong> — and in the party, <em>all the aliens become friends</em>. The party exit returns to the title screen, completing the chain.</dd>
   <dt>Pickups</dt><dd>Fire ×3, rainbow ×3, heart ×4, candy breadcrumbs along the main route.</dd>
   <dt>Cameos</dt><dd>The zero-gravity controls are Underwater World's swim system reused (<code>lv.water</code> + <code>lv.space</code>); the golden star is the base game's gate star grown into a destination; befriending returns as the kindest way to clear a corridor.</dd>
+  <dt>Secret</dt><dd>In the open pocket below the start, a <em>cracked asteroid</em> leaks golden sparkles (a candy trail drifts down toward it) — drifting into it discovers the <strong>Zero-G Star Chamber</strong> (see Mini-games).</dd>
 </dl>
 </div>
 
@@ -428,7 +431,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
 
 <h2 id="minigames">Mini-games &amp; sublevels (since v1.7.0)</h2>
 <p>A world is no longer one continuous strip: it can contain doors into <strong>sublevels</strong> —
-smaller gameplay spaces with their own layout, camera direction, and even movement model. Five exist
+smaller gameplay spaces with their own layout, camera direction, and even movement model. Eight exist
 so far, each entered through a themed <code>SubDoor</code> standing in its host world — plus the
 Rally's in-world truck-assembly mission, which shares the same collection grammar.</p>
 <h3>The transition system</h3>
@@ -440,7 +443,10 @@ Rally's in-world truck-assembly mission, which shares the same collection gramma
   <code>lv.subDoors</code>; walking into it calls <code>game.enterSub(subId)</code>. Styles:
   <code>'cloud'</code> swirl archway, <code>'cave'</code> sparkling dark opening,
   <code>'rainbow'</code> shimmering ring, <code>'crack'</code> glowing cracked volcanic wall,
-  <code>'bubble'</code> seaweed sea-cave breathing a rising bubble stream (the clue). Doors re-arm only after the player moves a door-width away
+  <code>'bubble'</code> seaweed sea-cave breathing a rising bubble stream (the clue),
+  <code>'pipe'</code> oversized green pipe that periodically burps a candy (Secrets Pack II),
+  <code>'eyes'</code> dark side tunnel with blinking glow-eyes and a tiny torch,
+  <code>'asteroid'</code> cracked boulder leaking golden sparkles. Doors re-arm only after the player moves a door-width away
   horizontally, so exiting (or jumping in place) never instantly re-enters. <strong>Completed doors go
   dormant (v1.8.3):</strong> they shrink into a quiet trophy marker with a gold star, walking over
   them never re-enters (doors often sit on normal walking routes), and replaying is deliberate —
@@ -454,6 +460,14 @@ Rally's in-world truck-assembly mission, which shares the same collection gramma
   handler routes string-id levels to <code>game.subWin()</code>: party overlay (per-sub headline),
   completion recorded in <code>localStorage.ffbg_mini</code>, and the party's Space-exit calls
   <code>exitSub()</code> instead of advancing the world chain.</li>
+  <li><strong>Secret-room machines (since v1.10.0)</strong> — a puzzle room's whole mechanism is one
+  class on the sublevel object (<code>lv.puzzle</code> = <code>PipeWorks</code> / <code>TorchCavern</code> /
+  <code>StarChamber</code>), updated and drawn by two generic hooks in <code>game.js</code> (the same
+  pattern as <code>lv.mission</code>/<code>lv.truckBuild</code>). Their finales reveal
+  <code>lv.goalStar</code>, so completion/persistence/replay all come from the shared system, and
+  <code>exitSub</code> guarantees nothing leaks back into the host. <code>lv.puzzle.lights()</code> feeds
+  extra light sources into the darkness overlay (Torch Cavern), and sub-doors themselves now glow in
+  dark levels so secrets stay findable.</li>
   <li><strong>Camera came free</strong> — <code>updateCamera</code> always tracked both axes when
   <code>lv.h &gt; H</code>, so vertical (Cloud Climb, Sky Flight) and diagonal (Secret Ascent)
   scrolling required zero camera changes.</li>
@@ -514,6 +528,46 @@ true</code>, popped via the smashed-wall <code>broken</code> trick), and three m
 <strong>shell switches</strong> (<code>lv.shellSwitches</code>) sit one per chamber; touch a shell
 and its color valve bursts. Open all three and the shaft current lifts you straight up to the GIANT
 PEARL and the golden star. No enemies, no timing, no way to die.</p>
+<h3>Secret Pipe Room <small>(burping green pipe in Block Meadow — Secrets Pack II, v1.10.0)</small></h3>
+<p><strong>Cause and effect.</strong> A single non-scrolling machine room (1280 × 720, theme
+<code>cave</code>): three hoppers hang from an overhead deck, each dropping funny-face blocks of its
+color (🔥/❄️/🌈) down a fat visible chute into one of three <strong>eater machines</strong> on the
+floor. The chutes start aimed <em>wrong</em>; three color-ringed floor buttons each swing their
+pipe's mouth to the next machine (CLUNK, edge-triggered so one step = one turn). A correctly fed
+machine gulps, grins, and its bulb <strong>latches on forever</strong> — progress can never be lost.
+Wrong feeds are the entertainment: fire into the freezer coughs a steam cloud with a dizzy face, ice
+into the furnace melts into a sad puddle with eyes, rainbows explode into harmless confetti. Three
+bulbs → KA-CHUNK ×3 → a candy eruption (real collectible candy rains down) and the golden star pops
+out of the machine. The whole mechanism is <code>PipeWorks</code> (<code>lv.puzzle</code>).</p>
+<h3>Torch Cavern <small>(blinking-eyes side tunnel in Zombie Cave — Secrets Pack II, v1.10.0)</small></h3>
+<p><strong>Observation and matching — never sequence memory.</strong> A dark cavern (1920 × 720,
+<code>lv.dark</code>) where a big sleepy stone door shows three dim symbol slots (⭐ star, ❤ heart,
+🍬 candy). Five torches wait in the dark, each marked by a faintly pulsing ember so it's findable;
+three carry matching carved stone plaques and, when lit, send a glowing symbol wisp flying into its
+door slot; the other two are pure comedy (one wakes a goofy stone bat that loops the ceiling; one
+raises a giant "Zzz" from behind the door — muffled snores leak through it as the audio clue).
+Touch a torch <em>or hit it with a fireball</em> (a fire block waits by the entrance) to light it;
+an ice shot re-douses it with a steam puff, but filled door slots stay filled — dousing is comedy,
+not punishment. Two one-way ledges climb to the higher torches. All three symbols home → the slab
+grinds up, the whole cavern floods with light, and the "scary" secret is revealed: <strong>four baby
+zombies having a slumber party</strong> — they wake, look surprised, then dance; the treasure chest
+opens and the golden star appears. <code>TorchCavern</code> (<code>lv.puzzle</code>) feeds torch
+light into the darkness overlay via <code>lights()</code>.</p>
+<h3>Zero-G Star Chamber <small>(cracked asteroid in Space Maze — Secrets Pack II, v1.10.0)</small></h3>
+<p><strong>Spatial planning: transport, not a maze.</strong> A big walled weightless chamber
+(2600 × 1560, <code>lv.water</code> + <code>lv.space</code>) with an unfinished constellation at the
+center: five color-ringed sockets, each pulsing the ghost of its missing star. Five stars with faces
+float around the room; touching one makes it <strong>tail the hero</strong> (a star train if you
+grab several; a star that falls behind snap-teleports back — unloseable), and carrying it within
+reach of its color socket snaps it home with a chime. Escalation: star 1 is the free teach; star 2
+hides in a C-shaped asteroid pocket; star 3 sits past an up-blowing <em>solar wind</em> current
+(push 1300 &lt; swim thrust 1400 — a playful deflection, never a wall); star 4 waits behind a
+humming striped <em>energy gate</em> popped by one big obvious button; star 5 is held overhead by a
+<strong>silly alien</strong> — bumping it just makes it giggle-spin, but a fired 🌈 rainbow (the
+block floats nearby) melts its heart and it hands the star over. All five home → golden lines
+connect the sockets one by one and the constellation <strong>resolves into Jack-Jack or
+Becca</strong> (selected hero, crown included for royalty) → candy fireworks → the golden star
+appears below the frame. <code>StarChamber</code> (<code>lv.puzzle</code>).</p>
 <h3>Adding a future mini-game</h3>
 <ol>
   <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
@@ -546,9 +600,9 @@ beyond the obvious level. The rules that keep secrets fair for a five-year-old:<
 
 <h3>Agreed backlog (do not build until playtests pick the next group)</h3>
 <p>Candidate future experiences, agreed with Ryan — keep new systems compatible with them:
-<strong>Jungle Treehouse Trail</strong>, <strong>Space Zero-G Chamber</strong>,
-<strong>Zombie Torch Puzzle</strong>, <strong>Meadow Secret Pipe Room</strong>, a future
-<strong>rhythm mini-game</strong>, plus more cognitive puzzles and world sublevels. Design pillar to
+<strong>Jungle Treehouse Trail</strong> and a future <strong>rhythm mini-game</strong>, plus more
+cognitive puzzles and world sublevels. (The Secret Pipe Room, Zombie Torch Puzzle, and Space Zero-G
+Chamber from this list shipped in v1.10.0 as <strong>Secrets Pack II</strong>.) Design pillar to
 keep growing: <em>curiosity + experimentation + thinking + discovery</em> — a mix of required
 experiences, visually-hinted discoveries, and true optional secrets (never gate progression behind a
 secret; see the secret design rules above).</p>
@@ -571,7 +625,7 @@ Presses must be ≤1.2&nbsp;s apart:</p>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
   <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code> (internal — one higher than the displayed world number)</td></tr>
   <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
-  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze</code>) — a gold star appears over a completed door</td></tr>
+  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze,piperoom,torchcave,zerog</code>) — a gold star appears over a completed door</td></tr>
   <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the Unicorn Forest coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
 </table></div>
 <p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
@@ -579,7 +633,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all three mini-games (entry, play, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 266 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eight mini-games (entry, play, puzzle solves, completion, and clean state restoration), touch-tap paths, title pickers, versioning checks, and a BFS solvability proof of the space maze. 325 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -636,7 +690,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.9.0 · built for Jack ·
+  Block Buddies v1.10.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

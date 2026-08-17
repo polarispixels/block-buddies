@@ -8,6 +8,57 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.10.0] - 2026-08-17
+
+### Added — SECRETS PACK II: three new secret mini-games
+
+Each one exercises a different kind of thinking, always through the same loop:
+notice something strange → investigate → experiment → see a reaction → figure
+it out → big payoff. No reading, no punishment, no way to get stuck.
+
+- **Secret Pipe Room** (World 0, *cause and effect*): a suspiciously oversized
+  green pipe in the meadow keeps burping candy — walk in and FWOOOP. Inside, a
+  one-screen candy machine: three hoppers drop funny-face blocks down visible
+  chutes that start aimed at the WRONG eater machines; color-ringed floor
+  buttons swing each pipe with a CLUNK. Correct feeds gulp and latch a bulb ON
+  forever; wrong feeds are the comedy (steam-cloud cough, melting puddle with
+  eyes, confetti explosions). Three bulbs → KA-CHUNK ×3 → candy eruption with
+  real collectible candy → the golden star pops out.
+- **Torch Cavern** (World 4, *observation and matching* — never Simon Says): a
+  dark side tunnel where two glowing eyes blink beside a tiny torch. Inside,
+  a sealed stone door shows three dim symbols (star/heart/candy); five torches
+  wait in the dark, each findable by its faint ember. Touch one (or hit it
+  with a fireball — a fire block waits by the entrance) and it lights: symbol
+  torches send a glowing wisp into the matching door slot; the other two are
+  gags (a goofy stone bat wakes up; a giant Zzz rises from behind the door,
+  which also leaks muffled snores as the audio clue). Ice re-douses a torch
+  for a laugh but filled slots stay filled. All three home → the slab grinds
+  open, the cavern floods with light, and the "scary" secret is four baby
+  zombies at a slumber party — they wake, boggle, and dance; chest + star.
+- **Zero-G Star Chamber** (World 8, *spatial planning* — a transport puzzle,
+  not another maze): a cracked asteroid below the maze start leaks golden
+  sparkles. Inside, a huge weightless chamber with an unfinished constellation:
+  five color sockets, five faced stars. Touch a star and it TAILS you (star
+  trains allowed; a lagging star snap-teleports back — unloseable); carry each
+  home and it snaps in with a chime. Star 1 teaches; star 2 hides in an
+  asteroid pocket; star 3 sits past an up-blowing solar-wind current; star 4
+  waits behind an energy gate popped by one big button; star 5 belongs to a
+  silly alien — bumps make it giggle, a fired rainbow makes it hand the star
+  over. All five home → the constellation connects and resolves into
+  Jack-Jack or Becca made of stars (crown included for royalty) → candy
+  fireworks → golden star.
+- New reusable plumbing, kept deliberately small: a generic `lv.puzzle` slot
+  (update/draw hooks in `game.js`, exactly like `lv.mission`), three new
+  `SubDoor` styles (`pipe`/`eyes`/`asteroid`), puzzle light sources feeding
+  the darkness overlay via `lv.puzzle.lights()`, sub-doors now glow in dark
+  levels so secrets stay findable, and a `snore` sfx. Everything else reuses
+  existing systems (goal star → `subWin` → `ffbg_mini` persistence + dormant
+  trophy doors), so saves are untouched.
+- Harness grows 266 → 325 checks: every secret is entered through its real
+  door, solved by really riding the jumps/currents/projectiles (no teleports
+  across traversals), checked for comedy-not-failure on wrong inputs, and
+  verified to leak nothing back into its host world.
+
 ## [1.9.0] - 2026-08-17
 
 ### Changed
