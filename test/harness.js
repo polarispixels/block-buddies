@@ -1210,9 +1210,17 @@ check('CHANGELOG has an entry for the current version', (function () {
   const log = fs.readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf8');
   return log.includes('## [' + vm.runInContext('GAME_VERSION', sandbox) + ']');
 })());
-check('docs page reports the current version', (function () {
+// Parse the ACTUAL displayed version fields — a bare substring search passes on
+// incidental body text like "since v1.9.0" even when the badge itself is stale.
+check('docs header badge displays exactly the current version', (function () {
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
-  return doc.includes('v' + vm.runInContext('GAME_VERSION', sandbox));
+  const m = doc.match(/<span class="badge">v([0-9.]+)<\/span>/);
+  return !!m && m[1] === vm.runInContext('GAME_VERSION', sandbox);
+})());
+check('docs footer displays exactly the current version', (function () {
+  const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'index.html'), 'utf8');
+  const m = doc.match(/Block Buddies v([0-9.]+) · built for Jack/);
+  return !!m && m[1] === vm.runInContext('GAME_VERSION', sandbox);
 })());
 
 check('game is titled Block Buddies everywhere', (function () {
