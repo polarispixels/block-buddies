@@ -1204,6 +1204,160 @@ check('no chamber state leaks into the maze', G().level.puzzle === null && G().l
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: JUNGLE TREEHOUSE TRAIL (the mini-adventure) ----------------
+vm.runInContext('game.startLevel(10)', sandbox);
+frames(150);
+check('the jungle hides a rope-ladder door', vm.runInContext("game.level.subDoors.some(d => d.sub === 'treehouse')", sandbox));
+put2(260 - 28, 620 - 94);
+frames(10);
+check('the rope ladder leads into the JUNGLE TREEHOUSE TRAIL', G().level.n === 'treehouse');
+frames(150);
+const TT = () => vm.runInContext('game.level.puzzle', sandbox);
+check('trail loaded: sad monkey, hanging banana, four vines, no goal star yet',
+  G().state === 'play' && TT().monkey.state === 'sad' && TT().banana.state === 'hang' &&
+  G().level.vines.length === 4 && G().level.goalStar === null);
+// ---- vines: grab by jumping in, get carried, release with momentum ----
+put2(472, 2540 - 94);
+frames(3);
+vm.runInContext('game.level.vines[0].t = 0;', sandbox); // hanging dead-center
+tap('ArrowUp');
+frames(18);
+check('jumping into a vine grabs on', vm.runInContext('game.level.vineHold === game.level.vines[0]', sandbox));
+frames(30);
+check('the vine carries the hero (no falling, no ground)', G().player.vy === 0 && !G().player.onGround &&
+  vm.runInContext('game.level.vineHold === game.level.vines[0]', sandbox));
+vm.runInContext('game.level.vines[0].t = 3.55;', sandbox); // bottom of a fast rightward swing
+frames(2);
+tap('ArrowUp'); // LET GO
+frames(50);
+check('releasing flings the hero along the swing', G().player.x > 520 &&
+  vm.runInContext('game.level.vineHold', sandbox) === null);
+// ---- the gorge: uncrossable alone, and falling in is a bounce, not a death ----
+const heartsGorge = G().player.hearts;
+put2(2300, 2540 - 94);
+frames(40, { ArrowRight: 1 }); // run straight off the rim
+let netMin = 1e9, netBounced = false;
+for (let i = 0; i < 140; i++) {
+  frames(1);
+  netMin = Math.min(netMin, G().player.y);
+  if (G().player.vy < -1200) netBounced = true;
+}
+check('the leaf trampoline bounces the faller sky-high, free of charge', netBounced && G().player.hearts === heartsGorge);
+check('the bounce can never reach the far side (region B floor)', netMin > 1450);
+for (let i = 0; i < 400 && !(G().player.onGround && G().player.x < 2300); i++) frames(1, { ArrowLeft: 1 });
+check('steering the bounces climbs back out to region A', G().player.onGround && Math.abs(G().player.y + 94 - 2540) < 6);
+// ---- the throw pad does nothing without a friend ----
+put2(2330, 2540 - 94);
+frames(20);
+check('the launch pad waits politely while the monkey is still sad', !TT().seq && G().level.n === 'treehouse' && G().player.x < 2500);
+// ---- meet the monkey: sad, dreaming of a banana that hangs out of reach ----
+frames(20);
+check('the sad monkey shows his banana thought-bubble', TT().monkey.state === 'sad' && TT().monkey.bubbleT > 0.5);
+check('the banana hangs above any jump', TT().banana.y + 34 < 2540 - 94 - 148);
+// ---- the machine, in the "wrong" order first: plate -> ladder -> lever -> STUCK ----
+const RUNGS = () => vm.runInContext('game.level.solids.filter(s => s.oneWay && s.skipDraw && !s.broken).length', sandbox);
+check('the rope ladder starts rolled up', RUNGS() === 0);
+put2(1832 - 28, 2540 - 94);
+frames(6);
+check('stepping the pressure plate unrolls the rope ladder', TT().plate.on === true && RUNGS() === 2);
+put2(1672, 2540 - 94);
+frames(5);
+tap('ArrowUp'); frames(50); // rung 1
+tap('ArrowUp'); frames(50); // rung 2
+tap('ArrowUp'); frames(55); // the porch
+check('the real rungs climb to the lever porch', Math.abs(G().player.y + 94 - 2280) < 5);
+frames(30, { ArrowRight: 1 }); // walk into the big red lever
+check('the porch lever pulls', TT().lever.on === true);
+frames(100); // the banana rides the rope down... into the toucan
+check('the banana gets STUCK on the grumpy toucan (funny, not fatal)',
+  TT().banana.state === 'stuck' && TT().toucan.state === 'perch' && G().player.hearts === heartsGorge);
+// ---- the bounce flower startles the toucan; the banana finishes its drop ----
+put2(1990, 2500 - 94);
+frames(45); // boing — right past the bird
+check('the bounce-flower launch startles the toucan off the rope', TT().toucan.state !== 'perch');
+frames(130);
+check('the freed banana drops to the jungle floor', TT().banana.state === 'waiting' && TT().toucan.state === 'sulk');
+// ---- carry the banana home ----
+put2(2110 - 28, 2472 - 47);
+frames(8);
+check('the banana tags along behind the hero', TT().banana.state === 'follow');
+put2(2240, 2540 - 94);
+frames(40);
+check('banana delivered — the monkey celebrates', TT().banana.state === 'eaten');
+frames(220);
+check('MONKEY FRIEND ACQUIRED', TT().monkey.state === 'follow');
+// ---- dying loses nothing (all trail state lives on the level object) ----
+vm.runInContext('game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1); game.player.inv = 0; game.player.damage(1)', sandbox);
+frames(60);
+tap('Space');
+frames(30);
+check('death keeps the friendship and every machine step', G().state === 'play' &&
+  TT().monkey.state === 'follow' && TT().plate.on && TT().lever.on && TT().banana.state === 'eaten');
+// ---- THE GREAT THROW: monkey airline across the waterfall gorge ----
+const candyFly = G().candy;
+put2(2330, 2540 - 94);
+let flyMin = 1e9;
+for (let i = 0; i < 270; i++) { frames(1); flyMin = Math.min(flyMin, G().player.y); }
+check('the monkey hurls the hero clear across the gorge', G().player.x > 3200 && Math.abs(G().player.y + 94 - 1500) < 8);
+check('the throw arcs high over the waterfall', flyMin < 1350);
+check('candy floats along the flight path (collected mid-WHEEE)', G().candy > candyFly);
+check('the monkey leaps across right behind you', TT().monkey.state === 'follow' && vm.runInContext('game.level.puzzle.monkey.x', sandbox) > 3100);
+// ---- the MONKEY DISCO (gold flower straight up to a hidden ledge) ----
+put2(3230, 1460 - 94);
+let mDisco = 1e9;
+for (let i = 0; i < 100; i++) { frames(1); mDisco = Math.min(mDisco, G().player.y); }
+check('the gold flower launches up past the hidden ledge', mDisco < 1060);
+check('...THE MONKEY DISCO?! (candy + heart rewards pop)', TT().disco.found === true &&
+  vm.runInContext("game.pickups.some(p => p.kind === 'heart' && !p.dead && p.cy < 1200)", sandbox));
+// ---- upper canopy: vine crossing 1 (ride it for real) ----
+put2(3560, 1360 - 94);
+frames(3);
+vm.runInContext('game.level.vines[2].t = 2.22;', sandbox); // hanging over the ledge
+tap('ArrowUp');
+frames(20);
+check('canopy vine 1 grabbed from the highland ledge', vm.runInContext('game.level.vineHold === game.level.vines[2]', sandbox));
+vm.runInContext('game.level.vines[2].t = 3.62;', sandbox); // bottom of a rightward swing
+frames(2);
+tap('ArrowUp');
+frames(60);
+check('vine 1 release lands the catch ledge', Math.abs(G().player.y + 94 - 1340) < 6 && G().player.x > 3760);
+// ---- vine crossing 2 onto the mid-tier bridge ----
+put2(4140, 1210 - 94);
+frames(3);
+vm.runInContext('game.level.vines[3].t = 2.22;', sandbox);
+tap('ArrowUp');
+frames(20);
+check('canopy vine 2 grabbed', vm.runInContext('game.level.vineHold === game.level.vines[3]', sandbox));
+vm.runInContext('game.level.vines[3].t = 3.62;', sandbox);
+frames(2);
+tap('ArrowUp');
+frames(70);
+check('vine 2 release lands the mid-tier bridge', Math.abs(G().player.y + 94 - 1250) < 6 && G().player.x > 4290);
+// ---- the second throw: up to the Grand Treehouse balcony ----
+put2(4400 - 28, 1250 - 94);
+for (let i = 0; i < 250; i++) frames(1);
+check('the monkey tosses the hero up to the balcony', Math.abs(G().player.y + 94 - 760) < 8 &&
+  G().player.x > 3760 && G().player.x < 4140);
+// ---- the Banana Bell finale ----
+frames(330);
+check('the monkey rings the GREAT BANANA BELL and the star appears', TT().bell.state === 'done' && !!G().level.goalStar);
+put2(3830 - 28, 668 - 47);
+frames(20);
+check('the bell star starts the celebration', G().endPhase === 'party' && G().level.n === 'treehouse');
+check('treehouse completion is remembered', G().miniDone.treehouse === true &&
+  sandbox.localStorage.getItem('ffbg_mini').includes('treehouse'));
+frames(320);
+tap('Space');
+frames(5);
+check('the trail exits back into Dino Jungle', G().level.n === 10 && G().state === 'play');
+check('no vines, monkey, or machine leak into the host jungle',
+  G().level.vines === null && G().level.vineHold === null && G().level.puzzle === null);
+put2(120, 620 - 94);
+frames(60, { ArrowRight: 1 });
+check('walking over the completed ladder door never re-enters', G().level.n === 10 && G().player.x > 320);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {

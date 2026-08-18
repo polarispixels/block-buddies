@@ -8,6 +8,58 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.11.0] - 2026-08-18
+
+### Added — the JUNGLE TREEHOUSE TRAIL: the game's first mini-ADVENTURE
+
+The biggest optional level so far, entered through a rope-ladder trunk right at
+Dino Jungle's edge (leaves flutter down, a tiny treehouse peeks through the
+canopy far above, and a faint monkey whoop drifts down). Built for curiosity,
+not speed: two whole jungles in one world, split by a waterfall gorge that can
+only be crossed one way — and finding that way is the story.
+
+- **The sad monkey.** Slumped at the gorge rim, sighing, dreaming of a banana
+  in a thought bubble. The banana hangs on a palm just out of jump reach, and
+  freeing it is a multi-step, any-order machine the player can SEE working: a
+  pressure plate unrolls a rope ladder; the treehouse porch lever spins a
+  pulley that pays the banana rope down; and a grumpy toucan sitting on the
+  rope pins it halfway ("?!") until the bounce flower beneath launches the
+  hero past and startles it off (thrown blocks work too). Wrong-order attempts
+  are jokes, never damage. Deliver the banana → munch-munch-munch → hearts,
+  confetti, a discarded peel — **monkey friend acquired, forever**.
+- **Monkey airline.** The new friend bounds along behind the hero and, at
+  wooden launch pads, grabs them, winds up, and HURLS them along a huge
+  "WHEEE!" arc — across the gorge into the sunlit upper canopy (with candy
+  floating along the flight path), and later straight up to the Grand
+  Treehouse balcony. The monkey leaps across right behind you every time.
+- **Swinging vines** (new reusable mechanic, `Vine` in entities.js): jump into
+  the dangling leaf grip to grab on, ride the steady pendulum, press Up/★ to
+  let go with the swing's momentum plus a friendly boost — bad timing is never
+  a plummet. Four vines: a safe floor-level teacher, a treehouse joyride, and
+  two canopy crossings (a vine-free ladder route runs beside them).
+- **No way to lose.** No enemies anywhere; falling into the gorge lands on a
+  giant grinning leaf trampoline that bounces you back to the near side; all
+  machine/friendship state lives on the level object, so death and respawn
+  lose nothing.
+- **The MONKEY DISCO.** A gold bounce flower fires the hero up to a hidden
+  hollow-trunk club where three baby monkeys dance under sweeping party lights
+  around a spinning glitter banana. Finding it pops candy, a heart, and
+  confetti.
+- **The Banana Bell finale.** Reaching the highest balcony with the monkey
+  sends him scampering up the bell rope: BONG ×3, candy rain, and the golden
+  star answers the bell. Completion persists in `ffbg_mini` like every secret.
+- Extra jungle life: a slow-motion waving sloth, a spider taking a bubble bath
+  in a wooden tub, hopping frogs, giant trunks, rope bridges (new plank skin),
+  a gorge waterfall with its own rainbow, and a new `treetop` canopy-marimba
+  song plus monkey/squawk/sad-monkey sound effects.
+
+### Changed
+
+- The test harness now parses the ACTUAL docs version badge and footer values
+  instead of substring-matching (a stale badge could previously hide behind
+  body text like "since v1.9.0"), and rides the whole Treehouse Trail for
+  real — vines, ladder, machine, throws, disco, bell — 367 checks total.
+
 ## [1.10.0] - 2026-08-17
 
 ### Added — SECRETS PACK II: three new secret mini-games

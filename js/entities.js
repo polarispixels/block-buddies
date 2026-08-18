@@ -3473,6 +3473,7 @@ class SubDoor {
         this.armed = false;
         if (this.style === 'pipe') AudioSys.sfx('blorp'); // FWOOOP — sucked in!
         if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
+        if (this.style === 'ladder') AudioSys.sfx('monkey'); // welcomed up the tree
         game.enterSub(this.sub);
         return;
       }
@@ -3485,6 +3486,7 @@ class SubDoor {
         : this.style === 'pipe' ? ['#ffd24a', '#7be07b']
         : this.style === 'eyes' ? ['#ffe156', '#ff9f43']
         : this.style === 'asteroid' ? ['#ffd24a', '#ffe156']
+        : this.style === 'ladder' ? ['#7be07b', '#ffe156']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -3507,6 +3509,16 @@ class SubDoor {
     // the asteroid crack's clue: golden candy sparkles drift out through it
     if (this.style === 'asteroid' && !done && chance(0.25)) {
       Particles.burst(this.cx + rand(-20, 20), this.y + rand(10, 40), 1, { colors: ['#ffd24a', '#ffe156'], type: 'sparkle', sp1: 45, grav: -55, l0: 1.2, l1: 2.2, up: 0, s1: 10 });
+    }
+    // the rope ladder's clue: leaves flutter down out of the canopy and every
+    // so often a faint monkey whoop drifts from somewhere high above
+    if (this.style === 'ladder' && !done) {
+      if (chance(0.07)) Particles.burst(this.cx + rand(-46, 46), this.y - 40, 1, { colors: ['#57d357', '#7be07b', '#ffe156'], type: 'confetti', sp1: 25, grav: 55, l0: 1.4, l1: 2.6, up: 0, s1: 10 });
+      this.whoopT = (this.whoopT ?? rand(3, 6)) - dt;
+      if (this.whoopT <= 0) {
+        this.whoopT = rand(6, 11);
+        if (Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.7) AudioSys.sfx('monkey');
+      }
     }
   }
   draw(ctx) {
@@ -3690,6 +3702,62 @@ class SubDoor {
       ctx.restore();
       // sleepy rock face, dreaming of candy
       drawFace(ctx, cx - 30, g - this.h * 0.62, 26, 'sleepy', t, 62);
+    } else if (this.style === 'ladder') {
+      // a rope ladder dangling down a giant mossy trunk — high above (too high
+      // to be part of this level) a tiny treehouse peeks out of the leaves
+      const tw = this.w + 34;
+      ctx.fillStyle = '#8a5a34';
+      rr(ctx, cx - tw / 2, this.y - 46, tw, this.h + 46, 14); ctx.fill();
+      ctx.strokeStyle = '#5f3a1e'; ctx.lineWidth = 4;
+      rr(ctx, cx - tw / 2, this.y - 46, tw, this.h + 46, 14); ctx.stroke();
+      // bark seams + a knothole
+      ctx.strokeStyle = 'rgba(95,58,30,0.6)'; ctx.lineWidth = 3;
+      for (const ox of [-tw * 0.28, tw * 0.18]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + ox, this.y - 40);
+        ctx.quadraticCurveTo(cx + ox + 6, this.y + 30, cx + ox - 4, g - 8);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#5f3a1e';
+      ctx.beginPath(); ctx.ellipse(cx + tw * 0.24, this.y + 34, 9, 12, 0, 0, TAU); ctx.fill();
+      // leafy canopy tuft spilling over the trunk top
+      ctx.fillStyle = '#3f9c3a';
+      for (const [ox, r2] of [[-34, 20], [0, 26], [34, 19]]) {
+        ctx.beginPath(); ctx.arc(cx + ox, this.y - 48, r2, 0, TAU); ctx.fill();
+      }
+      // the tiny far-away treehouse up in the leaves
+      ctx.fillStyle = '#b0743e';
+      rr(ctx, cx - 15, this.y - 92, 30, 22, 4); ctx.fill();
+      ctx.fillStyle = '#8a5a34';
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, this.y - 92); ctx.lineTo(cx, this.y - 108); ctx.lineTo(cx + 20, this.y - 92);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffe9c0';
+      ctx.beginPath(); ctx.arc(cx, this.y - 81, 5, 0, TAU); ctx.fill();
+      // two little monkey eyes blink in the doorway of the treehouse
+      if (!done && ((t * 0.8) % 2.8) > 0.2) {
+        ctx.fillStyle = '#3a2a3a';
+        ctx.beginPath(); ctx.arc(cx - 2, this.y - 81, 1.4, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 3, this.y - 81, 1.4, 0, TAU); ctx.fill();
+      }
+      // the rope ladder itself, swaying gently
+      const sway = Math.sin(t * 1.5) * 4;
+      ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + sd * 17, this.y - 40);
+        ctx.quadraticCurveTo(cx + sd * 17 + sway * 0.5, this.y + 40, cx + sd * 17 + sway, g - 6);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 5;
+      for (let ry = this.y - 24; ry < g - 10; ry += 24) {
+        const k = (ry - this.y + 24) / this.h;
+        ctx.beginPath();
+        ctx.moveTo(cx - 16 + sway * k * 0.9, ry); ctx.lineTo(cx + 16 + sway * k * 0.9, ry);
+        ctx.stroke();
+      }
+      // a happy face carved low in the bark — the tree is friendly
+      drawFace(ctx, cx - tw * 0.26, g - 34, 20, 'happy', t, 67);
     } else { // cloud swirl archway
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       for (let i = 0; i < 7; i++) {
@@ -4978,6 +5046,951 @@ class StarChamber {
       // twinkles around the new constellation friend
       if (chance(0.2)) Particles.burst(hp.x + rand(-70, 70), hp.y + rand(-70, 50), 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 25, grav: 0, l1: 0.9, s1: 8, up: 0 });
       ctx.restore();
+    }
+  }
+}
+
+// ================================================================ jungle vine
+// Reusable swinging vine (first used in the Jungle Treehouse Trail). Fully
+// contextual: jump INTO the dangling leaf grip to grab on (never grabs while
+// standing), the vine swings on a steady, readable pendulum, and pressing
+// Up/Space lets go with the swing's momentum plus a friendly upward boost —
+// bad timing is never a plummet. Only one vine can be held at a time; the
+// holder is tracked on the LEVEL object (lv.vineHold) so nothing can leak
+// through enterSub/exitSub. The swing is a deterministic sinusoid, which keeps
+// it predictable for a five-year-old ("let go when you're flying that way!")
+// and rideable-for-real in the harness.
+class Vine {
+  constructor(ax, ay, len, opt = {}) {
+    this.ax = ax; this.ay = ay; this.len = len;
+    this.amp = opt.amp || 0.85;  // swing amplitude (radians)
+    this.om = opt.om || 1.7;     // swing speed (rad/s)
+    this.t = opt.phase ?? rand(9);
+    this.cd = 0;                 // regrab cooldown after a release
+  }
+  angle() { return this.amp * Math.sin(this.t * this.om); }
+  bob() {
+    const a = this.angle();
+    return { a, x: this.ax + Math.sin(a) * this.len, y: this.ay + Math.cos(a) * this.len };
+  }
+  grabBox() {
+    const b = this.bob();
+    return { x: b.x - 36, y: b.y - 48, w: 72, h: 112 };
+  }
+  update(dt, pl, lv) {
+    this.t += dt;
+    this.cd = Math.max(0, this.cd - dt);
+    const b = this.bob();
+    if (lv.vineHold === this) {
+      if (justP.ArrowUp || justP.Space) {
+        // LET GO — fly with the swing's momentum
+        lv.vineHold = null;
+        this.cd = 0.7;
+        const av = this.amp * this.om * Math.cos(this.t * this.om); // angular velocity
+        pl.vx = av * this.len * Math.cos(b.a) * 1.25;
+        pl.vy = -av * this.len * Math.sin(b.a) - 320;
+        pl.launchT = 1.3; // same airborne momentum window as the side-launch clouds
+        pl.onGround = false;
+        pl.setMood('grin', 0.8);
+        AudioSys.sfx('whoosh');
+        Particles.burst(pl.cx, pl.cy, 8, { colors: ['#7be07b', '#fff'], type: 'sparkle', sp1: 160, l1: 0.5, s1: 8 });
+      } else {
+        pl.x = b.x - pl.w / 2;
+        pl.y = b.y - 24;
+        pl.vx = 0; pl.vy = 0;
+        pl.onGround = false;
+        pl.spin = b.a * 1.6; // lean into the swing
+        if (chance(2 * dt)) Particles.burst(b.x, b.y - 30, 1, { colors: ['#7be07b'], type: 'sparkle', sp1: 20, grav: 60, l1: 0.5, s1: 7, up: 0 });
+      }
+    } else if (!lv.vineHold && !lv.vineLock && this.cd <= 0 && !pl.onGround && overlaps(this.grabBox(), pl)) {
+      lv.vineHold = this;
+      AudioSys.sfx('flap');
+      AudioSys.sfx('switch');
+      pl.setMood('grin', 0.6);
+      Particles.burst(b.x, b.y - 20, 8, { colors: ['#57d357', '#fff'], type: 'sparkle', sp1: 140, l1: 0.5, s1: 8 });
+    }
+  }
+  draw(ctx, t) {
+    const b = this.bob();
+    // rope: a gentle curve from the anchor out to the bob
+    ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(this.ax, this.ay);
+    ctx.quadraticCurveTo(
+      this.ax + Math.sin(b.a) * this.len * 0.45, this.ay + Math.cos(b.a) * this.len * 0.55,
+      b.x, b.y
+    );
+    ctx.stroke();
+    // little leaves along the vine
+    ctx.fillStyle = '#57b84a';
+    for (const k of [0.3, 0.55, 0.8]) {
+      const lx = this.ax + Math.sin(b.a) * this.len * k;
+      const ly = this.ay + Math.cos(b.a) * this.len * (k + 0.04);
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(b.a + Math.sin(t * 2 + k * 9) * 0.2);
+      ctx.beginPath(); ctx.ellipse(9, 0, 11, 5, 0.4, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // the big leafy grip at the end — THE thing to jump into
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.a * 0.5);
+    ctx.fillStyle = '#57d357';
+    for (const sd of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(sd * 14, 2, 17, 8, sd * 0.5, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = '#3f9c3a';
+    rr(ctx, -6, -10, 12, 22, 5); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ================================================================ the monkey
+// The Jungle Treehouse Trail's companion. Starts stranded and SAD (slumped,
+// sighing, dreaming of a banana in a thought bubble); once fed, he celebrates
+// and becomes a friend who bounds along behind the hero — and who can THROW
+// the hero across gaps no jump could ever cross (the TreehouseTrail machine
+// orchestrates those throw sequences; during them monkey.state === 'held').
+class Monkey {
+  constructor(x, groundY) {
+    this.w = 54; this.h = 62;
+    this.x = x - 27; this.y = groundY - this.h;
+    this.groundY = groundY;
+    this.state = 'sad'; // sad -> munch -> follow (held = trail is posing him)
+    this.pose = null;   // 'windup' | 'leap' | 'climb' while held
+    this.vx = 0; this.vy = 0; this.onGround = true;
+    this.t = rand(9); this.munchT = 0; this.sighT = rand(2, 3.5);
+    this.facing = -1; this.bubbleT = 0;
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt, pl, lv) {
+    this.t += dt;
+    if (this.state === 'sad') {
+      this.facing = pl.cx > this.cx ? 1 : -1;
+      const near = Math.abs(pl.cx - this.cx) < 470 && Math.abs(pl.cy - this.cy) < 420;
+      this.bubbleT = near ? Math.min(1, this.bubbleT + dt * 3) : Math.max(0, this.bubbleT - dt * 3);
+      this.sighT -= dt;
+      if (this.sighT <= 0) {
+        this.sighT = rand(3.5, 5.5);
+        if (near) AudioSys.sfx('monkeysad');
+        // a single cartoon tear
+        Particles.burst(this.cx + this.facing * 10, this.y + 18, 1, { colors: ['#7fd8ff'], type: 'circle', sp1: 15, grav: 300, l1: 0.7, s1: 6, up: 0 });
+      }
+    } else if (this.state === 'munch') {
+      this.munchT += dt; // the trail drives the celebration beats
+    } else if (this.state === 'follow') {
+      const far = Math.abs(pl.cx - this.cx) > 700 || Math.abs(pl.cy - this.cy) > 700;
+      if (far) { this.x = pl.x - pl.facing * 90; this.y = pl.y - 30; this.vy = 0; }
+      const tx = pl.cx - pl.facing * 120 - this.w / 2;
+      const step = clamp((tx - this.x) * Math.min(1, 6 * dt), -330 * dt, 330 * dt);
+      this.x += step;
+      if (Math.abs(tx - this.x) > 8) this.facing = Math.sign(tx - this.x) || this.facing;
+      else this.facing = pl.facing;
+      this.vy += 1600 * dt;
+      if (this.vy > 900) this.vy = 900;
+      const r = moveEntity(this, lv, dt);
+      this.onGround = r.ground;
+      if (this.onGround && Math.abs(tx - this.x) > 40 && chance(3 * dt)) this.vy = -430; // bounding hops
+      if (chance(0.5 * dt)) Particles.burst(this.cx, this.y - 6, 1, { colors: ['#ff8fb0'], type: 'heart', sp1: 40, grav: -110, l1: 0.9, s1: 8, up: 0 });
+      if (this.y > lv.h + 150) { this.x = pl.x; this.y = pl.y - 40; this.vy = 0; }
+    }
+    // 'held': the TreehouseTrail positions him directly
+  }
+  draw(ctx, t) {
+    const sad = this.state === 'sad';
+    const munch = this.state === 'munch';
+    const x = this.cx, base = this.y + this.h;
+    const running = this.state === 'follow' && this.onGround && Math.abs(this.vx) + 1 > 0;
+    ctx.save();
+    if (this.facing < 0) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.translate(-x, 0); }
+    const slump = sad ? 10 : 0;
+    const hop = munch && this.munchT > 1.9 ? Math.abs(Math.sin(t * 9)) * 14 : 0;
+    ctx.translate(0, slump - hop);
+    // tail: a big curly question-mark of a tail (droops when sad)
+    ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 16, base - 22);
+    if (sad) ctx.quadraticCurveTo(x - 44, base - 10, x - 52, base - 4);
+    else ctx.quadraticCurveTo(x - 48, base - 46 + Math.sin(t * 4) * 5, x - 34, base - 62 + Math.sin(t * 4) * 6);
+    ctx.stroke();
+    if (!sad) { ctx.beginPath(); ctx.arc(x - 32, base - 66 + Math.sin(t * 4) * 6, 5, 0, TAU); ctx.stroke(); }
+    // legs (tucked when sitting sad, trotting when following)
+    ctx.strokeStyle = '#a06a3e'; ctx.lineWidth = 8;
+    if (sad) {
+      ctx.beginPath(); ctx.moveTo(x - 8, base - 14); ctx.lineTo(x + 14, base - 4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 2, base - 12); ctx.lineTo(x + 20, base - 2); ctx.stroke();
+    } else {
+      const sw = running ? Math.sin(t * 12) * 7 : 0;
+      ctx.beginPath(); ctx.moveTo(x - 8, base - 16); ctx.lineTo(x - 10 + sw, base - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 8, base - 16); ctx.lineTo(x + 10 - sw, base - 1); ctx.stroke();
+    }
+    // body: brown with a banana-cream belly
+    ctx.fillStyle = '#a06a3e';
+    ctx.beginPath(); ctx.ellipse(x, base - 26, 19, 21, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#6f4423'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#ffe9c0';
+    ctx.beginPath(); ctx.ellipse(x + 3, base - 22, 11, 13, 0, 0, TAU); ctx.fill();
+    // arms
+    ctx.strokeStyle = '#a06a3e'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    if (sad) { // hugging knees, one hand out begging now and then
+      const beg = Math.sin(this.t * 1.4) > 0.4 ? 8 : 0;
+      ctx.beginPath(); ctx.moveTo(x - 4, base - 34); ctx.lineTo(x + 16 + beg, base - 18 - beg); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 10, base - 32); ctx.lineTo(x + 8, base - 12); ctx.stroke();
+    } else if (munch && this.munchT < 1.9) { // banana to mouth
+      ctx.beginPath(); ctx.moveTo(x + 6, base - 36); ctx.lineTo(x + 16, base - 52); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 6, base - 34); ctx.lineTo(x + 10, base - 50); ctx.stroke();
+    } else { // arms up and happy
+      const wig = Math.sin(t * 8) * 6;
+      ctx.beginPath(); ctx.moveTo(x - 10, base - 36); ctx.lineTo(x - 22, base - 52 - wig); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 10, base - 36); ctx.lineTo(x + 22, base - 52 + wig); ctx.stroke();
+    }
+    // head with big round ears
+    const hy = base - 52 - (sad ? -4 : 0);
+    ctx.fillStyle = '#a06a3e';
+    for (const sd of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(x + sd * 15, hy - 8, 8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#6f4423'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = '#ffd9b0';
+      ctx.beginPath(); ctx.arc(x + sd * 15, hy - 8, 4, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#a06a3e';
+    }
+    ctx.beginPath(); ctx.arc(x, hy, 16, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#6f4423'; ctx.lineWidth = 3; ctx.stroke();
+    // cream face patch
+    ctx.fillStyle = '#ffe9c0';
+    ctx.beginPath(); ctx.ellipse(x + 1, hy + 3, 11, 9.5, 0, 0, TAU); ctx.fill();
+    const mood = sad ? 'sad' : munch ? (this.munchT < 1.9 ? 'grin' : 'grin') : 'happy';
+    drawFace(ctx, x, hy + 1, 21, mood, t, 68, this.facing, 0);
+    // a tiny tuft of hair
+    ctx.strokeStyle = '#6f4423'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x, hy - 15); ctx.quadraticCurveTo(x + 4, hy - 24, x + 8, hy - 21); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ================================================================ treehouse trail
+// The Jungle Treehouse Trail machine (lv.puzzle for 'treehouse'). One class
+// holds the whole adventure so exitSub can never leak it:
+//   - the banana machine: pressure plate -> rope ladder unrolls; porch lever ->
+//     pulley pays the banana down; a grumpy toucan sits ON the rope and blocks
+//     it until startled (the bounce flower under it does the job — so does any
+//     thrown block). Plate/lever/toucan resolve in any order; every action has
+//     an immediate visible reaction and wrong attempts are jokes, not damage.
+//   - the sad monkey: banana delivered -> celebration -> lifelong friend.
+//   - throw pads: with the monkey following, standing on a pad makes him grab
+//     the hero, wind up, and HURL them along a huge scripted arc — the only way
+//     across the waterfall gorge and up to the Grand Treehouse balcony.
+//   - the Monkey Disco (a found-only party room) and the Banana Bell finale,
+//     which reveals lv.goalStar so subWin/persistence/replay all come free.
+function qBez(p0, c, p1, k) {
+  const u = 1 - k;
+  return {
+    x: u * u * p0.x + 2 * u * k * c.x + k * k * p1.x,
+    y: u * u * p0.y + 2 * u * k * c.y + k * k * p1.y
+  };
+}
+class TreehouseTrail {
+  constructor(gf, gb) {
+    this.gf = gf; this.gb = gb; // region floors: jungle floor / highland floor
+    this.t = rand(9);
+    // -- banana machine --
+    this.plate = { x: 1780, y: gf - 24, w: 104, h: 30, on: false };
+    this.rungs = [ // hidden until the plate unrolls the ladder
+      { x: 1654, y: gf - 90, w: 92, h: 14, oneWay: true, skipDraw: true, broken: true },
+      { x: 1654, y: gf - 180, w: 92, h: 14, oneWay: true, skipDraw: true, broken: true }
+    ];
+    this.houseX = 1760; this.porchY = gf - 260; // lever house porch top (2280)
+    this.lever = { x: 1798, y: this.porchY - 86, w: 54, h: 86, on: false };
+    this.pulley = { x: 2110, y: gf - 410, spin: 0 }; // palm-top pulley (y 2130)
+    this.toucan = { x: 2062, y: gf - 392, state: 'perch', t: rand(9), flyT: 0, grumpT: 0, sulkX: 1768, sulkY: this.porchY - 120 };
+    this.banana = { state: 'hang', x: 2110, y: gf - 340, t: rand(9), hangY: gf - 340, stuckY: gf - 290, floorY: gf - 68 };
+    this.monkey = new Monkey(2262, gf);
+    this.peel = null;
+    // -- throw pads --
+    this.pads = [
+      { x: 2335, groundY: gf, c: { x: 2840, y: 700 }, land: { x: 3350, y: gb }, cd: 0 },
+      { x: 4400, groundY: 1250, c: { x: 4180, y: 480 }, land: { x: 3950, y: 760 }, cd: 0 }
+    ];
+    this.seq = null;       // {pad, phase:'grab'|'windup'|'fly', t, p0, p1, from}
+    this.monkeyLeap = null; // monkey's own hop across after a throw
+    // -- region B set pieces --
+    this.disco = { x: 3240, y: 1140, found: false, t: rand(9) };
+    this.bell = { x: 3950, y: 646, state: 'idle', t: 0, swing: 0 };
+    this.balcony = { x: 3790, w: 330, y: 760 };
+  }
+  lights() { return []; }
+  padZone(pad, pl) {
+    return Math.abs(pl.cx - pad.x) < 60 && Math.abs(pl.y + pl.h - pad.groundY) < 10 && pl.onGround;
+  }
+  toucanBox() { return { x: this.toucan.x - 46, y: this.toucan.y - 34, w: 92, h: 70 }; }
+  bananaBox() { return { x: this.banana.x - 34, y: this.banana.y - 30, w: 68, h: 64 }; }
+  startleToucan() {
+    const tc = this.toucan;
+    if (tc.state !== 'perch') return;
+    tc.state = 'fly'; tc.flyT = 0;
+    tc.fx = tc.x; tc.fy = tc.y;
+    AudioSys.sfx('squawk');
+    Particles.burst(tc.x, tc.y, 8, { colors: ['#4aa3ff', '#ffe156'], type: 'confetti', sp1: 180, l1: 0.7, s1: 8 });
+    if (this.banana.state === 'stuck') {
+      this.banana.state = 'drop'; // the rope is free — down it comes
+      AudioSys.sfx('switch');
+    }
+  }
+  update(dt, pl) {
+    const lv = game.level;
+    this.t += dt;
+    this.pulley.spin = Math.max(0, this.pulley.spin - dt);
+    // vines keep their leaves to themselves while the monkey is throwing you
+    lv.vineLock = !!this.seq;
+    // ---- pressure plate -> the rope ladder tumbles open ----
+    if (!this.plate.on && overlaps(this.plate, pl)) {
+      this.plate.on = true;
+      for (const r of this.rungs) r.broken = false;
+      AudioSys.sfx('switch');
+      AudioSys.sfx('grind');
+      game.shake = Math.max(game.shake, 0.15);
+      Particles.burst(1700, this.gf - 140, 12, { colors: ['#d9b98a', '#8a5a34'], sp1: 180, l1: 0.6, s1: 9, up: 40 });
+    }
+    // ---- porch lever -> the pulley pays the banana rope out ----
+    if (!this.lever.on && overlaps(this.lever, pl)) {
+      this.lever.on = true;
+      this.pulley.spin = 1.6;
+      AudioSys.sfx('switch');
+      AudioSys.sfx('grind');
+      game.shake = Math.max(game.shake, 0.18);
+      Particles.burst(this.lever.x + 27, this.lever.y + 30, 10, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 200, l1: 0.6, s1: 9 });
+      Particles.burst(this.pulley.x, this.pulley.y, 8, { colors: ['#d9b98a'], type: 'sparkle', sp1: 120, l1: 0.5, s1: 8 });
+      if (this.banana.state === 'hang') this.banana.state = 'drop';
+    }
+    // ---- the grumpy toucan on the rope ----
+    const tc = this.toucan;
+    tc.t += dt;
+    tc.grumpT = Math.max(0, tc.grumpT - dt);
+    if (tc.state === 'perch') {
+      if ((!pl.onGround && overlaps(this.toucanBox(), pl))) this.startleToucan();
+      else for (const pr of game.projectiles) {
+        if (!pr.dead && overlaps(pr, this.toucanBox())) { this.startleToucan(); pr.impact(true); break; }
+      }
+    } else if (tc.state === 'fly') {
+      tc.flyT += dt;
+      const k = Math.min(1, tc.flyT / 1.1);
+      const p = qBez({ x: tc.fx, y: tc.fy }, { x: (tc.fx + tc.sulkX) / 2, y: tc.fy - 160 }, { x: tc.sulkX, y: tc.sulkY }, k);
+      tc.x = p.x; tc.y = p.y;
+      if (k >= 1) { tc.state = 'sulk'; tc.grumpT = 2; }
+    }
+    // ---- the banana ----
+    const bn = this.banana;
+    bn.t += dt;
+    if (bn.state === 'drop') {
+      this.pulley.spin = Math.max(this.pulley.spin, 0.4);
+      bn.y += 240 * dt;
+      if (tc.state === 'perch' && bn.y >= bn.stuckY) {
+        bn.y = bn.stuckY;
+        bn.state = 'stuck'; // the toucan's grip pins the rope — !?
+        tc.grumpT = 2.5;
+        AudioSys.sfx('boing');
+        AudioSys.sfx('squawk');
+      } else if (bn.y >= bn.floorY) {
+        bn.y = bn.floorY;
+        bn.state = 'waiting';
+        AudioSys.sfx('boing');
+        AudioSys.sfx('collect');
+        Particles.burst(bn.x, bn.y, 14, { colors: ['#ffe156', '#ffd24a', '#fff'], type: 'star', sp1: 220, l1: 0.8, s1: 10, grav: 200 });
+      }
+    } else if (bn.state === 'stuck') {
+      if (tc.state !== 'perch') bn.state = 'drop';
+    } else if (bn.state === 'waiting') {
+      if (overlaps(this.bananaBox(), pl)) {
+        bn.state = 'follow';
+        AudioSys.sfx('powerup');
+        pl.setMood('grin', 1.2);
+        Particles.burst(bn.x, bn.y, 16, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 260, l1: 0.8, s1: 11, grav: 200 });
+      }
+    } else if (bn.state === 'follow') {
+      const tx = pl.cx - pl.facing * 58, ty = pl.y - 26 + Math.sin(bn.t * 3) * 8;
+      if (Math.hypot(tx - bn.x, ty - bn.y) > 650) { bn.x = tx; bn.y = ty; }
+      const k = Math.min(1, dt * 5.5);
+      bn.x += (tx - bn.x) * k; bn.y += (ty - bn.y) * k;
+      if (chance(0.12)) Particles.burst(bn.x, bn.y + 8, 1, { colors: ['#ffe156'], type: 'sparkle', sp1: 15, grav: -40, l1: 0.7, s1: 7, up: 0 });
+      // delivery!
+      if (this.monkey.state === 'sad' && Math.hypot(bn.x - this.monkey.cx, bn.y - this.monkey.cy) < 120) {
+        bn.state = 'eaten';
+        this.monkey.state = 'munch';
+        this.monkey.munchT = 0;
+        AudioSys.sfx('monkey');
+      }
+    }
+    // ---- the celebration (munch beats live here, poses live on the monkey) ----
+    const mk = this.monkey;
+    if (mk.state === 'munch') {
+      const prev = mk.munchT; // updated below in mk.update
+      mk.update(dt, pl, lv);
+      for (const tt of [0.35, 0.8, 1.25]) {
+        if (prev < tt && mk.munchT >= tt) {
+          AudioSys.sfx('candy');
+          Particles.burst(mk.cx + mk.facing * 14, mk.y + 6, 4, { colors: ['#ffe156', '#fff6d0'], sp1: 120, l1: 0.5, s1: 7 });
+        }
+      }
+      if (prev < 1.9 && mk.munchT >= 1.9) { // MONKEY FRIEND ACQUIRED
+        AudioSys.sfx('monkey');
+        AudioSys.sfx('friend');
+        AudioSys.sfx('cheer');
+        game.shake = Math.max(game.shake, 0.25);
+        Particles.burst(mk.cx, mk.y, 22, { colors: ['#ff8fb0', '#ffd24a', '#fff'], type: 'heart', sp1: 300, l1: 1.1, s1: 12 });
+        Particles.burst(mk.cx, mk.y - 20, 18, { colors: RAINBOW, type: 'confetti', sp1: 280, l0: 1, l1: 2, s1: 11, grav: 260, up: 200 });
+        this.peel = { x: mk.cx + mk.facing * 40, y: this.gf - 6 };
+        pl.setMood('grin', 2);
+      }
+      if (mk.munchT >= 3.0) mk.state = 'follow';
+    } else if (mk.state !== 'held') {
+      mk.update(dt, pl, lv);
+    }
+    // ---- throw pads: the monkey launches the hero ----
+    for (const pad of this.pads) pad.cd = Math.max(0, pad.cd - dt);
+    if (!this.seq && mk.state === 'follow') {
+      for (const pad of this.pads) {
+        if (pad.cd > 0 || !this.padZone(pad, pl)) continue;
+        this.seq = { pad, phase: 'grab', t: 0, from: { x: mk.x, y: mk.y } };
+        mk.state = 'held'; mk.pose = 'leap';
+        AudioSys.sfx('monkey');
+        break;
+      }
+    }
+    if (this.seq) {
+      const sq = this.seq, pad = sq.pad;
+      sq.t += dt;
+      if (sq.phase === 'grab') { // monkey bounds onto the pad
+        const k = Math.min(1, sq.t / 0.35);
+        mk.x = lerp(sq.from.x, pad.x - mk.w / 2, k);
+        mk.y = lerp(sq.from.y, pad.groundY - mk.h, k) - Math.sin(k * Math.PI) * 60;
+        if (k >= 1) { sq.phase = 'windup'; sq.t = 0; mk.pose = 'windup'; }
+      } else if (sq.phase === 'windup') { // hoists the hero overhead and spins up
+        mk.x = pad.x - mk.w / 2; mk.y = pad.groundY - mk.h;
+        pl.x = pad.x - pl.w / 2 + Math.sin(sq.t * 26) * 5;
+        pl.y = pad.groundY - mk.h - pl.h - 8;
+        pl.vx = 0; pl.vy = 0; pl.onGround = false;
+        if (chance(8 * dt * 4)) Particles.burst(pad.x + rand(-30, 30), pad.groundY - 40, 1, { colors: ['#c9a96a', '#7be07b'], sp1: 70, grav: -30, l1: 0.5, s1: 8, up: 10 });
+        if (sq.t >= 0.75) {
+          sq.phase = 'fly'; sq.t = 0;
+          sq.p0 = { x: pl.x, y: pl.y };
+          sq.p1 = { x: pad.land.x - pl.w / 2, y: pad.land.y - pl.h };
+          AudioSys.sfx('launch');
+          AudioSys.sfx('monkey');
+          game.shake = Math.max(game.shake, 0.35);
+          Particles.burst(pad.x, pad.groundY - 60, 16, { colors: ['#7be07b', '#ffe156', '#fff'], type: 'star', sp1: 320, l1: 0.8, s1: 11 });
+        }
+      } else if (sq.phase === 'fly') { // THE THROW
+        const k = Math.min(1, sq.t / 1.5);
+        const p = qBez(sq.p0, pad.c, sq.p1, k);
+        pl.x = p.x; pl.y = p.y;
+        pl.vx = 0; pl.vy = 0; pl.onGround = false;
+        pl.spin += 13 * dt;
+        pl.setMood('grin', 0.5);
+        if (chance(0.7)) Particles.burst(pl.cx, pl.cy, 1, { colors: ['#57d357', '#7be07b', '#ffe156'], type: 'confetti', sp1: 60, grav: 120, l1: 1, s1: 9, up: 0 });
+        if (k >= 1) { // touchdown in a whole new jungle
+          pl.y = sq.p1.y; pl.vy = 0; pl.squash = 0.65;
+          AudioSys.sfx('thud');
+          AudioSys.sfx('land');
+          game.shake = Math.max(game.shake, 0.2);
+          Particles.burst(pl.cx, pl.y + pl.h, 12, { colors: ['#57b84a', '#8a5a34'], sp1: 200, l1: 0.6, s1: 10, up: 30 });
+          pad.cd = 1.6;
+          this.monkeyLeap = {
+            t: 0,
+            p0: { x: mk.x, y: mk.y },
+            c: { x: (mk.x + sq.p1.x) / 2, y: pad.c.y + 60 },
+            p1: { x: pad.land.x + 40, y: pad.land.y - mk.h }
+          };
+          mk.pose = 'leap';
+          this.seq = null;
+        }
+      }
+    }
+    if (this.monkeyLeap) { // the monkey swings across right behind you
+      const L = this.monkeyLeap;
+      L.t += dt;
+      const k = Math.min(1, L.t / 0.9);
+      const p = qBez(L.p0, L.c, L.p1, k);
+      mk.x = p.x; mk.y = p.y;
+      if (k >= 1) { this.monkeyLeap = null; mk.state = 'follow'; mk.pose = null; mk.vy = 0; }
+    }
+    // ---- the MONKEY DISCO (found-only party room) ----
+    if (!this.disco.found && pl.onGround && pl.cx > 3160 && pl.cx < 3320 && Math.abs(pl.y + pl.h - 1140) < 10) {
+      this.disco.found = true;
+      AudioSys.sfx('cheer');
+      AudioSys.sfx('chest');
+      AudioSys.sfx('monkey');
+      game.shake = Math.max(game.shake, 0.3);
+      pl.setMood('grin', 3);
+      Particles.burst(3240, 1060, 30, { colors: RAINBOW, type: 'confetti', sp1: 360, l0: 1, l1: 2.2, s1: 12, grav: 280, up: 260 });
+      for (let i = 0; i < 3; i++) {
+        const c = new Pickup(3200 + i * 40, 1040, 'candy');
+        c.physics = true; c.vx = rand(-140, 140); c.vy = rand(-420, -220);
+        game.pickups.push(c);
+      }
+      game.pickups.push(new Pickup(3240, 1000, 'heart'));
+    }
+    this.disco.t += dt;
+    // ---- the Banana Bell finale ----
+    const bl = this.bell;
+    if (bl.state === 'idle' && mk.state === 'follow' &&
+        pl.onGround && pl.cx > this.balcony.x && pl.cx < this.balcony.x + this.balcony.w &&
+        Math.abs(pl.y + pl.h - this.balcony.y) < 10) {
+      bl.state = 'ringing'; bl.t = 0;
+      mk.state = 'held'; mk.pose = 'climb';
+      mk.climbFrom = { x: mk.x, y: mk.y };
+      AudioSys.sfx('monkey');
+    }
+    if (bl.state === 'ringing') {
+      const prev = bl.t;
+      bl.t += dt;
+      const climbK = Math.min(1, bl.t / 0.9);
+      mk.x = lerp(mk.climbFrom.x, bl.x - mk.w / 2 + 40, climbK);
+      mk.y = lerp(mk.climbFrom.y, bl.y - 10, climbK) - Math.sin(climbK * Math.PI) * 50;
+      for (const tt of [1.1, 1.9, 2.7]) { // BONG. BONG. BONG.
+        if (prev < tt && bl.t >= tt) {
+          bl.swing = 1;
+          AudioSys.sfx('bells');
+          AudioSys.sfx('thud');
+          game.shake = Math.max(game.shake, 0.3);
+          Particles.burst(bl.x, bl.y + 20, 14, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 300, l1: 0.9, s1: 11, grav: 60 });
+        }
+      }
+      if (prev < 2.0 && bl.t >= 2.0) { // candy rains from the canopy
+        for (let i = 0; i < 6; i++) {
+          const c = new Pickup(bl.x + rand(-140, 140), bl.y - 30, 'candy');
+          c.physics = true; c.vx = rand(-180, 180); c.vy = rand(-380, -120);
+          game.pickups.push(c);
+        }
+        Particles.candyBurst(bl.x, bl.y, 14);
+      }
+      if (prev < 3.4 && bl.t >= 3.4) { // the golden star answers the bell
+        game.level.goalStar = { x: 3830, y: 668 };
+        AudioSys.sfx('chest');
+        Particles.burst(3830, 668, 22, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 320, l1: 1, s1: 12, grav: 120 });
+        bl.state = 'done';
+        mk.state = 'follow'; mk.pose = null; mk.vy = 0;
+      }
+    }
+    if (bl.state !== 'idle') bl.swing = Math.max(0, bl.swing - dt * 0.8);
+  }
+  // ---------------------------------------------------------------- drawing
+  drawBanana(ctx, x, y, s, t, glow) {
+    if (glow) {
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(t * 3);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(x, y, s * 1.7, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(t * 2.2) * 0.1);
+    for (const [rot, off] of [[-0.35, -s * 0.4], [0, 0], [0.35, s * 0.4]]) {
+      ctx.save();
+      ctx.translate(off, 0);
+      ctx.rotate(rot);
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.7);
+      ctx.quadraticCurveTo(s * 0.75, -s * 0.15, s * 0.22, s * 0.72);
+      ctx.quadraticCurveTo(s * 0.05, s * 0.8, -s * 0.12, s * 0.68);
+      ctx.quadraticCurveTo(s * 0.3, -s * 0.05, -s * 0.3, -s * 0.62);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = Math.max(2, s * 0.09); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.fillStyle = '#8a5a34'; // stem cap
+    rr(ctx, -s * 0.18, -s * 0.86, s * 0.36, s * 0.24, s * 0.08); ctx.fill();
+    ctx.restore();
+  }
+  drawToucan(ctx, t) {
+    const tc = this.toucan;
+    const flap = tc.state === 'fly' ? Math.sin(tc.t * 22) * 0.9 : 0;
+    const grump = tc.grumpT > 0;
+    ctx.save();
+    ctx.translate(tc.x, tc.y + (tc.state === 'perch' ? Math.sin(t * 2.2) * 2 : 0));
+    const fc = tc.state === 'sulk' ? -1 : 1; // sulking = pointedly facing away
+    if (fc < 0) ctx.scale(-1, 1);
+    // wings
+    ctx.fillStyle = '#2a2438';
+    for (const sd of [-1, 1]) {
+      ctx.save();
+      ctx.rotate(sd * flap * 0.5);
+      ctx.beginPath(); ctx.ellipse(-8, 2 + sd * 3, 16, 8, sd * 0.4, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // body
+    ctx.beginPath(); ctx.ellipse(0, 4, 15, 18, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(3, 8, 8, 11, 0, 0, TAU); ctx.fill();
+    // head
+    ctx.fillStyle = '#2a2438';
+    ctx.beginPath(); ctx.arc(4, -14, 11, 0, TAU); ctx.fill();
+    // THE beak — enormous, banana-colored (suspicious)
+    ctx.fillStyle = '#ffb62b';
+    ctx.beginPath();
+    ctx.moveTo(9, -18);
+    ctx.quadraticCurveTo(34, -18 + (grump ? 4 : 0), 36, -8);
+    ctx.quadraticCurveTo(24, -4, 10, -8);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#d97a1a'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#ff6b35';
+    ctx.beginPath(); ctx.moveTo(12, -8); ctx.quadraticCurveTo(24, -2, 34, -8); ctx.lineTo(30, -5); ctx.quadraticCurveTo(20, 0, 12, -6); ctx.closePath(); ctx.fill();
+    // eye (angry brow when grumpy)
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(2, -16, 4.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a2a3a';
+    ctx.beginPath(); ctx.arc(3, -16, 2.2, 0, TAU); ctx.fill();
+    if (grump) {
+      ctx.strokeStyle = '#3a2a3a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-3, -22); ctx.lineTo(8, -19); ctx.stroke();
+    }
+    // little feet gripping the rope
+    if (tc.state !== 'fly') {
+      ctx.strokeStyle = '#ffb62b'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-4, 20); ctx.lineTo(-4, 26); ctx.moveTo(4, 20); ctx.lineTo(4, 26); ctx.stroke();
+    }
+    ctx.restore();
+    if (tc.state === 'sulk' && tc.grumpT > 0 && chance(0.03)) {
+      Particles.burst(tc.x, tc.y - 30, 1, { colors: ['#c9c9d8'], type: 'bubble', sp1: 20, grav: -60, l1: 0.9, s1: 7, up: 0 });
+    }
+  }
+  drawMachine(ctx, t) {
+    const gf = this.gf;
+    // ---- the lever treehouse on stilts ----
+    const hx = this.houseX, py = this.porchY;
+    ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+    for (const ox of [-70, 66]) {
+      ctx.beginPath(); ctx.moveTo(hx + ox, gf); ctx.lineTo(hx + ox, py + 6); ctx.stroke();
+    }
+    // hut (ends short of the lever so the big red handle reads clearly)
+    ctx.fillStyle = '#b0743e';
+    rr(ctx, hx - 96, py - 130, 132, 130, 10); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+    rr(ctx, hx - 96, py - 130, 132, 130, 10); ctx.stroke();
+    // plank seams + window with a curtain
+    ctx.strokeStyle = 'rgba(106,64,32,0.5)'; ctx.lineWidth = 2.5;
+    for (let sy = py - 98; sy < py - 10; sy += 30) {
+      ctx.beginPath(); ctx.moveTo(hx - 90, sy); ctx.lineTo(hx + 30, sy); ctx.stroke();
+    }
+    ctx.fillStyle = '#5a4a86';
+    rr(ctx, hx - 62, py - 108, 42, 40, 8); ctx.fill();
+    ctx.fillStyle = '#ffe9c0';
+    rr(ctx, hx - 58, py - 104, 34, 32, 6); ctx.fill();
+    drawFace(ctx, hx - 41, py - 87, 16, 'happy', t, 71); // somebody home?
+    // leaf roof
+    ctx.fillStyle = '#3f9c3a';
+    ctx.beginPath();
+    ctx.moveTo(hx - 112, py - 128); ctx.lineTo(hx - 30, py - 182); ctx.lineTo(hx + 52, py - 128);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2f7a2c'; ctx.lineWidth = 4; ctx.stroke();
+    // ---- the rope ladder (rolled or unrolled) ----
+    if (!this.plate.on) {
+      ctx.fillStyle = '#d9b98a';
+      ctx.beginPath(); ctx.arc(1700, py + 12, 16, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#a8895a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(1700, py + 12, 16, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(1700, py + 12, 8, 0, TAU); ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const ox of [-18, 18]) {
+        ctx.beginPath(); ctx.moveTo(1700 + ox, py + 4); ctx.lineTo(1700 + ox, gf - 4); ctx.stroke();
+      }
+      ctx.lineWidth = 5;
+      for (const r of this.rungs) {
+        ctx.beginPath(); ctx.moveTo(r.x + 8, r.y + 6); ctx.lineTo(r.x + r.w - 8, r.y + 6); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(1682, py - 42); ctx.lineTo(1718, py - 42); ctx.stroke(); // top rung onto the porch
+    }
+    // ---- the big red lever ----
+    const lv2 = this.lever;
+    ctx.fillStyle = '#8a8a9a';
+    rr(ctx, lv2.x + 12, py - 22, 30, 22, 5); ctx.fill();
+    ctx.save();
+    ctx.translate(lv2.x + 27, py - 16);
+    ctx.rotate(lerp(-0.75, 0.75, lv2.on ? 1 : 0));
+    ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -58); ctx.stroke();
+    ctx.fillStyle = '#e8482b';
+    ctx.beginPath(); ctx.arc(0, -62, 13, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#8a2418'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
+    if (!lv2.on) { // beckoning glow
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.15 * Math.sin(t * 3);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(lv2.x + 27, py - 60, 36, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // ---- the banana palm + pulley + rope ----
+    const px = 2110, pu = this.pulley;
+    ctx.strokeStyle = '#a8794a'; ctx.lineWidth = 20; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px - 14, gf);
+    ctx.quadraticCurveTo(px - 26, gf - 220, px, pu.y + 24);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(111,68,35,0.5)'; ctx.lineWidth = 3;
+    for (let sy = gf - 40; sy > pu.y + 60; sy -= 44) {
+      ctx.beginPath(); ctx.moveTo(px - 26, sy); ctx.lineTo(px - 4, sy - 8); ctx.stroke();
+    }
+    ctx.fillStyle = '#3f9c3a'; // frond crown
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI + i * Math.PI / 5;
+      ctx.save();
+      ctx.translate(px, pu.y + 8);
+      ctx.rotate(a + Math.PI / 2 + Math.sin(t * 1.2 + i) * 0.06);
+      ctx.beginPath(); ctx.ellipse(0, -46, 14, 48, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    // the rope: banana -> up over the pulley -> across to the hut roof
+    ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(px, this.banana.state === 'hang' || this.banana.state === 'drop' || this.banana.state === 'stuck' ? this.banana.y - 26 : gf - 90);
+    ctx.lineTo(px, pu.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px, pu.y);
+    ctx.quadraticCurveTo((px + hx) / 2, pu.y + 74, hx + 10, py - 130);
+    ctx.stroke();
+    // pulley wheel (spins while paying out)
+    ctx.fillStyle = '#ffb62b';
+    ctx.beginPath(); ctx.arc(px, pu.y, 15, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(px, pu.y, 15, 0, TAU); ctx.stroke();
+    ctx.save();
+    ctx.translate(px, pu.y);
+    ctx.rotate(pu.spin > 0 ? t * 9 : 0.4);
+    ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(13, 0); ctx.moveTo(0, -13); ctx.lineTo(0, 13); ctx.stroke();
+    ctx.restore();
+    // ---- the pressure plate ----
+    const p = this.plate, down = p.on ? 8 : 0;
+    ctx.fillStyle = '#8a8a9a';
+    rr(ctx, p.x - 8, gf - 14, p.w + 16, 14, 5); ctx.fill();
+    ctx.fillStyle = p.on ? '#57d357' : '#ffe156';
+    rr(ctx, p.x, p.y + down, p.w, p.h - down, 8); ctx.fill();
+    ctx.strokeStyle = p.on ? '#2f8a3c' : '#c8861b'; ctx.lineWidth = 3;
+    rr(ctx, p.x, p.y + down, p.w, p.h - down, 8); ctx.stroke();
+    ctx.fillStyle = p.on ? '#fff' : '#c8861b';
+    const mx = p.x + p.w / 2, my = p.y + down + (p.h - down) / 2;
+    ctx.beginPath();
+    ctx.moveTo(mx - 12, my - 5); ctx.lineTo(mx + 12, my - 5); ctx.lineTo(mx, my + 8);
+    ctx.closePath(); ctx.fill();
+  }
+  drawPad(ctx, pad, t) {
+    const g = pad.groundY;
+    ctx.fillStyle = '#b0743e';
+    ctx.beginPath(); ctx.ellipse(pad.x, g - 6, 52, 13, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(pad.x, g - 6, 52, 13, 0, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(pad.x, g - 6, 30, 7, 0, 0, TAU); ctx.stroke();
+    // painted monkey face in the middle
+    drawFace(ctx, pad.x, g - 7, 14, 'grin', t, 73);
+    // dotted flight-arc hint toward where it sends you
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.2 * Math.sin(t * 3);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.setLineDash([3, 16]); ctx.lineCap = 'round';
+    ctx.lineDashOffset = -t * 40;
+    const p0 = { x: pad.x, y: g - 60 };
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    for (let k = 0.08; k <= 0.42; k += 0.06) {
+      const p = qBez(p0, pad.c, { x: pad.land.x, y: pad.land.y - 60 }, k);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  drawDisco(ctx, t) {
+    const d = this.disco, base = d.y; // ledge top
+    // hollow-trunk club: a fat stump with an open arch
+    ctx.fillStyle = '#8a5a34';
+    rr(ctx, d.x - 140, base - 186, 280, 186, 22); ctx.fill();
+    ctx.strokeStyle = '#5f3a1e'; ctx.lineWidth = 4;
+    rr(ctx, d.x - 140, base - 186, 280, 186, 22); ctx.stroke();
+    ctx.fillStyle = '#3f9c3a'; // mossy top
+    ctx.beginPath(); ctx.ellipse(d.x, base - 186, 152, 24, 0, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = '#241a10'; // the dark dance floor inside
+    ctx.beginPath();
+    ctx.moveTo(d.x - 112, base);
+    ctx.lineTo(d.x - 112, base - 110);
+    ctx.quadraticCurveTo(d.x, base - 168, d.x + 112, base - 110);
+    ctx.lineTo(d.x + 112, base);
+    ctx.closePath(); ctx.fill();
+    // sweeping party lights
+    ctx.save();
+    ctx.globalAlpha = d.found ? 0.6 : 0.35;
+    for (let i = 0; i < 3; i++) {
+      const a = Math.sin(t * (d.found ? 3.2 : 1.6) + i * 2.1) * 0.7;
+      ctx.fillStyle = RAINBOW[(i * 2 + Math.floor(t * (d.found ? 6 : 2))) % RAINBOW.length];
+      ctx.beginPath();
+      ctx.moveTo(d.x, base - 150);
+      ctx.lineTo(d.x + Math.sin(a) * 120 - 18, base);
+      ctx.lineTo(d.x + Math.sin(a) * 120 + 18, base);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    // THE GLITTER BANANA spinning on its vine
+    ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(d.x, base - 162); ctx.lineTo(d.x, base - 128); ctx.stroke();
+    ctx.save();
+    ctx.translate(d.x, base - 112);
+    ctx.rotate(t * (d.found ? 3 : 1.2));
+    this.drawBanana(ctx, 0, 0, 17, 0, false);
+    ctx.restore();
+    if (chance(d.found ? 0.3 : 0.08)) {
+      Particles.burst(d.x + rand(-60, 60), base - rand(60, 140), 1, { colors: RAINBOW.concat(['#ffe156']), type: 'sparkle', sp1: 30, grav: -20, l1: 0.8, s1: 8, up: 0 });
+    }
+    // three tiny disco monkeys
+    for (let i = 0; i < 3; i++) {
+      const bx = d.x - 76 + i * 76;
+      const bob = Math.abs(Math.sin(t * (d.found ? 8 : 5) + i * 1.4)) * (d.found ? 12 : 7);
+      const by = base - 20 - bob;
+      ctx.fillStyle = '#a06a3e';
+      ctx.beginPath(); ctx.ellipse(bx, by, 9, 11, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx, by - 14, 8, 0, TAU); ctx.fill();
+      for (const sd of [-1, 1]) { ctx.beginPath(); ctx.arc(bx + sd * 8, by - 18, 3.5, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = '#ffe9c0';
+      ctx.beginPath(); ctx.ellipse(bx, by - 13, 5.5, 4.5, 0, 0, TAU); ctx.fill();
+      drawFace(ctx, bx, by - 14, 10, 'grin', t, 74 + i);
+      ctx.strokeStyle = '#a06a3e'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+      const wig = Math.sin(t * 10 + i * 2) * 5;
+      ctx.beginPath(); ctx.moveTo(bx - 6, by - 4); ctx.lineTo(bx - 12, by - 14 - wig); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx + 6, by - 4); ctx.lineTo(bx + 12, by - 14 + wig); ctx.stroke();
+    }
+    if (d.found && chance(0.05)) {
+      Particles.burst(d.x + rand(-50, 50), base - 120, 3, { colors: RAINBOW, type: 'confetti', sp1: 140, l0: 0.8, l1: 1.6, s1: 9, grav: 220, up: 120 });
+    }
+  }
+  drawBellHouse(ctx, t) {
+    const bl = this.bell, bx = bl.x;
+    const by = this.balcony.y;
+    // the GRAND TREEHOUSE: a big hut behind the balcony with a bell gable
+    ctx.strokeStyle = '#8a5a34'; ctx.lineWidth = 16; ctx.lineCap = 'round';
+    for (const ox of [-150, 150]) {
+      ctx.beginPath(); ctx.moveTo(bx + ox, by + 4); ctx.lineTo(bx + ox, by - 160); ctx.stroke();
+    }
+    ctx.fillStyle = '#b0743e';
+    rr(ctx, bx - 190, by - 190, 380, 190, 14); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 5;
+    rr(ctx, bx - 190, by - 190, 380, 190, 14); ctx.stroke();
+    ctx.strokeStyle = 'rgba(106,64,32,0.5)'; ctx.lineWidth = 3;
+    for (let sy = by - 158; sy < by - 16; sy += 34) {
+      ctx.beginPath(); ctx.moveTo(bx - 182, sy); ctx.lineTo(bx + 182, sy); ctx.stroke();
+    }
+    // door + windows
+    ctx.fillStyle = '#5a3a20';
+    ctx.beginPath();
+    ctx.arc(bx, by - 74, 34, Math.PI, TAU);
+    ctx.rect(bx - 34, by - 74, 68, 74);
+    ctx.fill();
+    ctx.fillStyle = '#ffe9c0';
+    for (const ox of [-110, 110]) {
+      rr(ctx, bx + ox - 24, by - 132, 48, 44, 9); ctx.fill();
+    }
+    drawFace(ctx, bx - 110, by - 110, 18, 'happy', t, 79);
+    drawFace(ctx, bx + 110, by - 110, 18, 'sleepy', t, 80);
+    // gable roof
+    ctx.fillStyle = '#3f9c3a';
+    ctx.beginPath();
+    ctx.moveTo(bx - 214, by - 186); ctx.lineTo(bx, by - 300); ctx.lineTo(bx + 214, by - 186);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2f7a2c'; ctx.lineWidth = 5; ctx.stroke();
+    // the bell arch under the gable peak
+    ctx.fillStyle = '#8a5a34';
+    rr(ctx, bx - 56, by - 214, 112, 88, 12); ctx.fill();
+    ctx.strokeStyle = '#5f3a1e'; ctx.lineWidth = 4;
+    rr(ctx, bx - 56, by - 214, 112, 88, 12); ctx.stroke();
+    ctx.fillStyle = '#241a10';
+    ctx.beginPath();
+    ctx.arc(bx, by - 156, 40, Math.PI, TAU);
+    ctx.rect(bx - 40, by - 156, 80, 28);
+    ctx.fill();
+    // THE GREAT BANANA BELL (a golden bell with a banana clapper, obviously)
+    const swing = Math.sin(t * 9) * bl.swing * 0.5;
+    ctx.save();
+    ctx.translate(bx, by - 176);
+    ctx.rotate(swing);
+    ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 2); ctx.stroke();
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath();
+    ctx.moveTo(-22, 34);
+    ctx.quadraticCurveTo(-24, -2, 0, -4);
+    ctx.quadraticCurveTo(24, -2, 22, 34);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-24, 34); ctx.lineTo(24, 34); ctx.stroke();
+    drawFace(ctx, 0, 16, 17, bl.state === 'done' ? 'grin' : 'happy', t, 81);
+    // banana clapper peeking under the rim
+    this.drawBanana(ctx, Math.sin(t * 9) * bl.swing * 8, 42, 8, 0, false);
+    ctx.restore();
+    // bong rings
+    if (bl.swing > 0.5) {
+      ctx.save();
+      ctx.globalAlpha = (bl.swing - 0.5) * 1.6;
+      ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(bx, by - 156, 60 + (1 - bl.swing) * 120, 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
+    // rope from the bell down to balcony reach (the monkey climbs it)
+    ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(bx + 40, by - 140); ctx.quadraticCurveTo(bx + 44, by - 80, bx + 40, by - 24); ctx.stroke();
+  }
+  draw(ctx, t) {
+    // region B set pieces first (far side of the world)
+    this.drawBellHouse(ctx, t);
+    this.drawDisco(ctx, t);
+    // region A machine
+    this.drawMachine(ctx, t);
+    // throw pads
+    for (const pad of this.pads) this.drawPad(ctx, pad, t);
+    // the toucan
+    this.drawToucan(ctx, t);
+    // the banana (in every state but eaten)
+    const bn = this.banana;
+    if (bn.state !== 'eaten') {
+      const bob = bn.state === 'waiting' || bn.state === 'follow' ? Math.sin(bn.t * 3) * 5 : 0;
+      const wob = bn.state === 'stuck' ? Math.sin(t * 16) * 3 : 0;
+      this.drawBanana(ctx, bn.x + wob, bn.y + bob, 22, bn.t, bn.state === 'waiting');
+      if (bn.state === 'stuck') outlineText(ctx, '?!', bn.x + 40, bn.y - 30, 30, '#ffe156', '#5a4a86');
+    }
+    // the banana peel keepsake
+    if (this.peel) {
+      ctx.save();
+      ctx.translate(this.peel.x, this.peel.y);
+      ctx.fillStyle = '#ffd24a';
+      for (const a of [-0.7, 0, 0.7]) {
+        ctx.save();
+        ctx.rotate(a);
+        ctx.beginPath(); ctx.ellipse(0, -8, 5, 12, 0, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 4, 0, 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
+    // the monkey himself
+    this.monkey.draw(ctx, t);
+    // sad monkey's banana thought bubble
+    const mk = this.monkey;
+    if (mk.state === 'sad' && mk.bubbleT > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = mk.bubbleT;
+      const bx = mk.cx + 10, by = mk.y - 66 + Math.sin(t * 4) * 4;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(mk.cx + 16, mk.y - 12, 5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(mk.cx + 22, mk.y - 28, 8, 0, TAU); ctx.fill();
+      rr(ctx, bx - 44, by - 34, 88, 66, 24); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      rr(ctx, bx - 44, by - 34, 88, 66, 24); ctx.stroke();
+      this.drawBanana(ctx, bx, by, 17, t, false);
+      ctx.restore();
+    }
+    // WHEEE! while flying
+    if (this.seq && this.seq.phase === 'fly' && game.player) {
+      outlineText(ctx, 'WHEEE!', game.player.cx, game.player.y - 46, 40, '#ffe156', '#2f5a2a');
     }
   }
 }

@@ -19,7 +19,8 @@ const LEVEL_META = {
   bubblemaze: { name: 'BUBBLE MAZE', theme: 'water', music: 'water' },
   piperoom: { name: 'SECRET PIPE ROOM', theme: 'cave', music: 'dirt' },
   torchcave: { name: 'TORCH CAVERN', theme: 'cave', music: 'cave' },
-  zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' }
+  zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' },
+  treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' }
 };
 
 function newLevel(n) {
@@ -35,6 +36,7 @@ function newLevel(n) {
     subDoors: [], flight: false,
     truckBuild: null, vents: null, risingLava: null,
     currents: null, shellSwitches: null, goldRush: null,
+    vines: null, vineHold: null, vineLock: false,
     puzzle: null, // secret-room machine (PipeWorks / TorchCavern / StarChamber)
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
@@ -51,7 +53,7 @@ function addPlat(lv, x, y, w, opts = {}) {
   // platform that looks like a walk-through one is just a nuisance.
   const h = opts.h || 36;
   const oneWay = opts.solid ? false : (opts.oneWay || h < 60);
-  lv.solids.push({ x, y, w, h, oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, bounceVx: opts.bounceVx, plat: true });
+  lv.solids.push({ x, y, w, h, oneWay, bouncy: opts.bouncy, bounceVy: opts.bounceVy, bounceVx: opts.bounceVx, plank: opts.plank, plat: true });
 }
 function addBlockPile(lv, x, top, cols, rows) {
   lv.solids.push({ x, y: top - rows * 48, w: cols * 48, h: rows * 48, pile: true });
@@ -553,7 +555,7 @@ function buildLevel(n) {
     pick(lv, 2950, G - 80, 'rainbow');
     pick(lv, 1475, 360, 'heart');
     pick(lv, 4600, G - 80, 'heart');
-    candyRow(lv, 280, 640, G - 55, 4);
+    candyRow(lv, 380, 640, G - 55, 3);
     candyArc(lv, 850, 1090, 410, G - 70, 5); // arcs trace the jump over each flame
     candyRow(lv, 1180, 1680, 440, 5);
     candyArc(lv, 1800, 2040, 400, G - 70, 5);
@@ -565,7 +567,12 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(1600, G));
     lv.checks.push(new Checkpoint(2900, G));
     lv.checks.push(new Checkpoint(4200, G));
-    lv.hints.push({ x: 260, y: G - 190, icon: 'arrows' });
+    // the JUNGLE TREEHOUSE TRAIL: a rope ladder dangles down a giant trunk
+    // right at the jungle's edge — leaves flutter down out of the canopy, a
+    // tiny treehouse peeks through the leaves far above, and every so often a
+    // faint monkey whoop drifts down ("someone lives up there!")
+    lv.subDoors.push(new SubDoor(260, G, 'treehouse', 'ladder'));
+    lv.hints.push({ x: 430, y: G - 190, icon: 'arrows' });
     lv.hints.push({ x: 850, y: G - 220, icon: 'up' }); // "jump!" — over the fire
     // ---- Dino Key adventure mission (collection): the Dinosaur Nest Shrine
     // sits on the terrace with three empty nest bowls; the three lost eggs
@@ -901,6 +908,89 @@ function buildLevel(n) {
     lv.decor.stals = []; lv.decor.crystals = [];
     for (let x = 60; x < 1920; x += rand(140, 260)) lv.decor.stals.push({ x, h: rand(40, 110), w: rand(24, 46) });
     lv.decor.crystals.push({ x: 200, y: G - 30, s: 1, c: 0 }); // one glow near the entrance
+  }
+
+  if (n === 'treehouse') { // ---------------- JUNGLE TREEHOUSE TRAIL (a mini-adventure)
+    // The biggest secret so far — two jungles in one. Region A (floor y=2540):
+    // the jungle floor, a climbing treehouse cluster, and the sad monkey's
+    // clearing with the whole banana machine. Region B (floor y=1500): the
+    // sunlit upper canopy, reachable ONLY by monkey airline across the
+    // waterfall gorge that splits the world. A giant leaf trampoline spans the
+    // gorge bottom, so falling in is a bounce and a giggle — and its launch
+    // apex (bounceVy² / 3200 = 760 px above y 2560) can reach region A's rim
+    // but never region B's higher floor: the gorge stays uncrossable until
+    // the monkey is a friend. No enemies anywhere: the whole trail is
+    // exploration, machines, and friends.
+    const GF = 2540, GB = 1500;
+    lv.w = 4600; lv.h = 2620;
+    lv.playerStart = { x: 110, y: GF - 140 };
+    addGround(lv, 0, 2350, GF);            // region A: the jungle floor
+    addGround(lv, 3150, 1450, GB);         // region B: the highland canopy
+    lv.solids.push({ x: 2350, y: 2560, w: 800, h: 60, bouncy: true, bounceVy: -1560, net: true });
+    // ---- region A: intro + the treehouse cluster ----
+    lv.hints.push({ x: 260, y: GF - 190, icon: 'arrows' });
+    lv.hints.push({ x: 410, y: GF - 310, icon: 'up' }); // jump — into the vine!
+    addPlat(lv, 700, GF - 40, 90, { bouncy: true, h: 40, bounceVy: -1150 }); // booster mushroom
+    addPlat(lv, 620, 2160, 200);
+    addPlat(lv, 950, 2300, 170);
+    addPlat(lv, 900, 2020, 170);
+    addPlat(lv, 1090, 1900, 260, { plank: true }); // rope bridge between trunks
+    addPlat(lv, 1370, 1800, 220);                  // treehouse A porch
+    addPlat(lv, 1650, 1860, 170);                  // the bathtub room ledge
+    // ---- region A: the monkey clearing (machine lives in lv.puzzle) ----
+    addPlat(lv, 1660, GF - 260, 200);              // lever-house porch
+    addPlat(lv, 1965, GF - 40, 90, { bouncy: true, h: 40, bounceVy: -1150 }); // bounce flower under the toucan
+    lv.puzzle = new TreehouseTrail(GF, GB);
+    for (const r of lv.puzzle.rungs) lv.solids.push(r); // ladder rungs, hidden until the plate
+    // ---- region B: the upper canopy ----
+    addPlat(lv, 3430, 1360, 190);                  // first highland ledge
+    addPlat(lv, 3200, GB - 40, 90, { bouncy: true, h: 40, bounceVy: -1300 }); // GOLD flower straight up to the disco
+    addPlat(lv, 3150, 1140, 180);                  // the Monkey Disco ledge
+    addPlat(lv, 3750, 1340, 300);                  // vine-route catch ledge (wide, below the swing)
+    addPlat(lv, 4080, 1210, 160);                  // hop up toward vine 2
+    addPlat(lv, 4420, 1360, 180);                  // ladder route (vine-free alternative)
+    addPlat(lv, 4280, 1250, 260, { plank: true }); // mid-tier bridge — both routes meet here
+    addPlat(lv, 3760, 760, 380, { plank: true });  // the Grand Treehouse balcony
+    // ---- vines (deterministic phases so swings are learnable AND testable) ----
+    lv.vines = [
+      new Vine(500, 2140, 270, { phase: 0 }),      // the teacher, over flat safe ground
+      new Vine(1560, 1490, 250, { phase: 0.9 }),   // treehouse-cluster joyride
+      new Vine(3650, 1000, 250, { phase: 1.8 }),   // canopy crossing 1
+      new Vine(4270, 880, 240, { phase: 2.6 })     // canopy crossing 2
+    ];
+    // ---- candy + rewards ----
+    candyRow(lv, 260, 620, GF - 55, 4);
+    candyArc(lv, 640, 900, 2240, GF - 70, 4);      // traces the mushroom launch
+    candyRow(lv, 1100, 1330, 1850, 3);             // along the rope bridge
+    candyArc(lv, 1400, 1620, 1700, 1810, 3);
+    pick(lv, 1730, 1800, 'heart');                 // bathtub room reward
+    candyRow(lv, 1500, 2170, GF - 55, 5);          // the clearing floor
+    // candy floating along the great-throw arc — collected mid-WHEEE
+    pick(lv, 2650, 1598, 'candy'); pick(lv, 2805, 1377, 'candy');
+    pick(lv, 2956, 1258, 'candy'); pick(lv, 3106, 1245, 'candy');
+    candyRow(lv, 3420, 3720, GB - 55, 3);
+    candyArc(lv, 3520, 4000, 1160, 1320, 4);       // sketches the vine route
+    pick(lv, 4500, 1310, 'heart');                 // ladder-route reward
+    candyRow(lv, 4310, 4510, 1200, 3);             // along the mid-tier bridge
+    candyRow(lv, 3800, 4100, 710, 4);              // the balcony
+    lv.checks.push(new Checkpoint(1560, GF));
+    lv.checks.push(new Checkpoint(3400, GB));
+    // ---- scenery ----
+    lv.decor.trailTrunks = [
+      { x: 872, top: 2040, base: GF, w: 56 },
+      { x: 1420, top: 1690, base: GF, w: 72 },
+      { x: 3560, top: 1040, base: GB, w: 60 },
+      { x: 4140, top: 640, base: GB, w: 88 },      // the grand tree under the balcony
+      { x: 4480, top: 1120, base: GB, w: 52 }
+    ];
+    lv.decor.sloth = { x: 1432, y: 2200 };
+    lv.decor.tubSpider = { x: 1735, y: 1860 };
+    lv.decor.gorgeFalls = { x: 3150, top: GB, bottom: 2620 };
+    lv.decor.monkeySign = { x: 3300, y: GB };
+    lv.decor.frogs = [{ x: 350, g: GF }, { x: 1180, g: GF }, { x: 2180, g: GF }, { x: 3740, g: GB }];
+    lv.decor.floorFerns = [];
+    for (let x = 80; x < 2320; x += rand(150, 290)) lv.decor.floorFerns.push({ x, g: GF, s: rand(0.8, 1.4), c: randi(0, 3) });
+    for (let x = 3180; x < 4560; x += rand(150, 290)) lv.decor.floorFerns.push({ x, g: GB, s: rand(0.8, 1.4), c: randi(0, 3) });
   }
 
   if (n === 'zerog') { // ---------------- ZERO-G STAR CHAMBER (spatial planning)
@@ -1270,7 +1360,9 @@ function drawBG(ctx, lv, cam, t) {
     }
     ctx.restore();
     // the secret valley: waterfall + rainbow behind the far end of the world
-    const wx = 4620 - cam.x;
+    // (world 10 only — the Treehouse Trail shares the jungle theme but draws
+    // its own gorge waterfall in world space)
+    const wx = lv.n === 10 ? 4620 - cam.x : -9999;
     if (wx > -300 && wx < W + 300) {
       ctx.fillStyle = '#5a8a68';
       ctx.beginPath();
@@ -1288,7 +1380,7 @@ function drawBG(ctx, lv, cam, t) {
       ctx.beginPath(); ctx.ellipse(wx, 622, 110, 16, 0, 0, TAU); ctx.fill();
       if (chance(0.2)) Particles.burst(4620 + rand(-60, 60), 610, 1, { colors: ['#fff', '#bfe8ff'], type: 'bubble', sp1: 40, grav: -80, l1: 0.8, s1: 8, up: 20 });
     }
-    const rx3 = 5150 - cam.x * 0.9;
+    const rx3 = lv.n === 10 ? 5150 - cam.x * 0.9 : -9999;
     if (rx3 > -500 && rx3 < W + 500) {
       ctx.save();
       ctx.globalAlpha = 0.4; ctx.lineWidth = 11;
@@ -1406,6 +1498,52 @@ function drawSolids(ctx, lv, cam, t) {
         ctx.stroke();
       }
       ctx.restore();
+      continue;
+    }
+    if (s.net) { // the gorge trampoline: one giant springy lily-leaf
+      const mx = s.x + s.w / 2;
+      const sq = 1 + Math.sin(t * 4) * 0.04;
+      ctx.fillStyle = '#57b84a';
+      ctx.beginPath(); ctx.ellipse(mx, s.y + 24, s.w / 2 + 8, 30 * sq, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.ellipse(mx, s.y + 24, s.w / 2 + 8, 30 * sq, 0, 0, TAU); ctx.stroke();
+      // radial leaf veins
+      ctx.lineWidth = 3;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(mx, s.y + 24);
+        ctx.lineTo(mx + i * s.w * 0.13, s.y + 24 - 24 * sq * (1 - Math.abs(i) * 0.18));
+        ctx.stroke();
+      }
+      // curled-up edges: springy!
+      ctx.fillStyle = '#6fcf5f';
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(mx + sd * (s.w / 2 - 12), s.y + 6, 24, 16, sd * 0.5, 0, TAU);
+        ctx.fill();
+      }
+      drawFace(ctx, mx, s.y + 22, 30, 'grin', t, 69);
+      continue;
+    }
+    if (s.plank) { // rope bridge: wooden slats slung between trunks
+      const sag = Math.min(10, s.w * 0.03);
+      // side ropes
+      ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (const oy of [-14, 2]) {
+        ctx.beginPath();
+        ctx.moveTo(s.x - 8, s.y + oy);
+        ctx.quadraticCurveTo(s.x + s.w / 2, s.y + oy + sag * 2, s.x + s.w + 8, s.y + oy);
+        ctx.stroke();
+      }
+      // slats
+      for (let px2 = s.x + 4; px2 < s.x + s.w - 4; px2 += 26) {
+        const k = (px2 - s.x) / s.w;
+        const dip = Math.sin(k * Math.PI) * sag;
+        ctx.fillStyle = (Math.floor(px2 / 26) % 2) ? '#b0743e' : '#a06a3e';
+        rr(ctx, px2, s.y + 2 + dip, 20, 14, 4); ctx.fill();
+        ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 2;
+        rr(ctx, px2, s.y + 2 + dip, 20, 14, 4); ctx.stroke();
+      }
       continue;
     }
     if (s.bouncy) {
@@ -2083,6 +2221,180 @@ function drawSubDecor(ctx, lv, cam, t, d, visible) {
       }
     }
     drawFace(ctx, e.x - 26, g - 34, 18, 'happy', t, 63);
+  }
+  if (d.trailTrunks) { // Treehouse Trail: the giant trunks holding the canopy up
+    for (const tr of d.trailTrunks) {
+      if (!visible(tr.x)) continue;
+      ctx.fillStyle = '#8a5a34';
+      rr(ctx, tr.x - tr.w / 2, tr.top, tr.w, tr.base - tr.top, 12); ctx.fill();
+      ctx.strokeStyle = '#5f3a1e'; ctx.lineWidth = 4;
+      rr(ctx, tr.x - tr.w / 2, tr.top, tr.w, tr.base - tr.top, 12); ctx.stroke();
+      // bark seams + a knothole
+      ctx.strokeStyle = 'rgba(95,58,30,0.55)'; ctx.lineWidth = 3;
+      for (const k of [0.3, 0.7]) {
+        ctx.beginPath();
+        ctx.moveTo(tr.x - tr.w / 2 + tr.w * k, tr.top + 20);
+        ctx.quadraticCurveTo(tr.x - tr.w / 2 + tr.w * k + 8, (tr.top + tr.base) / 2, tr.x - tr.w / 2 + tr.w * k - 5, tr.base - 20);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#5f3a1e';
+      ctx.beginPath(); ctx.ellipse(tr.x + tr.w * 0.16, lerp(tr.top, tr.base, hash2(tr.x, 3) * 0.5 + 0.3), 7, 10, 0, 0, TAU); ctx.fill();
+      // canopy crown
+      ctx.fillStyle = '#3f9c3a';
+      for (const [ox, r2] of [[-tr.w * 0.7, tr.w * 0.62], [0, tr.w * 0.8], [tr.w * 0.7, tr.w * 0.58]]) {
+        ctx.beginPath(); ctx.arc(tr.x + ox, tr.top - tr.w * 0.2, r2, 0, TAU); ctx.fill();
+      }
+      if (hash2(tr.x, 9) < 0.4) drawFace(ctx, tr.x - tr.w * 0.1, tr.top + 60, Math.min(24, tr.w * 0.35), 'sleepy', t, tr.x);
+    }
+  }
+  if (d.gorgeFalls && visible(d.gorgeFalls.x)) { // the uncrossable waterfall gorge
+    const e = d.gorgeFalls;
+    const wg = ctx.createLinearGradient(0, e.top, 0, e.bottom);
+    wg.addColorStop(0, '#bfe8ff'); wg.addColorStop(1, '#7fd8ff');
+    ctx.fillStyle = wg;
+    ctx.fillRect(e.x - 34, e.top, 104, e.bottom - e.top);
+    // mossy lip where the water pours over
+    ctx.fillStyle = '#3fae5a';
+    ctx.beginPath(); ctx.ellipse(e.x + 18, e.top, 78, 14, 0, Math.PI, TAU); ctx.fill();
+    // tumbling foam blobs
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 8; i++) {
+      const fy = e.top + 20 + ((i * 173 + t * 300) % (e.bottom - e.top - 20));
+      ctx.beginPath(); ctx.ellipse(e.x + 16 + Math.sin(i * 3) * 30, fy, 15, 26, 0, 0, TAU); ctx.fill();
+    }
+    // spray + mist pooling over the leaf trampoline
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.ellipse(e.x - 260 - i * 190, e.bottom - 60, 150, 34 + i * 6, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    if (chance(0.2)) Particles.burst(e.x + rand(-30, 40), e.bottom - rand(60, 140), 1, { colors: ['#fff', '#bfe8ff'], type: 'bubble', sp1: 40, grav: -70, l1: 0.9, s1: 8, up: 20 });
+    // a soft rainbow hanging in the gorge spray
+    ctx.save();
+    ctx.globalAlpha = 0.35; ctx.lineWidth = 10;
+    RAINBOW.forEach((c, i) => {
+      ctx.strokeStyle = c;
+      ctx.beginPath(); ctx.arc(e.x - 400, e.bottom + 60, 330 - i * 11, Math.PI, TAU); ctx.stroke();
+    });
+    ctx.restore();
+  }
+  if (d.sloth && visible(d.sloth.x)) { // micro-discovery: the world's sleepiest neighbor
+    const e = d.sloth;
+    const wave = Math.sin(t * 0.6) > 0.55 ? Math.sin(t * 3) * 4 : 0; // waves in slow motion, occasionally
+    ctx.strokeStyle = '#9a8a6a'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(e.x - 20, e.y - 26); ctx.lineTo(e.x - 2, e.y - 2); ctx.stroke();  // gripping arm
+    ctx.beginPath(); ctx.moveTo(e.x - 20, e.y + 30); ctx.lineTo(e.x - 2, e.y + 16); ctx.stroke(); // gripping leg
+    ctx.fillStyle = '#b0a082';
+    ctx.beginPath(); ctx.ellipse(e.x + 6, e.y + 6, 20, 26, 0.3, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#8a7a5c'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#e8dcc0';
+    ctx.beginPath(); ctx.arc(e.x + 14, e.y - 14, 13, 0, TAU); ctx.fill();
+    // droopy eye patches
+    ctx.fillStyle = '#8a7a5c';
+    for (const sd of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(e.x + 14 + sd * 6, e.y - 15, 4.5, 6.5, sd * 0.4, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, e.x + 14, e.y - 12, 15, 'sleepy', t * 0.3, 27);
+    // waving arm (the fastest thing he does all day)
+    ctx.strokeStyle = '#b0a082'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(e.x + 16, e.y + 2); ctx.lineTo(e.x + 34, e.y - 12 - wave); ctx.stroke();
+    if (chance(0.008)) Particles.burst(e.x + 26, e.y - 30, 1, { colors: ['#cfe9ff'], type: 'sparkle', sp1: 12, grav: -40, l0: 1.6, l1: 2.6, s1: 8, up: 0 });
+  }
+  if (d.tubSpider && visible(d.tubSpider.x)) { // micro-discovery: the jungle bathtub
+    const e = d.tubSpider, g = e.y;
+    // wooden tub
+    ctx.fillStyle = '#b0743e';
+    rr(ctx, e.x - 34, g - 34, 68, 34, 8); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 3.5;
+    rr(ctx, e.x - 34, g - 34, 68, 34, 8); ctx.stroke();
+    for (const bx of [-20, 0, 20]) { // barrel staves
+      ctx.beginPath(); ctx.moveTo(e.x + bx, g - 32); ctx.lineTo(e.x + bx, g - 4); ctx.stroke();
+    }
+    // bubble foam + a very relaxed little spider
+    ctx.fillStyle = '#fff';
+    for (const [ox, r2] of [[-22, 9], [-8, 12], [8, 11], [22, 8]]) {
+      ctx.beginPath(); ctx.arc(e.x + ox, g - 36, r2, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = '#9a6ad0';
+    ctx.beginPath(); ctx.arc(e.x, g - 44, 12, 0, TAU); ctx.fill();
+    // shower cap
+    ctx.fillStyle = '#ff8fb0';
+    ctx.beginPath(); ctx.arc(e.x, g - 50, 11, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(e.x, g - 58, 3.5, 0, TAU); ctx.fill();
+    drawFace(ctx, e.x, g - 42, 15, 'sleepy', t, 28);
+    if (chance(0.05)) Particles.burst(e.x + rand(-20, 20), g - 50, 1, { color: 'rgba(255,255,255,0.8)', type: 'bubble', sp1: 20, grav: -90, l1: 1.2, s1: 8, up: 0 });
+  }
+  if (d.monkeySign && visible(d.monkeySign.x)) { // welcome to the highlands
+    const e = d.monkeySign, g = e.y;
+    ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(e.x, g); ctx.lineTo(e.x, g - 92); ctx.stroke();
+    ctx.fillStyle = '#b0743e';
+    rr(ctx, e.x - 52, g - 138, 104, 54, 10); ctx.fill();
+    ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 3.5;
+    rr(ctx, e.x - 52, g - 138, 104, 54, 10); ctx.stroke();
+    // a painted banana and an up-arrow: "the good stuff is UP"
+    ctx.save();
+    ctx.translate(e.x - 18, g - 111);
+    ctx.rotate(0.5);
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath();
+    ctx.moveTo(0, -12); ctx.quadraticCurveTo(12, -2, 4, 12);
+    ctx.quadraticCurveTo(0, 14, -3, 11); ctx.quadraticCurveTo(5, -2, -5, -10);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath();
+    ctx.moveTo(e.x + 22, g - 128); ctx.lineTo(e.x + 34, g - 116) ; ctx.lineTo(e.x + 27, g - 116);
+    ctx.lineTo(e.x + 27, g - 96); ctx.lineTo(e.x + 17, g - 96); ctx.lineTo(e.x + 17, g - 116);
+    ctx.lineTo(e.x + 10, g - 116);
+    ctx.closePath(); ctx.fill();
+  }
+  if (d.floorFerns) { // Treehouse Trail undergrowth (per-region floor heights)
+    for (const f of d.floorFerns) {
+      if (!visible(f.x)) continue;
+      const g = f.g;
+      ctx.strokeStyle = ['#3f9c3a', '#57b84a'][f.c % 2]; ctx.lineWidth = 4.5 * f.s; ctx.lineCap = 'round';
+      for (let i = -2; i <= 2; i++) {
+        const sway = Math.sin(t * 1.3 + f.x + i) * 5;
+        ctx.beginPath();
+        ctx.moveTo(f.x, g + 4);
+        ctx.quadraticCurveTo(f.x + i * 20 * f.s + sway, g - 48 * f.s, f.x + i * 40 * f.s + sway, g - 66 * f.s + Math.abs(i) * 16 * f.s);
+        ctx.stroke();
+      }
+      if (f.c === 3) { // a flower face here and there
+        ctx.fillStyle = '#ff8fb0';
+        for (let i = 0; i < 5; i++) {
+          const a = i * TAU / 5 + t * 0.4;
+          ctx.beginPath(); ctx.arc(f.x + Math.cos(a) * 10 * f.s, g - 60 * f.s + Math.sin(a) * 10 * f.s, 6 * f.s, 0, TAU); ctx.fill();
+        }
+        ctx.fillStyle = '#ffe156';
+        ctx.beginPath(); ctx.arc(f.x, g - 60 * f.s, 6 * f.s, 0, TAU); ctx.fill();
+      }
+    }
+  }
+  if (d.frogs) { // tiny green spectators, hopping in place
+    for (const fr of d.frogs) {
+      if (!visible(fr.x)) continue;
+      const hop = Math.max(0, Math.sin(t * 2.6 + fr.x)) * 16;
+      const fy = fr.g - 10 - hop;
+      ctx.fillStyle = '#57d357';
+      ctx.beginPath(); ctx.ellipse(fr.x, fy, 12, 9, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2.5; ctx.stroke();
+      for (const sd of [-1, 1]) { // bulgy eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(fr.x + sd * 6, fy - 8, 4, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#3a2a3a';
+        ctx.beginPath(); ctx.arc(fr.x + sd * 6, fy - 8, 1.8, 0, TAU); ctx.fill();
+      }
+      ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(fr.x, fy + 1, 5, 0.3, Math.PI - 0.3); ctx.stroke();
+    }
   }
   if (d.pearlShrine && visible(d.pearlShrine.x)) { // the BUBBLE MAZE treasure
     const e = d.pearlShrine, g = e.y;

@@ -42,7 +42,10 @@ const SONGS = {
     b: [36,0,0,0, 41,0,0,0, 38,0,0,0, 43,0,0,0] },
   jungle: { t: 124, h: true,
     m: [76,0,79,76, 81,0,79,0, 84,0,81,79, 76,0,74,0, 76,0,79,76, 81,0,84,0, 86,0,84,81, 79,0,76,0],
-    b: [48,0,48,55, 46,0,46,53, 45,0,45,52, 43,0,50,43] }
+    b: [48,0,48,55, 46,0,46,53, 45,0,45,52, 43,0,50,43] },
+  treetop: { t: 118, mw: 'triangle', h: true, // Jungle Treehouse Trail: bouncy canopy marimba
+    m: [72,0,76,0, 79,76,0,72, 74,0,77,0, 81,77,0,74, 72,0,76,0, 79,0,84,0, 83,81,79,77, 76,0,74,0],
+    b: [48,0,55,0, 45,0,52,0, 50,0,57,0, 43,0,50,55] }
 };
 
 const AudioSys = {
@@ -153,6 +156,14 @@ const AudioSys = {
       case 'inhale': this.tone(160, 640, 0.7, 'triangle', 0.09); this.noise(0.5, 0.04, 0.1, 2200); break;
       case 'grind': this.noise(0.55, 0.13, 0, 320); this.tone(85, 60, 0.55, 'sawtooth', 0.08); break;
       case 'snore': this.tone(180, 90, 0.5, 'sine', 0.12); this.tone(120, 200, 0.35, 'sine', 0.08, 0.55); break;
+      case 'monkey': // happy oo-oo-AH-AH whoop
+        this.tone(520, 780, 0.12, 'square', 0.11);
+        this.tone(560, 840, 0.12, 'square', 0.11, 0.14);
+        this.tone(880, 1240, 0.16, 'square', 0.12, 0.3);
+        this.tone(940, 1320, 0.18, 'square', 0.12, 0.48);
+        break;
+      case 'monkeysad': this.tone(620, 340, 0.5, 'sine', 0.11); this.tone(420, 240, 0.55, 'sine', 0.08, 0.45); break;
+      case 'squawk': this.tone(1100, 500, 0.16, 'sawtooth', 0.13); this.noise(0.12, 0.05, 0, 3600); this.tone(900, 420, 0.14, 'sawtooth', 0.1, 0.16); break;
     }
   },
 

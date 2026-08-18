@@ -50,7 +50,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber` (attached as `lv.puzzle`) |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail` (attached as `lv.puzzle`) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -129,9 +129,9 @@ everywhere via `drawBoy`/`drawHead`).
   is wanted.
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
-  'piperoom', 'torchcave', 'zerog'), entered
+  'piperoom', 'torchcave', 'zerog', 'treehouse'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
-  pipe/eyes/asteroid;
+  pipe/eyes/asteroid/ladder;
   re-arms only after horizontal separation so exit never re-enters; once
   COMPLETED a door goes dormant — shrunken trophy w/ gold star, walk-over
   never enters, replay = stand on it + Space). `game.enterSub(id)` stashes the whole
@@ -154,6 +154,15 @@ everywhere via `drawBoy`/`drawHead`).
   hooks in game.js like lv.mission; finales reveal `lv.goalStar` so
   subWin/persistence/replay come free; `lv.puzzle.lights()` feeds the
   darkness overlay, and sub-doors themselves glow in dark levels).
+  The Jungle Treehouse Trail ('treehouse', the biggest secret — a
+  mini-adventure off world 10) adds two more reusable pieces: `lv.vines`
+  (`Vine` class: contextual jump-in grab, deterministic pendulum swing,
+  Up/Space release with momentum + a friendly boost; `lv.vineHold` tracks the
+  held vine and `lv.vineLock` suspends grabbing during scripted flights) and
+  the `Monkey` companion (sad → banana ceremony → follows like a friend →
+  throw pads hurl the player along scripted arcs — the only way across the
+  trail's gorge). Its whole machine (plate→ladder, lever→pulley, toucan
+  blocker, disco, Banana Bell finale) is `TreehouseTrail` on `lv.puzzle`.
   Rally's `lv.truckBuild` (TruckBuild,
   entities.js) reuses MissionToken with skins 'wheels'/'engine'/'core'; its
   assembly ceremony spawns the ParkedTruck that starts the race.
@@ -177,7 +186,8 @@ everywhere via `drawBoy`/`drawHead`).
   audio in a node `vm` and *plays the entire game through*: every level,
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
-  goal path) and version/changelog/docs sync checks. 325 checks; must print
+  goal path) and version/changelog/docs sync checks (the docs check parses the
+  actual badge/footer values). 367 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

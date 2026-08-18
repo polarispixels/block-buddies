@@ -595,7 +595,8 @@ function updatePlay(dt) {
   for (const sd of lv.subDoors) sd.update(dt);
   if (lv.mission) lv.mission.update(dt, pl);
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
-  if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber)
+  if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber / Treehouse Trail)
+  if (lv.vines) for (const v of lv.vines) v.update(dt, pl, lv); // swinging jungle vines
   // steam vents (Volcano Escape): idle platform -> bubbling warning -> blast.
   // The eruption phase turns the solid bouncy, and anyone already standing on
   // it gets launched too — timing stays forgiving either way.
@@ -1147,6 +1148,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'zerog') {
       outlineText(ctx, game.character === 'girl' ? 'BECCA IN THE STARS!' : 'JACK-JACK IN THE STARS!', W / 2, 140, 66, '#ffe156', '#3d3766');
       outlineText(ctx, 'YOU BUILT THE CONSTELLATION!', W / 2, 212, 34, '#7fd8ff', '#3d3766');
+    } else if (game.level.n === 'treehouse') {
+      outlineText(ctx, 'BEST MONKEY FRIENDS!', W / 2, 140, 68, '#ffd24a', '#2f5a2a');
+      outlineText(ctx, 'YOU RANG THE GREAT BANANA BELL!', W / 2, 212, 34, '#7be07b', '#2f5a2a');
     } else if (game.level.n === 'skyflight') {
       outlineText(ctx, 'TO THE MOON!', W / 2, 132, 80, '#ffe9a0', '#5a4a86');
       for (let i = 0; i < 5; i++) { // the stars you gathered on the way
@@ -1195,6 +1199,7 @@ function renderWorld() {
   if (lv.mission) lv.mission.draw(ctx, t);
   if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
   if (lv.puzzle) lv.puzzle.draw(ctx, t);
+  if (lv.vines) for (const v of lv.vines) v.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);
   for (const sp of game.spiders) sp.draw(ctx);
