@@ -1446,6 +1446,108 @@ check('the rally still runs turbo → big ramp → trophy after the secret', G()
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: ZOMBIE TOWN AFTER DARK (Jack's town to save) ----------------
+vm.runInContext('game.startLevel(5)', sandbox);
+frames(150);
+check('the cave ceiling leaks a moonlit shaft', vm.runInContext("game.level.subDoors.some(d => d.sub === 'zombietown' && d.style === 'moonwell')", sandbox));
+put(1080 - 28, 620 - 94);
+frames(10);
+check('stepping into the moonbeam climbs up into ZOMBIE TOWN AFTER DARK', G().level.n === 'zombietown');
+frames(150);
+const ZT = () => vm.runInContext('game.level.puzzle', sandbox);
+check('arrival plays the moonlit-town reveal pan', G().cut && G().cut.name === 'townreveal');
+frames(280);
+check('after the reveal the hero has control back', !G().cut && G().state === 'play');
+check('town loaded: four townspeople need help, no festival, no star',
+  ZT().npcs.every(n => n.state === 'need') && ZT().state === 'explore' && G().level.goalStar === null);
+// granny: RIDE the haystack bounce for real — jump on, BOING, steer left, land on her roof
+put(600, 620 - 94);
+frames(5);
+tap('ArrowUp');
+frames(52); // jump, come down on the hay, BOING
+check('landing on the haystack launches the hero', G().player.vy < -300 || G().player.y + 94 < 540);
+frames(75, { ArrowLeft: 1 });
+check('the bounce (with a little steering) reaches the rooftop', G().player.y + 94 <= 482);
+put(430 - 28, 462 - 94); // stand beside her on the roof
+frames(10);
+check('reaching granny up there is the whole solution (WHEE incoming)',
+  ['leap', 'walk', 'square'].includes(ZT().npcs[0].state));
+frames(80);
+check('granny lands in the hay and trots off to the square', ['walk', 'square'].includes(ZT().npcs[0].state) && ZT().npcs[0].y === 620);
+// balloon: climb the crates, bump it loose, walk it home — it tails the hero
+put(1136, 524 - 94);
+frames(5);
+tap('ArrowUp');
+frames(14, { ArrowRight: 1 });
+check('a crate-top jump knocks the balloon free', ZT().balloon.state === 'follow');
+put(1250, 620 - 94);
+frames(50);
+check('walking the balloon back delivers it to the kid', ZT().balloon.state === 'held' && ['walk', 'square'].includes(vm.runInContext('game.level.puzzle.npcs[1].state', sandbox)));
+// the clock tower refuses to start the festival early
+put(1800 - 28, 620 - 94);
+frames(3);
+tap('Space');
+frames(5);
+check('the festival cannot be rung in early', ZT().state === 'explore' && !G().level.goalStar);
+// scaredy + tiny zombie: candy is the answer (★ with empty pockets = bigger hint)
+vm.runInContext('game.candy = 0', sandbox);
+put(2470, 620 - 94);
+frames(5);
+tap('Space');
+frames(5);
+check('no candy yet: the zombie just begs harder, nothing breaks',
+  ZT().npcs[2].state === 'need' && ZT().zombie.bubbleT > 0 && ZT().zombie.state === 'waiting');
+vm.runInContext('game.candy = 3', sandbox);
+tap('Space');
+frames(40);
+check('one candy spent from the counter: munch munch', vm.runInContext('game.candy', sandbox) === 2 && ['munch', 'friend'].includes(ZT().zombie.state));
+frames(80);
+check('zombie befriended, gentleman relieved, both square-bound',
+  ZT().zombie.state === 'friend' && ['walk', 'square'].includes(ZT().npcs[2].state));
+// the cart: touch the runaway wheel and cause-and-effect does the rest
+put(2930, 620 - 94);
+frames(8);
+check('touching the wheel sends it rolling home', ['rolling', 'attached'].includes(ZT().wheel.state));
+frames(60);
+check('KLUNK — the festival cart is fixed', ZT().cart.state !== 'broken' && ZT().wheel.state === 'attached');
+frames(400);
+check('the carter RIDES his cart into the square (obviously)', ZT().cart.state === 'parked' && ZT().npcs[3].state === 'square');
+frames(220);
+check('all four gathered — the clock tower arms for midnight',
+  ZT().state === 'ready' && ZT().npcs.every(n => n.state === 'square'));
+// MIDNIGHT
+put(1800 - 28, 620 - 94);
+frames(3);
+tap('Space');
+frames(5);
+check('★ at the tower rings in the festival', ZT().state === 'festival');
+frames(520); // BONG BONG BONG — zombies, conga, trombone, fireworks, the star
+check('the midnight festival erupts and reveals the golden star', ZT().state === 'done' && !!G().level.goalStar);
+put(1800 - 28, 620 - 94);
+frames(20);
+check('the star crowns the MIDNIGHT HERO', G().endPhase === 'party' && G().level.n === 'zombietown');
+check('zombie town completion is remembered', G().miniDone.zombietown === true && sandbox.localStorage.getItem('ffbg_mini').includes('zombietown'));
+frames(320);
+tap('Space');
+frames(5);
+check('the well leads back down into Zombie Cave', G().level.n === 5 && G().state === 'play');
+check('the cave is untouched: still dark, no town state leaked', G().level.dark === true && G().level.puzzle === null);
+check('the torch cavern secret still waits down there', vm.runInContext("game.level.subDoors.some(d => d.sub === 'torchcave')", sandbox));
+// dormant trophy + deliberate replay
+put(1040, 620 - 94);
+frames(45, { ArrowRight: 1 });
+check('walking through the completed moonbeam never re-swallows', G().level.n === 5 && G().player.x > 1140);
+put(1080 - 28, 620 - 94);
+frames(6);
+tap('Space');
+frames(5);
+check('standing in the beam + Space replays the whole night', G().level.n === 'zombietown' && G().state === 'intro');
+vm.runInContext('game.exitSub()', sandbox);
+frames(3);
+check('replay exits back to the cave cleanly', G().level.n === 5 && G().state === 'play');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {

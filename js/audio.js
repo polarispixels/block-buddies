@@ -45,7 +45,10 @@ const SONGS = {
     b: [48,0,48,55, 46,0,46,53, 45,0,45,52, 43,0,50,43] },
   treetop: { t: 118, mw: 'triangle', h: true, // Jungle Treehouse Trail: bouncy canopy marimba
     m: [72,0,76,0, 79,76,0,72, 74,0,77,0, 81,77,0,74, 72,0,76,0, 79,0,84,0, 83,81,79,77, 76,0,74,0],
-    b: [48,0,55,0, 45,0,52,0, 50,0,57,0, 43,0,50,55] }
+    b: [48,0,55,0, 45,0,52,0, 50,0,57,0, 43,0,50,55] },
+  midnight: { t: 100, mw: 'triangle', // Zombie Town After Dark: dreamy moonlit waltz
+    m: [64,0,0,71,0,74, 79,0,0,74,0,71, 76,0,0,72,0,69, 71,0,0,0,0,0, 64,0,0,71,0,76, 79,0,0,76,0,74, 71,0,0,74,0,79, 83,0,0,0,0,0],
+    b: [40,0,0,47,0,0, 36,0,0,43,0,0, 45,0,0,52,0,0, 43,0,0,47,0,0] }
 };
 
 const AudioSys = {
@@ -175,6 +178,18 @@ const AudioSys = {
       case 'muffbeat': this.noise(0.09, 0.08, 0, 220); this.tone(72, 46, 0.16, 'sine', 0.15); break; // BOOM BOOM through the garage door
       case 'muffhonk': this.tone(300, 205, 0.3, 'sawtooth', 0.055); this.noise(0.12, 0.04, 0, 350); break; // ...HONK (muffled)
       case 'clank': this.tone(1400, 900, 0.07, 'square', 0.08); this.noise(0.08, 0.06, 0, 2400); break; // a wrench lands somewhere
+      // ---- Zombie Town After Dark ----
+      case 'bong': // the midnight clock tower — one giant BONG
+        this.noise(0.04, 0.06, 0, 2000);
+        this.tone(165, 163, 1.4, 'sine', 0.22);
+        this.tone(330, 324, 1.0, 'sine', 0.07);
+        this.tone(82, 82, 1.2, 'sine', 0.12);
+        break;
+      case 'firework': // whoosh up, then a crackling sky-burst
+        this.tone(180, 1050, 0.45, 'sawtooth', 0.05);
+        this.noise(0.3, 0.11, 0.42, 3200);
+        this.arp([1250, 1650, 950], 0.06, 0.18, 'sine', 0.05);
+        break;
     }
   },
 

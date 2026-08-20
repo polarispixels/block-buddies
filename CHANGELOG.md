@@ -8,6 +8,61 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.13.0] - 2026-08-20
+
+### Added — ZOMBIE TOWN AFTER DARK: a whole little world above the cave (Jack's idea)
+
+Concept by Jack himself: Zombieland + the night sky + PEOPLE. Deep in Zombie
+Cave a shaft of real moonlight now pours through a crack in the ceiling —
+stars twinkle up there, dust motes drift in the beam, music notes float down,
+a faint far-away bell rings, and rock rungs climb the wall. Step into the
+beam and climb up into a small moonlit town that has been waiting up there
+the whole time. Arrival plays one slow wordless camera pan across the whole
+town — rooftops, chimneys, streetlights, a clock tower at five-to-midnight —
+before handing back control.
+
+- **Four townspeople, four different verbs, zero words.** Every problem is
+  told in thought bubbles and body language, and each solves differently:
+  - **Granny on the roof** (traversal): she waves for help from her rooftop;
+    the haystack below is a bouncy mushroom in disguise — bounce up, reach
+    her, and she leaps into the hay (WHEE!) and trots off to the square.
+  - **The lost balloon** (knock loose + carry): a sad-faced balloon is stuck
+    under the streetlamp's arm; climb the crates, bump it free, and it
+    happily tails the hero like a puppy all the way back to the kid.
+  - **The "scary" tiny zombie** (spend candy with ★): a very respectable
+    gentleman is terrified of a knee-high zombie whose own thought bubble
+    just shows CANDY. Stand close, press ★, and one candy from the actual
+    HUD counter flies over — munch, hearts, instant best friends. Pressing
+    with empty pockets makes the zombie beg extra hopefully (nothing breaks).
+  - **The broken festival cart** (cause and effect): the missing wheel leans
+    on a fence down the street; one touch sends it rolling home by itself —
+    KLUNK — and the carter rides his repaired cart into the square. Obviously.
+- **The town visibly comes alive** with every rescue: windows glow warm,
+  streetlights switch on pair by pair, bunting turns colorful, distant
+  horizon windows light, and little zombies start peeking from doorways.
+- **MIDNIGHT.** All four gathered, the clock tower arms and glows. Press ★
+  beneath it: the music stops, BONG — BONG — BONG — the minute hand sweeps
+  to twelve, and the ZOMBIE FESTIVAL erupts: a zombie conga line (one
+  dancing the wrong way, one tiny one in an enormous hat), a skeleton
+  playing trombone badly on a schedule, a spider drummer from the cave
+  downstairs, fireworks rockets bursting all over the sky, candy rain, a
+  briefly smug moon, and the golden star answering over the square.
+  **MIDNIGHT HERO!** — completion persists in `ffbg_mini`, the moonbeam
+  becomes a dormant trophy, and replay is stand-in-the-beam + Space.
+- **A real night sky**: layered twinkling stars, shooting stars, clouds
+  drifting across a huge cratered moon, silhouette rooftops — drawn behind
+  the playable town via the `drawBack` hook from v1.12.0.
+- New `midnight` waltz for exploration, `bong` and `firework` sfx, a new
+  `moonwell` SubDoor style, and the game's first ordinary-people cast
+  (granny, kid, gentleman, carter — simple state model:
+  need → solved → walk → square → festival).
+
+### Changed
+
+- The harness now walks all of Zombie Town too (reveal pan, all four solves
+  ridden for real, premature-bell guard, festival, persistence, replay, and
+  cave-intact checks): 420 checks (was 392).
+
 ## [1.12.0] - 2026-08-19
 
 ### Added — PIT STOP BEAT BASH: the first rhythm game (a whole new genre inside a secret)

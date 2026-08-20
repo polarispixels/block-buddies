@@ -495,6 +495,16 @@ function updateCut(dt) {
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-3.5 * dt));
     const ty = clamp(pl.cy - H * 0.55, 0, game.level.h - H);
     game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'townreveal') {
+    // emerging from the cave: one slow wordless pan across the moonlit town —
+    // "wait... there are PEOPLE up here?" — then back to the hero
+    const sq = clamp(1800 - W / 2, 0, game.level.w - W);
+    let tx = 0;
+    if (c.t < 1.7) { const k = c.t / 1.7; tx = lerp(0, sq, k * k * (3 - 2 * k)); }
+    else if (c.t < 2.6) tx = sq;
+    else { const k = clamp((c.t - 2.6) / 1.5, 0, 1); tx = lerp(sq, 0, k * k * (3 - 2 * k)); }
+    game.cam.x = tx;
+    if (c.t > 4.2 || justP.Space) { game.cut = null; game.cam.x = 0; }
   } else if (c.name === 'rumble') {
     game.shake = Math.max(game.shake, 0.4);
     if (c.t > 1.4) {
@@ -983,7 +993,10 @@ function drawDarkness() {
   for (const p of game.pickups) if (!p.dead) light(p.cx, p.cy, 130, 0.9);
   for (const pr of game.projectiles) light(pr.cx, pr.cy, 150);
   for (const c of lv.checks) light(c.x, c.y + 30, 130, 0.85);
-  for (const sd of lv.subDoors) light(sd.cx, sd.cy, 170, 0.9); // secrets must be findable in the dark
+  for (const sd of lv.subDoors) {
+    light(sd.cx, sd.cy, 170, 0.9); // secrets must be findable in the dark
+    if (sd.style === 'moonwell') light(sd.cx, sd.cy - 300, 280, 0.75); // the moonbeam glows all the way up
+  }
   if (lv.puzzle && lv.puzzle.lights) for (const L of lv.puzzle.lights()) light(L.x, L.y, L.r, L.a ?? 1);
   if (game.zombie) light(game.zombie.cx, game.zombie.cy, 260, 0.9);
   if (game.chest) light(game.chest.cx, game.chest.y + 40, 340);
@@ -1148,6 +1161,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'zerog') {
       outlineText(ctx, game.character === 'girl' ? 'BECCA IN THE STARS!' : 'JACK-JACK IN THE STARS!', W / 2, 140, 66, '#ffe156', '#3d3766');
       outlineText(ctx, 'YOU BUILT THE CONSTELLATION!', W / 2, 212, 34, '#7fd8ff', '#3d3766');
+    } else if (game.level.n === 'zombietown') {
+      outlineText(ctx, 'MIDNIGHT HERO!', W / 2, 140, 76, '#ffe156', '#2a2150');
+      outlineText(ctx, 'THE ZOMBIES ARE HAVING A PARTY!', W / 2, 212, 34, '#9fe07b', '#2a2150');
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');

@@ -3479,6 +3479,7 @@ class SubDoor {
         if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
         if (this.style === 'ladder') AudioSys.sfx('monkey'); // welcomed up the tree
         if (this.style === 'garage') AudioSys.sfx('hornhit'); // the band waves you in
+        if (this.style === 'moonwell') { AudioSys.sfx('whoosh'); AudioSys.sfx('bells'); } // up into the night
         game.enterSub(this.sub);
         return;
       }
@@ -3493,6 +3494,7 @@ class SubDoor {
         : this.style === 'asteroid' ? ['#ffd24a', '#ffe156']
         : this.style === 'ladder' ? ['#7be07b', '#ffe156']
         : this.style === 'garage' ? ['#ffe156', '#ff8fb0', '#7fd8ff']
+        : this.style === 'moonwell' ? ['#e8ecff', '#bfd0ff', '#ffe156']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -3524,6 +3526,17 @@ class SubDoor {
       if (this.whoopT <= 0) {
         this.whoopT = rand(6, 11);
         if (Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.7) AudioSys.sfx('monkey');
+      }
+    }
+    // the moonwell's clue: music notes drift down out of the shaft and every
+    // so often a faint far-away bell rings up there — a whole other WORLD is
+    // leaking through the crack in the ceiling
+    if (this.style === 'moonwell' && !done) {
+      if (chance(0.06)) Particles.burst(this.cx + rand(-30, 30), this.y - rand(60, 260), 1, { colors: ['#e8ecff', '#ffe156'], type: 'sparkle', sp1: 20, grav: 45, l0: 1.4, l1: 2.4, up: 0, s1: 9 });
+      this.bellT = (this.bellT ?? rand(3, 6)) - dt;
+      if (this.bellT <= 0) {
+        this.bellT = rand(6, 10);
+        if (Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.7) AudioSys.sfx('bells');
       }
     }
     // the pit garage's clue: the whole building THUMPS to a muffled beat,
@@ -3803,6 +3816,60 @@ class SubDoor {
       }
       // a happy face carved low in the bark — the tree is friendly
       drawFace(ctx, cx - tw * 0.26, g - 34, 20, 'happy', t, 67);
+    } else if (this.style === 'moonwell') {
+      // a crack in the cave ceiling with REAL night sky behind it: a pale
+      // moonbeam pours all the way down to the floor, dust motes drift in the
+      // light, and rough rock rungs climb the wall — "up there is... outside?"
+      const bx = cx;
+      // the beam (widens on the way down)
+      ctx.save();
+      ctx.globalAlpha = 0.28 + 0.08 * Math.sin(t * 1.4);
+      ctx.fillStyle = '#dfe6ff';
+      ctx.beginPath();
+      ctx.moveTo(bx - 26, 0); ctx.lineTo(bx + 26, 0);
+      ctx.lineTo(bx + 62, g); ctx.lineTo(bx - 62, g);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.35 + 0.12 * Math.sin(t * 1.4 + 1);
+      ctx.beginPath();
+      ctx.moveTo(bx - 10, 0); ctx.lineTo(bx + 10, 0);
+      ctx.lineTo(bx + 26, g); ctx.lineTo(bx - 26, g);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      // the crack itself, with stars twinkling through it
+      ctx.fillStyle = '#0d0b2a';
+      ctx.beginPath();
+      ctx.moveTo(bx - 34, 0); ctx.quadraticCurveTo(bx - 12, 26, bx + 8, 18);
+      ctx.quadraticCurveTo(bx + 30, 10, bx + 36, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (const [ox, oy, r2] of [[-18, 6, 2.4], [2, 11, 3], [20, 5, 2]]) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 2.5 + ox);
+        ctx.beginPath(); ctx.arc(bx + ox, oy, r2, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      // rough rock rungs up the shaft wall
+      ctx.fillStyle = '#5f6070';
+      for (let ry = g - 40; ry > 60; ry -= 64) {
+        rr(ctx, bx - 40 + Math.sin(ry) * 8, ry, 34, 11, 5); ctx.fill();
+      }
+      // dust motes floating in the beam
+      ctx.fillStyle = 'rgba(232,236,255,0.8)';
+      for (let i = 0; i < 5; i++) {
+        const mph = ((t * 0.11 + i * 0.2) % 1);
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.3 * Math.sin(t * 3 + i * 2);
+        ctx.beginPath();
+        ctx.arc(bx + Math.sin(t * 0.7 + i * 2.2) * (14 + mph * 30), mph * g, 2.5, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+      // a soft pool of moonlight on the cave floor
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.1 * Math.sin(t * 1.4);
+      ctx.fillStyle = '#dfe6ff';
+      ctx.beginPath(); ctx.ellipse(bx, g, 64, 10, 0, 0, TAU); ctx.fill();
+      ctx.restore();
     } else if (this.style === 'garage') {
       // a little pit-lane garage that is VERY obviously having a party inside:
       // the roller door bounces to the beat, colored light strobes through the
@@ -6651,5 +6718,860 @@ class BeatBash {
       if (shrug) outlineText(ctx, '?', bx, by - 38, 30, '#ffe156', '#3a3448');
       ctx.restore();
     }
+  }
+}
+
+// ================================================================ zombie town after dark
+// Jack's own idea: Zombieland + the night sky + PEOPLE. Above Zombie Cave
+// hides a small moonlit town waiting for the Midnight Zombie Festival — but
+// four townspeople each have one small problem, told entirely in thought
+// bubbles and body language. Four different verbs, one each:
+//   granny  — stranded on her roof: bounce up the haystack, show her the way,
+//             she leaps into the hay (WHEE) and trots to the square
+//   kid     — balloon stuck high on the lamp post: climb the crates, knock it
+//             loose, it tails the hero like a puppy — walk it back
+//   scaredy — "terrified" of a tiny zombie in the alley; the zombie's bubble
+//             shows CANDY: stand close and press ★ to spend one candy from
+//             the counter — munch, hearts, instant best friends
+//   carter  — festival cart missing its wheel; the wheel leans on the fence
+//             down the street: touch it and it rolls itself home, KLUNK, and
+//             the carter rides the cart into the square
+// Every rescue visibly turns the town ON (windows, streetlights, bunting,
+// zombie peekers). All four in the square = the clock tower arms: press ★ at
+// midnight — BONG BONG BONG — and the ZOMBIE FESTIVAL erupts: zombies pour
+// out to dance (one backward, one tiny with a huge hat), a skeleton plays
+// trombone badly, a spider drums, fireworks fill the sky, the moon grins,
+// and the golden star answers over the square. No enemies, no way to lose.
+class ZombieTown {
+  constructor(groundY) {
+    this.g = groundY;
+    this.t = rand(9);
+    this.state = 'explore'; // -> 'ready' -> 'festival' -> 'done'
+    this.revealDone = false;
+    // physical bits the level adopts (all skipDraw — the town draws itself)
+    this.solids = [
+      { x: 290, y: 462, w: 260, h: 20, oneWay: true, skipDraw: true, plat: true }, // granny's roof
+      { x: 590, y: 576, w: 130, h: 44, oneWay: true, bouncy: true, bounceVy: -950, skipDraw: true }, // the haystack (jump on = BOING)
+      { x: 1055, y: 572, w: 56, h: 48, skipDraw: true },  // crate step
+      { x: 1113, y: 524, w: 58, h: 96, skipDraw: true }   // crate stack
+    ];
+    // the cast (y = feet)
+    this.npcs = [
+      { kind: 'granny', x: 430, y: 462, facing: 1, state: 'need', target: 1640, bob: 0, lt: 0 },
+      { kind: 'kid', x: 1300, y: groundY, facing: -1, state: 'need', target: 1730, bob: 0 },
+      { kind: 'scaredy', x: 2600, y: groundY, facing: -1, state: 'need', target: 1890, bob: 0, rt: 0 },
+      { kind: 'carter', x: 2780, y: groundY, facing: 1, state: 'need', target: 1975, bob: 0 }
+    ];
+    this.balloon = { x: 1210, y: 350, state: 'stuck', bobT: rand(9) };
+    this.zombie = { x: 2480, y: groundY, state: 'waiting', facing: 1, bob: rand(9), bubbleT: 0, munchT: 0 };
+    this.cart = { x: 2850, state: 'broken', bounce: 0, hopT: 0 };
+    this.wheel = { x: 2950, y: groundY, state: 'waiting', spin: 0 };
+    this.candyFly = null; // {t, x0, y0}
+    this.festT = 0;
+    this.fw = [];         // rising firework rockets {x, y0, targetY, t, hue}
+    this.fwT = 0;
+    this.shootT = rand(4, 8); this.shoot = null; // shooting stars {x, y, t}
+    this.tromT = 2.2;     // the skeleton's next terrible trombone note
+    this.wheeT = 0;
+  }
+  solvedCount() {
+    return this.npcs.filter(n => n.state === 'walk' || n.state === 'square').length +
+      (this.npcs[3].state === 'ride' ? 1 : 0);
+  }
+  lampsOn(i) { // streetlights come alive as the town does
+    if (this.state === 'festival' || this.state === 'done') return true;
+    return i < this.solvedCount() * 2;
+  }
+  solveGranny() {
+    const gr = this.npcs[0];
+    gr.state = 'leap'; gr.lt = 0;
+    this.wheeT = 1.0;
+    AudioSys.sfx('boing');
+    if (game.player) game.player.setMood('grin', 1);
+  }
+  solveKid() {
+    const kid = this.npcs[1];
+    kid.state = 'walk';
+    this.balloon.state = 'held';
+    AudioSys.sfx('heart'); AudioSys.sfx('cheer');
+    Particles.burst(kid.x, kid.y - 60, 12, { colors: ['#ff5fa2', '#ffe156', '#fff'], type: 'heart', sp1: 160, l1: 0.9, s1: 10, grav: -60 });
+  }
+  solveScaredy() {
+    const sc = this.npcs[2];
+    sc.state = 'relieved'; sc.rt = 0;
+    this.zombie.state = 'munch'; this.zombie.munchT = 0;
+    AudioSys.sfx('candy');
+  }
+  update(dt, pl) {
+    this.t += dt;
+    const g = this.g;
+    if (!this.revealDone) { // one slow pan across the moonlit town first
+      this.revealDone = true;
+      game.cut = { name: 'townreveal', t: 0 };
+      AudioSys.sfx('bells');
+      return;
+    }
+    this.wheeT = Math.max(0, this.wheeT - dt);
+    // ---- the four little problems ----
+    const gr = this.npcs[0], kid = this.npcs[1], sc = this.npcs[2], ct = this.npcs[3];
+    // granny: reached on her roof -> she trusts the haystack now
+    if (gr.state === 'need' && Math.abs(pl.cx - gr.x) < 80 && pl.y + pl.h <= 482) this.solveGranny();
+    if (gr.state === 'leap') {
+      gr.lt += dt;
+      const k = Math.min(1, gr.lt / 0.9);
+      gr.x = lerp(430, 655, k);
+      gr.y = lerp(462, 576, k) - Math.sin(k * Math.PI) * 130;
+      gr.facing = 1;
+      if (k >= 1) {
+        gr.state = 'walk'; gr.y = g;
+        AudioSys.sfx('poof'); AudioSys.sfx('cheer');
+        Particles.burst(655, 570, 16, { colors: ['#e8c56a', '#d9b04a'], type: 'block', sp1: 240, l1: 0.8, s1: 9, grav: 500, up: 160 });
+      }
+    }
+    // balloon: bump it loose, it happily tails the hero; deliver it to the kid
+    const b = this.balloon;
+    b.bobT += dt;
+    if (b.state === 'stuck' && Math.abs(pl.cx - b.x) < 42 && Math.abs(pl.y - b.y) < 52) {
+      b.state = 'follow';
+      AudioSys.sfx('collect');
+      Particles.burst(b.x, b.y, 8, { colors: ['#ff5fa2', '#fff'], type: 'sparkle', sp1: 140, l1: 0.6, s1: 8 });
+    }
+    if (b.state === 'follow') {
+      b.x += (pl.cx - pl.facing * 34 - b.x) * Math.min(1, 5 * dt);
+      b.y += (pl.y - 34 - b.y) * Math.min(1, 5 * dt);
+      if (kid.state === 'need' && Math.abs(b.x - kid.x) < 80 && Math.abs(pl.cx - kid.x) < 120) this.solveKid();
+    }
+    // scaredy + the tiny zombie: ★ next to the zombie spends one candy
+    const z = this.zombie;
+    z.bob += dt;
+    z.bubbleT = Math.max(0, z.bubbleT - dt);
+    if (sc.state === 'need' && z.state === 'waiting' && justP.Space && Math.abs(pl.cx - z.x) < 95 && pl.onGround) {
+      if (game.candy > 0) {
+        game.candy--;
+        this.candyFly = { t: 0, x0: pl.cx, y0: pl.cy };
+        AudioSys.sfx('candy');
+      } else {
+        z.bubbleT = 1.6; // the zombie holds up its candy wish EXTRA hopefully
+        AudioSys.sfx('plop');
+      }
+    }
+    if (this.candyFly) {
+      this.candyFly.t += dt;
+      if (this.candyFly.t >= 0.45) { this.candyFly = null; this.solveScaredy(); }
+    }
+    if (z.state === 'munch') {
+      z.munchT += dt;
+      if (z.munchT > 0.9) {
+        z.state = 'friend';
+        AudioSys.sfx('heart'); AudioSys.sfx('friend');
+        Particles.burst(z.x, z.y - 40, 10, { colors: ['#ff5fa2', '#9fe07b', '#fff'], type: 'heart', sp1: 150, l1: 0.9, s1: 9, grav: -60 });
+      }
+    }
+    if (sc.state === 'relieved') {
+      sc.rt += dt;
+      if (sc.rt > 0.9) sc.state = 'walk';
+    }
+    if (z.state === 'friend') { // the little buddy toddles after its new pal
+      const tx = (sc.state === 'square' ? sc.x : sc.x) + 52;
+      z.x += clamp(tx - z.x, -1, 1) * 150 * dt;
+      z.facing = tx > z.x ? 1 : -1;
+    }
+    // the cart: touch the runaway wheel and it rolls itself home — KLUNK
+    const w = this.wheel, c = this.cart;
+    if (w.state === 'waiting' && Math.abs(pl.cx - w.x) < 55 && Math.abs(pl.y + pl.h - g) < 60) {
+      w.state = 'rolling';
+      AudioSys.sfx('switch');
+      if (game.player) game.player.setMood('grin', 0.8);
+    }
+    if (w.state === 'rolling') {
+      w.x -= 250 * dt;
+      w.spin -= 250 * dt / 26;
+      if (chance(0.3)) Particles.burst(w.x, g, 1, { colors: ['#6a5a4a'], sp1: 60, l1: 0.4, s1: 6, up: 30 });
+      if (w.x <= c.x + 36) {
+        w.state = 'attached'; w.x = c.x + 36;
+        c.state = 'fixed'; c.bounce = 1; c.hopT = 0;
+        AudioSys.sfx('thud'); AudioSys.sfx('boing'); AudioSys.sfx('cheer');
+        game.shake = Math.max(game.shake, 0.15);
+        Particles.burst(c.x + 40, g - 40, 12, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 200, l1: 0.7, s1: 9 });
+      }
+    }
+    c.bounce = Math.max(0, c.bounce - dt * 1.6);
+    if (c.state === 'fixed') {
+      c.hopT += dt;
+      if (c.hopT > 0.8) { c.state = 'riding'; ct.state = 'ride'; AudioSys.sfx('rev'); }
+    }
+    if (c.state === 'riding') { // the carter rides it into the square. Obviously.
+      c.x -= 180 * dt;
+      w.spin += 180 * dt / 26;
+      ct.x = c.x + 40; ct.facing = -1;
+      if (chance(0.35)) Particles.burst(c.x + 90, g - 6, 1, { colors: ['#8a8a9a'], sp1: 50, l1: 0.5, s1: 8, up: 20 });
+      if (c.x <= 1990) { c.x = 1990; c.state = 'parked'; ct.state = 'square'; ct.x = c.x + 40; AudioSys.sfx('checkpoint'); }
+    }
+    // ---- walkers head for the square; arrivals light the town up ----
+    for (const n of this.npcs) {
+      if (n.state === 'walk') {
+        const d = Math.sign(n.target - n.x);
+        n.x += d * 175 * dt; n.facing = d; n.bob += dt * 10;
+        if (Math.abs(n.x - n.target) < 8) {
+          n.state = 'square';
+          AudioSys.sfx('collect');
+          Particles.burst(n.x, n.y - 70, 8, { colors: ['#ffe156', '#fff'], type: 'star', sp1: 140, l1: 0.6, s1: 8 });
+        }
+      } else if (n.state === 'square') n.bob += dt * 6;
+    }
+    // ---- shooting stars keep the sky alive ----
+    this.shootT -= dt;
+    if (this.shootT <= 0) { this.shootT = rand(5, 9); this.shoot = { x: rand(200, 2800), y: rand(40, 170), t: 0 }; }
+    if (this.shoot && (this.shoot.t += dt) > 0.7) this.shoot = null;
+    // ---- all four gathered -> the clock tower arms for midnight ----
+    if (this.state === 'explore' && this.npcs.every(n => n.state === 'square')) {
+      this.state = 'ready';
+      AudioSys.sfx('fanfare');
+      Particles.burst(1800, 300, 16, { colors: ['#ffe156', '#e8ecff'], type: 'sparkle', sp1: 180, l1: 1, s1: 10 });
+    }
+    if (this.state === 'ready' && justP.Space && Math.abs(pl.cx - 1800) < 90 && !game.endPhase) {
+      this.state = 'festival'; this.festT = 0;
+      AudioSys.setMusic(''); // the town holds its breath...
+    }
+    // ---- MIDNIGHT ----
+    if (this.state === 'festival' || this.state === 'done') {
+      const prev = this.festT;
+      this.festT += dt;
+      const cue = (tt) => prev < tt && this.festT >= tt;
+      for (const tt of [0.9, 1.7, 2.5]) {
+        if (cue(tt)) { AudioSys.sfx('bong'); game.shake = Math.max(game.shake, 0.3); }
+      }
+      if (cue(2.5)) AudioSys.sfx('cheer'); // ...BONG! and the zombies pour out
+      if (cue(3.2)) {
+        AudioSys.setMusic('win');
+        AudioSys.sfx('cheer'); AudioSys.sfx('fanfare');
+        Particles.candyBurst(1800, 260, 16);
+      }
+      if (this.festT > 3.2) {
+        // fireworks! rockets go up, sky-bursts come down
+        this.fwT -= dt;
+        if (this.fwT <= 0 && this.fw.length < 3) {
+          this.fwT = rand(0.5, 0.95);
+          this.fw.push({ x: rand(300, 2700), y0: g, targetY: rand(90, 260), t: 0, hue: randi(0, RAINBOW.length - 1) });
+          AudioSys.sfx('firework');
+        }
+        if (chance(0.12)) Particles.candyBurst(game.cam.x + rand(150, W - 150), game.cam.y + rand(60, 200), 1);
+        // the skeleton keeps playing the trombone. Badly.
+        this.tromT -= dt;
+        if (this.tromT <= 0) { this.tromT = rand(2.4, 3.6); AudioSys.sfx('hornflat'); }
+      }
+      for (const f of this.fw) {
+        f.t += dt;
+        if (!f.burst && f.t >= 0.5) {
+          f.burst = true;
+          Particles.burst(f.x, f.targetY, 22, { colors: [RAINBOW[f.hue], '#fff', '#ffe156'], type: 'star', sp1: 340, l0: 0.7, l1: 1.4, s1: 11, grav: 60, up: 0 });
+        }
+      }
+      this.fw = this.fw.filter(f => f.t < 0.8);
+      if (cue(6.8)) { // the golden star answers over the square
+        game.level.goalStar = { x: 1800, y: 470 };
+        Particles.burst(1800, 470, 24, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 320, l1: 1, s1: 12, grav: 120 });
+        AudioSys.sfx('chest');
+        this.state = 'done';
+      }
+    }
+  }
+  lights() { return []; }
+  // ---------------------------------------------------------------- drawing
+  festive() { return this.state === 'festival' || this.state === 'done'; }
+  drawBack(ctx, t) {
+    const g = this.g, lw = 3000;
+    // the night sky — the star (ha) of the show
+    const sky = ctx.createLinearGradient(0, 0, 0, g);
+    sky.addColorStop(0, '#0d0b2a'); sky.addColorStop(0.62, '#2a2150'); sky.addColorStop(1, '#453a72');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, lw, g);
+    // layered twinkling stars
+    for (let i = 0; i < 110; i++) {
+      const sx = hash2(i, 5) * lw, sy = hash2(i, 11) * 330;
+      const big = hash2(i, 17) > 0.8;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.55 * Math.abs(Math.sin(t * (big ? 1.6 : 0.9) + i));
+      ctx.fillStyle = big ? '#fff' : '#cfd4ff';
+      if (big) { starPath(ctx, sx, sy, 4.5, 2); ctx.fill(); }
+      else { ctx.beginPath(); ctx.arc(sx, sy, 1.6, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    }
+    // a shooting star now and then
+    if (this.shoot) {
+      const s = this.shoot, k = s.t / 0.7;
+      ctx.save();
+      ctx.globalAlpha = Math.sin(k * Math.PI);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(s.x + k * 260, s.y + k * 90);
+      ctx.lineTo(s.x + k * 260 - 60, s.y + k * 90 - 21);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // THE MOON — huge, cratered, occasionally smug (festival only)
+    const mx = 1020, my = 150, mr = 92;
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#f4f0d8';
+    ctx.beginPath(); ctx.arc(mx, my, mr + 34, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#f4f0d8';
+    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ddd8bc';
+    for (const [ox, oy, r2] of [[-30, -20, 16], [24, 12, 12], [-4, 38, 9], [38, -36, 8]]) {
+      ctx.beginPath(); ctx.arc(mx + ox, my + oy, r2, 0, TAU); ctx.fill();
+    }
+    if (this.festive() && (t % 7) < 2.2) drawFace(ctx, mx, my + 6, mr * 0.9, 'grin', t, 99);
+    // night clouds drifting across the moon
+    ctx.fillStyle = 'rgba(58,47,102,0.85)';
+    for (let i = 0; i < 2; i++) {
+      const cxx = ((t * (10 + i * 6) + i * 900) % (lw + 420)) - 210;
+      const cyy = 110 + i * 70;
+      ctx.beginPath();
+      ctx.arc(cxx, cyy, 34, 0, TAU); ctx.arc(cxx + 38, cyy + 8, 26, 0, TAU); ctx.arc(cxx - 36, cyy + 9, 24, 0, TAU);
+      ctx.fill();
+    }
+    // distant rooftop silhouettes on the horizon
+    ctx.fillStyle = '#1c1638';
+    for (let i = 0; i < 14; i++) {
+      const bx = i * 220 + hash2(i, 23) * 90, bw = 130 + hash2(i, 29) * 80, bh = 90 + hash2(i, 31) * 110;
+      ctx.fillRect(bx, g - 160 - bh, bw, bh + 160);
+      ctx.beginPath();
+      ctx.moveTo(bx - 8, g - 160 - bh); ctx.lineTo(bx + bw / 2, g - 195 - bh); ctx.lineTo(bx + bw + 8, g - 160 - bh);
+      ctx.closePath(); ctx.fill();
+      if (this.solvedCount() > 0 && hash2(i, 37) < this.solvedCount() * 0.22) { // far windows wake up too
+        ctx.fillStyle = 'rgba(255,225,86,0.5)';
+        ctx.fillRect(bx + bw * 0.3, g - 120 - bh, 12, 14);
+        ctx.fillStyle = '#1c1638';
+      }
+    }
+    // the houses of Zombie Town
+    this.drawHouse(ctx, t, 300, 240, 150, 0, this.npcs[0].state !== 'need'); // granny's (her roof is the solid)
+    this.drawHouse(ctx, t, 790, 230, 130, 1, this.solvedCount() >= 2);
+    this.drawHouse(ctx, t, 2180, 220, 140, 2, this.solvedCount() >= 3);
+    this.drawHouse(ctx, t, 2490, 180, 120, 3, this.solvedCount() >= 1);
+    // festival zombie peekers appear in doorways as the town wakes up
+    if (this.solvedCount() >= 2 && !this.festive()) this.drawTinyZombie(ctx, t, 905, this.g, 1, 'happy', 0.8);
+    if (this.solvedCount() >= 3 && !this.festive()) this.drawTinyZombie(ctx, t, 2295, this.g, -1, 'happy', 0.8);
+    // the well Jack climbed out of (with the ladder still poking out)
+    ctx.fillStyle = '#5f6070';
+    rr(ctx, 40, g - 54, 76, 54, 8); ctx.fill();
+    ctx.fillStyle = '#1c1430';
+    ctx.beginPath(); ctx.ellipse(78, g - 52, 30, 10, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#d9b98a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(66, g - 50); ctx.lineTo(66, g - 92); ctx.moveTo(90, g - 50); ctx.lineTo(90, g - 92);
+    ctx.moveTo(66, g - 62); ctx.lineTo(90, g - 62); ctx.moveTo(66, g - 80); ctx.lineTo(90, g - 80);
+    ctx.stroke();
+    // streetlights (they come on as the town comes alive)
+    [240, 760, 1450, 2130, 2450, 2900].forEach((lx, i) => this.drawLamp(ctx, t, lx, this.lampsOn(i)));
+    this.drawLamp(ctx, t, 1230, this.lampsOn(2), true); // the balloon lamp (arm points left)
+    // wooden fences filling the street gaps
+    ctx.strokeStyle = '#4a3e5c'; ctx.lineWidth = 5;
+    for (const [fx0, fx1] of [[560, 590], [1970, 2130], [2680, 2990]]) {
+      for (let fx = fx0; fx < fx1; fx += 26) {
+        ctx.beginPath(); ctx.moveTo(fx, g); ctx.lineTo(fx, g - 44); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(fx0 - 4, g - 34); ctx.lineTo(fx1, g - 34); ctx.stroke();
+    }
+    // the town square: bunting + the clock tower
+    this.drawBunting(ctx, t, 1520, 1760, 330);
+    this.drawBunting(ctx, t, 1840, 2080, 330);
+    this.drawTower(ctx, t);
+  }
+  drawHouse(ctx, t, x, w, h, style, lit) {
+    const g = this.g;
+    const wall = ['#6a5a86', '#5a6a8e', '#7a5a76', '#5f6a70'][style % 4];
+    const roof = ['#3a3050', '#32405e', '#4a3450', '#3a444a'][style % 4];
+    ctx.fillStyle = wall;
+    rr(ctx, x, g - h, w, h, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,14,40,0.5)'; ctx.lineWidth = 3;
+    rr(ctx, x, g - h, w, h, 6); ctx.stroke();
+    // roof
+    ctx.fillStyle = roof;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, g - h); ctx.lineTo(x + w / 2, g - h - 46); ctx.lineTo(x + w + 14, g - h);
+    ctx.closePath(); ctx.fill();
+    // chimney (with a lazy smoke puff once the house is awake)
+    ctx.fillStyle = roof;
+    rr(ctx, x + w - 52, g - h - 62, 22, 40, 4); ctx.fill();
+    if (lit && chance(0.02)) Particles.burst(x + w - 41, g - h - 66, 1, { color: 'rgba(200,200,215,0.4)', sp1: 15, grav: -60, l0: 1.4, l1: 2.4, s1: 10, up: 0 });
+    // door + windows: dark and sleepy, or warm and awake
+    ctx.fillStyle = '#3a3050';
+    rr(ctx, x + 22, g - 62, 40, 62, 6); ctx.fill();
+    for (const wx of [x + w * 0.42, x + w * 0.72]) {
+      ctx.fillStyle = lit ? '#ffe156' : '#241c40';
+      rr(ctx, wx, g - h + 26, 34, 30, 5); ctx.fill();
+      ctx.strokeStyle = lit ? '#c8861b' : '#3a3050'; ctx.lineWidth = 3;
+      rr(ctx, wx, g - h + 26, 34, 30, 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(wx + 17, g - h + 26); ctx.lineTo(wx + 17, g - h + 56); ctx.stroke();
+      if (lit) {
+        ctx.save();
+        ctx.globalAlpha = 0.2 + 0.08 * Math.sin(t * 3 + wx);
+        ctx.fillStyle = '#ffe156';
+        rr(ctx, wx - 5, g - h + 21, 44, 40, 8); ctx.fill();
+        ctx.restore();
+      }
+    }
+    if (style === 1) { // the shop gets a striped awning
+      ctx.fillStyle = '#c9566a';
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 ? '#c9566a' : '#e8e4f4';
+        ctx.beginPath();
+        ctx.moveTo(x + 20 + i * 32, g - 74); ctx.lineTo(x + 52 + i * 32, g - 74);
+        ctx.lineTo(x + 46 + i * 32, g - 58); ctx.lineTo(x + 26 + i * 32, g - 58);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+  drawLamp(ctx, t, x, on, arm) {
+    const g = this.g;
+    ctx.strokeStyle = '#2e2440'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, g); ctx.lineTo(x, g - 200); ctx.stroke();
+    let hx = x;
+    if (arm) { // curved arm hanging over the street (the balloon trap)
+      ctx.beginPath(); ctx.moveTo(x, g - 200); ctx.quadraticCurveTo(x - 10, g - 226, x - 34, g - 222); ctx.stroke();
+      hx = x - 38;
+    }
+    const hy = arm ? g - 214 : g - 208;
+    ctx.fillStyle = on ? '#ffe156' : '#3a3050';
+    ctx.beginPath(); ctx.arc(hx, hy, 13, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#2e2440'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(hx, hy, 13, 0, TAU); ctx.stroke();
+    if (on) {
+      ctx.save();
+      ctx.globalAlpha = 0.16 + 0.05 * Math.sin(t * 4 + x);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(hx, hy, 46, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+  drawBunting(ctx, t, x0, x1, y) {
+    const n = Math.floor((x1 - x0) / 34);
+    const fest = this.festive();
+    ctx.strokeStyle = 'rgba(233,228,244,0.5)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.quadraticCurveTo((x0 + x1) / 2, y + 26, x1, y); ctx.stroke();
+    for (let i = 0; i < n; i++) {
+      const k = (i + 0.5) / n;
+      const fx = lerp(x0, x1, k), fy = y + Math.sin(k * Math.PI) * 24 + (fest ? Math.sin(t * 5 + i) * 4 : 0);
+      ctx.fillStyle = fest || i < this.solvedCount() * 2 ? RAINBOW[i % RAINBOW.length] : 'rgba(138,127,174,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 9, fy); ctx.lineTo(fx + 9, fy); ctx.lineTo(fx, fy + 17);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  drawTower(ctx, t) {
+    const g = this.g, x = 1800;
+    const fest = this.festive();
+    const midnight = fest && this.festT > 0.9;
+    // body
+    ctx.fillStyle = '#564a7c';
+    rr(ctx, x - 46, 210, 92, g - 210, 8); ctx.fill();
+    ctx.strokeStyle = '#2e2440'; ctx.lineWidth = 4;
+    rr(ctx, x - 46, 210, 92, g - 210, 8); ctx.stroke();
+    ctx.fillStyle = '#3a3050';
+    rr(ctx, x - 24, g - 74, 48, 74, 6); ctx.fill(); // tower door
+    // pointy roof + the bell arch
+    ctx.fillStyle = '#3a3050';
+    ctx.beginPath(); ctx.moveTo(x - 58, 210); ctx.lineTo(x, 148); ctx.lineTo(x + 58, 210); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd24a';
+    const swing = fest && this.festT < 3.4 ? Math.sin(this.festT * 12) * 0.5 : 0;
+    ctx.save();
+    ctx.translate(x, 182); ctx.rotate(swing);
+    ctx.beginPath(); ctx.arc(0, 6, 12, Math.PI * 0.15, Math.PI * 0.85, true); ctx.lineTo(0, -8); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // the clock face: five-to-midnight... until it ISN'T
+    ctx.fillStyle = '#f4f0d8';
+    ctx.beginPath(); ctx.arc(x, 290, 46, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#2e2440'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(x, 290, 46, 0, TAU); ctx.stroke();
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    const minA = midnight ? -Math.PI / 2 : -Math.PI / 2 - 0.5; // the minute hand sweeps to 12
+    ctx.beginPath(); ctx.moveTo(x, 290); ctx.lineTo(x + Math.cos(-Math.PI / 2) * 22, 290 + Math.sin(-Math.PI / 2) * 22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, 290); ctx.lineTo(x + Math.cos(minA) * 36, 290 + Math.sin(minA) * 36); ctx.stroke();
+    if (this.state === 'ready') { // armed: the whole face glows "it's TIME"
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.2 * Math.sin(t * 4);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(x, 290, 62, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+  draw(ctx, t) {
+    const g = this.g;
+    // haystack + crates (their solids are invisible; these are the real looks)
+    ctx.fillStyle = '#e8c56a';
+    ctx.beginPath(); ctx.ellipse(655, g - 22, 68, 40, 0, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#c9a13e'; ctx.lineWidth = 3;
+    for (const [ox, oy] of [[-30, -18], [4, -30], [32, -14]]) {
+      ctx.beginPath(); ctx.moveTo(655 + ox, g + oy); ctx.lineTo(655 + ox + 12, g + oy - 10); ctx.stroke();
+    }
+    for (const [cx2, cy2, cs] of [[1083, g - 24, 48], [1142, g - 48, 92]]) {
+      ctx.fillStyle = '#8a6a4a';
+      rr(ctx, cx2 - cs / 2 + (cs > 50 ? 0 : 0), cy2 - cs / 2 - (cs > 50 ? 24 : 0), 56, cs, 5); ctx.fill();
+      ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 3;
+      rr(ctx, cx2 - cs / 2, cy2 - cs / 2 - (cs > 50 ? 24 : 0), 56, cs, 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx2 - cs / 2, cy2 - cs / 2 - (cs > 50 ? 24 : 0)); ctx.lineTo(cx2 + 28, cy2 + cs / 2 - (cs > 50 ? 24 : 0)); ctx.stroke();
+    }
+    // the cast
+    for (const n of this.npcs) this.drawNpc(ctx, t, n);
+    this.drawTinyZombie(ctx, t, this.zombie.x, this.zombie.y, this.zombie.facing,
+      this.zombie.state === 'munch' ? 'grin' : this.zombie.state === 'friend' ? 'happy' : 'sad',
+      1, this.festive());
+    // the tiny zombie's candy wish (its whole problem, told wordlessly)
+    if (this.zombie.state === 'waiting') {
+      const big = this.zombie.bubbleT > 0 ? 1.35 : 1;
+      this.drawBubble(ctx, this.zombie.x + 8, this.zombie.y - 74, big, (bx, by) => drawCandy(ctx, bx, by + 2, 13 * big, 1, t));
+    }
+    this.drawBalloon(ctx, t);
+    this.drawCart(ctx, t);
+    // the runaway wheel, leaning on the fence (until touched — then it rolls home)
+    const w = this.wheel;
+    if (w.state === 'waiting' || w.state === 'rolling') {
+      ctx.save();
+      ctx.translate(w.x, g - 26);
+      if (w.state === 'waiting') {
+        ctx.rotate(0.16); // leaning, a little embarrassed
+        ctx.save();
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 3); // "psst, over here"
+        ctx.fillStyle = '#ffe156';
+        ctx.beginPath(); ctx.arc(0, 0, 38, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      this.drawWheelShape(ctx, 0, 0, w.spin);
+      ctx.restore();
+    }
+    if (this.candyFly) { // one candy, airmail
+      const k = this.candyFly.t / 0.45;
+      const fx = lerp(this.candyFly.x0, this.zombie.x, k);
+      const fy = lerp(this.candyFly.y0, this.zombie.y - 30, k) - Math.sin(k * Math.PI) * 90;
+      drawCandy(ctx, fx, fy, 14, 1, t);
+    }
+    if (this.wheeT > 0) outlineText(ctx, 'WHEE!', this.npcs[0].x, this.npcs[0].y - 90, 38, '#ffe156', '#2a2150');
+    // ★-hint over the armed clock tower when the hero is close
+    if (this.state === 'ready' && game.player && Math.abs(game.player.cx - 1800) < 260) {
+      drawSpacebar(ctx, 1800, 392, 120, t);
+    }
+    if (this.festive()) this.drawFestival(ctx, t);
+    // rising firework rockets
+    for (const f of this.fw) {
+      const k = Math.min(1, f.t / 0.5);
+      ctx.save();
+      ctx.globalAlpha = 1 - k * 0.4;
+      ctx.strokeStyle = '#ffe9a0'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      const fy = lerp(f.y0, f.targetY, k * k * (2 - k));
+      ctx.beginPath(); ctx.moveTo(f.x, fy + 26); ctx.lineTo(f.x, fy); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  drawNpc(ctx, t, n) {
+    const dancing = n.state === 'square' && this.festive();
+    const walking = n.state === 'walk' || n.state === 'ride';
+    const hop = dancing ? Math.abs(Math.sin(t * 6 + n.target)) * 12 : walking ? Math.abs(Math.sin(n.bob)) * 5 : 0;
+    if (n.kind === 'carter' && (n.state === 'ride' || (n.state === 'square' && this.cart.state === 'parked'))) {
+      return; // he's ON the cart — drawCart draws him riding his masterpiece
+    }
+    const mood = n.state === 'need' ? (n.kind === 'kid' ? 'sad' : n.kind === 'scaredy' ? 'surprised' : 'surprised')
+      : dancing ? 'grin' : 'happy';
+    this.drawPerson(ctx, t, n.x, n.y - hop, n.kind, mood, n.facing);
+    // wordless problem bubbles
+    if (n.state === 'need') {
+      if (n.kind === 'granny') this.drawBubble(ctx, n.x + 10, n.y - 118, 1, (bx, by) => {
+        ctx.fillStyle = '#5a4a86'; // "I want DOWN"
+        ctx.beginPath(); ctx.moveTo(bx, by + 12); ctx.lineTo(bx - 10, by - 2); ctx.lineTo(bx - 4, by - 2);
+        ctx.lineTo(bx - 4, by - 12); ctx.lineTo(bx + 4, by - 12); ctx.lineTo(bx + 4, by - 2); ctx.lineTo(bx + 10, by - 2);
+        ctx.closePath(); ctx.fill();
+      });
+      if (n.kind === 'kid') this.drawBubble(ctx, n.x + 10, n.y - 108, 1, (bx, by) => {
+        ctx.fillStyle = '#ff5fa2';
+        ctx.beginPath(); ctx.ellipse(bx, by - 3, 9, 11, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bx, by + 8); ctx.quadraticCurveTo(bx + 4, by + 12, bx, by + 15); ctx.stroke();
+      });
+      if (n.kind === 'scaredy') this.drawBubble(ctx, n.x + 12, n.y - 112, 1, (bx, by) => {
+        this.drawTinyZombie(ctx, t, bx - 4, by + 14, 1, 'happy', 0.42, false);
+        outlineText(ctx, '!', bx + 13, by - 4, 22, '#ff5a5a', '#fff');
+      });
+      if (n.kind === 'carter') this.drawBubble(ctx, n.x + 10, n.y - 112, 1, (bx, by) => {
+        ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(bx, by, 11, 0, TAU); ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+          const a = i * Math.PI / 2 + 0.4;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(a) * 10, by + Math.sin(a) * 10); ctx.stroke();
+        }
+      });
+    }
+    if (n.kind === 'scaredy' && n.state === 'relieved') {
+      heartPath(ctx, n.x + 8, n.y - 110 - n.rt * 20, 12);
+      ctx.fillStyle = '#ff5fa2'; ctx.fill();
+    }
+    // the kid keeps the balloon forever after
+    if (n.kind === 'kid' && this.balloon.state === 'held') {
+      const bx = n.x + n.facing * 14, by = n.y - 124 - Math.sin(t * 2) * 5;
+      ctx.strokeStyle = 'rgba(233,228,244,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(n.x + n.facing * 8, n.y - 40); ctx.quadraticCurveTo(bx - 4, by + 30, bx, by + 16); ctx.stroke();
+      ctx.fillStyle = '#ff5fa2';
+      ctx.beginPath(); ctx.ellipse(bx, by, 13, 16, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(bx - 4, by - 5, 4, 0, TAU); ctx.fill();
+    }
+  }
+  drawPerson(ctx, t, x, y, kind, mood, facing) { // y = feet
+    ctx.save();
+    const skin = { granny: '#ffdfc0', kid: '#e8b98a', scaredy: '#ffcf9f', carter: '#d9a066' }[kind];
+    const shirt = { granny: '#b06cf0', kid: '#57d357', scaredy: '#4a6cff', carter: '#c9566a' }[kind];
+    const short = kind === 'kid';
+    const bh = short ? 46 : 62; // body height
+    const tremble = kind === 'scaredy' && mood === 'surprised' ? Math.sin(t * 30) * 1.5 : 0;
+    ctx.translate(x + tremble, y);
+    // legs
+    ctx.strokeStyle = '#3a3050'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-7, -18); ctx.lineTo(-8, 0); ctx.moveTo(7, -18); ctx.lineTo(8, 0); ctx.stroke();
+    // body
+    ctx.fillStyle = shirt;
+    rr(ctx, -14, -bh, 28, bh - 14, 9); ctx.fill();
+    // arms (granny-on-roof waves for help; scaredy covers his face-ish)
+    ctx.strokeStyle = skin; ctx.lineWidth = 6;
+    const wave = mood === 'surprised' && kind === 'granny' ? Math.sin(t * 9) * 14 : 0;
+    ctx.beginPath();
+    ctx.moveTo(-13, -bh + 12); ctx.lineTo(-22, -bh + 24 - wave);
+    ctx.moveTo(13, -bh + 12); ctx.lineTo(22, -bh + 24 - wave);
+    ctx.stroke();
+    // head
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(0, -bh - 10, 15, 0, TAU); ctx.fill();
+    // hair / hats — instant identity at a distance
+    if (kind === 'granny') {
+      ctx.fillStyle = '#e8e4f4';
+      ctx.beginPath(); ctx.arc(0, -bh - 18, 12, Math.PI, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -bh - 28, 7, 0, TAU); ctx.fill(); // the bun
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 2.5; // little glasses
+      ctx.beginPath(); ctx.arc(-6, -bh - 11, 4.5, 0, TAU); ctx.arc(6, -bh - 11, 4.5, 0, TAU); ctx.stroke();
+    } else if (kind === 'kid') {
+      ctx.fillStyle = '#ff9f43'; // propeller beanie, obviously
+      ctx.beginPath(); ctx.arc(0, -bh - 14, 14, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, -bh - 27); ctx.lineTo(0, -bh - 33); ctx.stroke();
+      ctx.fillStyle = '#57d357';
+      ctx.save();
+      ctx.translate(0, -bh - 33); ctx.scale(Math.sin(t * 10), 1);
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 3, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    } else if (kind === 'scaredy') {
+      ctx.fillStyle = '#3a3050'; // a very respectable bowler hat
+      ctx.beginPath(); ctx.ellipse(0, -bh - 20, 16, 5, 0, 0, TAU); ctx.fill();
+      rr(ctx, -10, -bh - 34, 20, 16, 5); ctx.fill();
+      ctx.fillStyle = '#8a6a4a'; // and a tidy mustache
+      ctx.beginPath(); ctx.ellipse(-5, -bh - 4, 5, 2.5, -0.2, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(5, -bh - 4, 5, 2.5, 0.2, 0, TAU); ctx.fill();
+    } else {
+      ctx.fillStyle = '#ffb62b'; // work cap
+      ctx.beginPath(); ctx.arc(0, -bh - 13, 14.5, Math.PI, TAU); ctx.fill();
+      rr(ctx, facing > 0 ? 2 : -18, -bh - 17, 16, 6, 3); ctx.fill();
+    }
+    drawFace(ctx, 0, -bh - 8, 22, mood, t, x * 0.13, facing, 0);
+    ctx.restore();
+  }
+  drawTinyZombie(ctx, t, x, y, facing, mood, s = 1, hugeHat = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    const bob = Math.sin(t * 5 + x) * 2;
+    // little green shuffler, arms out front (it's polite)
+    ctx.fillStyle = '#7fbf6a';
+    rr(ctx, -13, -34 + bob, 26, 30, 8); ctx.fill();
+    ctx.strokeStyle = '#4a7a3c'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(facing * 8, -24 + bob); ctx.lineTo(facing * 24, -22 + bob + Math.sin(t * 4) * 3);
+    ctx.moveTo(facing * 6, -18 + bob); ctx.lineTo(facing * 20, -15 + bob + Math.sin(t * 4 + 1) * 3);
+    ctx.stroke();
+    ctx.fillStyle = '#8fd07a';
+    ctx.beginPath(); ctx.arc(0, -42 + bob, 13, 0, TAU); ctx.fill();
+    // one cute stitch
+    ctx.strokeStyle = '#4a7a3c'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-9, -50 + bob); ctx.lineTo(-2, -47 + bob); ctx.stroke();
+    if (hugeHat) { // festival outfit: a hat three sizes too big
+      ctx.fillStyle = '#b06cf0';
+      ctx.beginPath(); ctx.ellipse(0, -52 + bob, 26, 7, 0, 0, TAU); ctx.fill();
+      rr(ctx, -14, -78 + bob, 28, 27, 6); ctx.fill();
+      ctx.fillStyle = '#ffe156';
+      rr(ctx, -14, -60 + bob, 28, 6, 2); ctx.fill();
+    }
+    drawFace(ctx, 0, -40 + bob, 18, mood, t, x * 0.31, facing, 0);
+    ctx.restore();
+  }
+  drawBubble(ctx, x, y, s, iconFn) {
+    ctx.save();
+    const bw = 52 * s, bh2 = 44 * s;
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    ctx.beginPath(); ctx.arc(x - 12, y + bh2 / 2 + 9, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 7, y + bh2 / 2 + 2, 6, 0, TAU); ctx.fill();
+    rr(ctx, x - bw / 2, y - bh2 / 2, bw, bh2, 14); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 3;
+    rr(ctx, x - bw / 2, y - bh2 / 2, bw, bh2, 14); ctx.stroke();
+    iconFn(x, y);
+    ctx.restore();
+  }
+  drawBalloon(ctx, t) {
+    const b = this.balloon;
+    if (b.state === 'held') return; // the kid draws it now
+    const bx = b.x + (b.state === 'stuck' ? Math.sin(b.bobT * 1.8) * 4 : 0);
+    const by = b.y + (b.state === 'stuck' ? Math.sin(b.bobT * 2.3) * 3 : 0);
+    ctx.strokeStyle = 'rgba(233,228,244,0.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bx, by + 18); ctx.quadraticCurveTo(bx + 5, by + 34, bx - 2, by + 46); ctx.stroke();
+    ctx.fillStyle = '#ff5fa2';
+    ctx.beginPath(); ctx.ellipse(bx, by, 16, 19, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c93e78'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(bx, by, 16, 19, 0, 0, TAU); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(bx - 5, by - 6, 5, 0, TAU); ctx.fill();
+    drawFace(ctx, bx, by + 2, 16, b.state === 'follow' ? 'grin' : 'sad', t, 71);
+  }
+  drawCart(ctx, t) {
+    const c = this.cart, g = this.g;
+    const broken = c.state === 'broken';
+    const bounce = Math.sin(c.bounce * 14) * 5 * c.bounce;
+    ctx.save();
+    ctx.translate(c.x + 55, g - 26 + bounce);
+    if (broken) ctx.rotate(-0.16); // slumped on its missing corner
+    // bed + rails
+    ctx.fillStyle = '#8a6a4a';
+    rr(ctx, -58, -26, 116, 26, 6); ctx.fill();
+    ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 3;
+    rr(ctx, -58, -26, 116, 26, 6); ctx.stroke();
+    ctx.fillStyle = '#a8845e';
+    rr(ctx, -58, -44, 10, 20, 3); ctx.fill();
+    rr(ctx, 48, -44, 10, 20, 3); ctx.fill();
+    // festival cargo: a big drum and a flag
+    ctx.fillStyle = '#c9566a';
+    rr(ctx, -34, -52, 34, 28, 6); ctx.fill();
+    ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-34, -38); ctx.lineTo(0, -38); ctx.stroke();
+    ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(24, -44); ctx.lineTo(24, -82); ctx.stroke();
+    ctx.fillStyle = this.festive() ? RAINBOW[Math.floor(t * 4) % RAINBOW.length] : '#9fe07b';
+    ctx.beginPath(); ctx.moveTo(24, -82); ctx.lineTo(48, -74); ctx.lineTo(24, -66); ctx.closePath(); ctx.fill();
+    // good wheel (left)
+    this.drawWheelShape(ctx, -38, 12, this.wheel.spin * 0.5);
+    // right corner: the poor propped stick, or the reunited wheel
+    if (c.state === 'broken') {
+      ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(46, 22); ctx.stroke();
+    } else {
+      this.drawWheelShape(ctx, 38, 12, this.wheel.spin);
+    }
+    // the carter rides his fixed masterpiece (and stays on it at the square)
+    if (c.state === 'riding' || c.state === 'parked') {
+      const ct2 = this.npcs[3];
+      const dance = this.festive() ? Math.abs(Math.sin(t * 6)) * 8 : 0;
+      this.drawPerson(ctx, t, 0, -26 - dance, 'carter', this.festive() ? 'grin' : 'happy', ct2.facing);
+    }
+    ctx.restore();
+  }
+  drawWheelShape(ctx, x, y, spin) {
+    ctx.fillStyle = '#5f4a30';
+    ctx.beginPath(); ctx.arc(x, y, 24, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8a6a4a';
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const a = spin + i * Math.PI / 3;
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(a) * 16, y - Math.sin(a) * 16);
+      ctx.lineTo(x + Math.cos(a) * 16, y + Math.sin(a) * 16);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#e8c56a';
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill();
+  }
+  drawFestival(ctx, t) {
+    const g = this.g;
+    // the runaway wheel still leaning on the fence pre-solve is long gone;
+    // now: the conga line, the trombone skeleton, the spider drummer
+    if (this.festT > 2.5) {
+      // zombie conga line sweeps the square; #2 dances facing the WRONG WAY
+      for (let i = 0; i < 5; i++) {
+        const k = ((t * 60 + i * 95) % 760) / 760;
+        const zx = 1480 + k * 560;
+        const backward = i === 2;
+        this.drawTinyZombie(ctx, t + i, zx, g, backward ? -1 : 1, 'grin', i === 4 ? 0.7 : 1, i === 4);
+      }
+      // skeleton on trombone (he is trying his best)
+      this.drawSkeleton(ctx, t, 1565, g);
+      // spider drummer, borrowed from the cave downstairs
+      this.drawSpiderDrummer(ctx, t, 2052, g);
+    }
+  }
+  drawSkeleton(ctx, t, x, y) {
+    const puff = Math.max(0, Math.sin(t * 2.2)); // cheeks when a note is due-ish
+    const sway = Math.sin(t * 3) * 0.08;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(sway);
+    // classic skeleton costume: black body, white rib stripes (reads at night)
+    ctx.fillStyle = '#241c40';
+    rr(ctx, -15, -66, 30, 50, 9); ctx.fill();
+    ctx.strokeStyle = '#f4f0e8'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    for (const ry of [-54, -43, -32]) { ctx.beginPath(); ctx.moveTo(-9, ry); ctx.lineTo(9, ry); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(0, -28); ctx.stroke(); // the sternum
+    // bony arms up holding the horn
+    ctx.beginPath(); ctx.moveTo(-13, -52); ctx.lineTo(-24, -66); ctx.moveTo(13, -52); ctx.lineTo(20, -70); ctx.stroke();
+    // big white skull with proper dark sockets
+    ctx.fillStyle = '#f4f0e8';
+    ctx.beginPath(); ctx.arc(0, -82, 17, 0, TAU); ctx.fill();
+    rr(ctx, -8, -72, 16, 9, 4); ctx.fill(); // the jaw
+    ctx.fillStyle = '#241c40';
+    ctx.beginPath(); ctx.arc(-6, -84, 4.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -84, 4.5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#241c40'; ctx.lineWidth = 2;
+    for (const jx of [-4, 0, 4]) { ctx.beginPath(); ctx.moveTo(jx, -71); ctx.lineTo(jx, -66); ctx.stroke(); }
+    // the trombone: angled tube + flared bell, slide flailing with enthusiasm
+    const slide = 20 + Math.sin(t * 7) * 13;
+    ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(4, -76); ctx.lineTo(24 + slide, -66); ctx.stroke();
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath();
+    ctx.moveTo(24 + slide, -66);
+    ctx.lineTo(38 + slide, -78); ctx.lineTo(42 + slide, -58);
+    ctx.closePath(); ctx.fill();
+    if (puff > 0.85) { // a visibly sour note escapes the bell
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      outlineText(ctx, '♪', 48 + slide, -92 + Math.sin(t * 9) * 6, 28, '#9fe07b', '#2a2150');
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  drawSpiderDrummer(ctx, t, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    // drum
+    ctx.fillStyle = '#c9566a';
+    rr(ctx, -22, -30, 44, 30, 6); ctx.fill();
+    ctx.fillStyle = '#f4f0d8';
+    ctx.beginPath(); ctx.ellipse(0, -30, 22, 7, 0, 0, TAU); ctx.fill();
+    // the spider (a friendly cave local)
+    ctx.fillStyle = '#8a5fd0';
+    ctx.beginPath(); ctx.arc(0, -56, 16, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#6a3fa8'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    for (const sd of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(sd * 12, -54 + i * 3);
+        ctx.lineTo(sd * (24 + i * 4), -44 + i * 6);
+        ctx.stroke();
+      }
+    }
+    drawFace(ctx, 0, -55, 20, 'grin', t, 78);
+    // two drumsticks alternating like mad
+    ctx.strokeStyle = '#e8c56a'; ctx.lineWidth = 4;
+    for (const sd of [-1, 1]) {
+      const a = Math.sin(t * 12 + (sd > 0 ? Math.PI : 0)) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(sd * 10, -52);
+      ctx.lineTo(sd * 20, -66 + a * 18);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }

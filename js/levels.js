@@ -21,7 +21,8 @@ const LEVEL_META = {
   torchcave: { name: 'TORCH CAVERN', theme: 'cave', music: 'cave' },
   zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' },
   treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' },
-  beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' } // the BAND is the music
+  beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' }, // the BAND is the music
+  zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' }
 };
 
 function newLevel(n) {
@@ -282,6 +283,10 @@ function buildLevel(n) {
     // the SECRET TORCH CAVERN: a low side tunnel where two glowing eyes blink
     // in the dark next to a tiny flickering torch — "something is over here"
     lv.subDoors.push(new SubDoor(660, G, 'torchcave', 'eyes'));
+    // ZOMBIE TOWN AFTER DARK: a shaft of real MOONLIGHT pours through a crack
+    // in the cave ceiling — stars twinkle up there, music notes drift down,
+    // and rough rock rungs climb the wall. Step into the beam and up you go.
+    lv.subDoors.push(new SubDoor(1080, G, 'zombietown', 'moonwell'));
     candyRow(lv, 300, 3900, G - 55, 22); // candy clues lead the way
     spider(lv, 1200, 420, 'hang', { webTop: 0 });
     spider(lv, 1600, G, 'walk', { range: 160 });
@@ -1009,6 +1014,29 @@ function buildLevel(n) {
     lv.playerStart = { x: 70, y: 460 };
     addGround(lv, 0, 1280, G);
     lv.puzzle = new BeatBash(G);
+  }
+
+  if (n === 'zombietown') { // ---------------- ZOMBIE TOWN AFTER DARK (a town to save)
+    // Jack's own idea: Zombieland + the night sky + PEOPLE. A compact
+    // explorable town under a huge moon: four townspeople each have one small
+    // visual problem (a granny stuck on a roof, a lost balloon, a "scary"
+    // tiny zombie, a broken festival cart), each solved with a different verb
+    // (bounce-rescue / knock-loose-and-carry / give candy with ★ / roll the
+    // wheel home). Every rescue walks someone to the town square and turns
+    // more of the town on; all four gathered = ring the clock tower at
+    // midnight for the ZOMBIE FESTIVAL. The whole cast, town, sky, and
+    // festival live in lv.puzzle (ZombieTown); its skipDraw solids (roof,
+    // haystack, crates) are pushed into lv.solids here. No enemies, no
+    // hazards — wrong guesses are jokes.
+    lv.w = 3000; lv.h = 720;
+    lv.playerStart = { x: 80, y: 460 };
+    addGround(lv, 0, 3000, G);
+    lv.puzzle = new ZombieTown(G);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.hints.push({ x: 210, y: G - 200, icon: 'arrows' });
+    candyRow(lv, 850, 1000, G - 55, 2);
+    candyRow(lv, 1560, 2060, G - 55, 4);
+    candyRow(lv, 2200, 2350, G - 55, 2);
   }
 
   if (n === 'zerog') { // ---------------- ZERO-G STAR CHAMBER (spatial planning)
