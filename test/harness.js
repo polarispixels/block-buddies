@@ -1358,6 +1358,94 @@ check('walking over the completed ladder door never re-enters', G().level.n === 
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: PIT STOP BEAT BASH (the rhythm game) ----------------
+vm.runInContext('game.startLevel(7)', sandbox);
+frames(160);
+check('the rally hides a thumping pit garage', vm.runInContext("game.level.subDoors.some(d => d.sub === 'beatbash' && d.style === 'garage')", sandbox));
+// racing past at monster-truck speed must NEVER hijack the race
+vm.runInContext("game.player.vehicle = 'truck'; game.player.x = 2590; game.player.y = 620 - 97; game.player.vx = 460;", sandbox);
+frames(30, { ArrowRight: 1 });
+check('zooming past the garage in the truck never swallows the racer', G().level.n === 7 && G().player.x > 2740);
+// ...but stopping to investigate the strange thumping is the invitation
+vm.runInContext("game.player.x = 2660; game.player.y = 620 - 97; game.player.vx = 0;", sandbox);
+frames(10);
+check('stopping at the garage enters PIT STOP BEAT BASH', G().level.n === 'beatbash');
+frames(150);
+const BB = () => vm.runInContext('game.level.puzzle', sandbox);
+check('band room loaded: show waiting, zero hits, nothing joined, no star yet',
+  BB().state === 'waiting' && BB().hits === 0 && BB().instruments.every(i2 => !i2.joined) && G().level.goalStar === null);
+put(500, 620 - 94);
+frames(20);
+check('stepping up to the stage starts the count-in', ['countin', 'jam'].includes(BB().state));
+frames(160);
+check('the groove begins: a beat is queued, aimed at the tire drum', BB().state === 'jam' && !!BB().beat && BB().beat.target === 0);
+// a way-early press is comedy, never damage — and never eats the pending beat
+vm.runInContext('game.level.puzzle.songT = game.level.puzzle.beat.at - 0.9', sandbox);
+tap('Space');
+frames(2);
+check('an early press is a funny whiff: no progress lost, beat still live',
+  BB().hits === 0 && !!BB().beat && BB().state === 'jam');
+// both edges of the generous window count as hits
+vm.runInContext('game.level.puzzle.songT = game.level.puzzle.beat.at - 0.25', sandbox);
+tap('Space');
+frames(2);
+check('a slightly-early press inside the window is a HIT', BB().hits === 1 && BB().lamps[0] === 1);
+vm.runInContext('game.level.puzzle.songT = game.level.puzzle.beat.at + 0.25', sandbox);
+tap('Space');
+frames(2);
+check('a slightly-late press inside the window is a HIT too', BB().hits === 2 && BB().lamps[0] === 2);
+// a beat nobody hits drifts by — shrug, keep everything, queue the next one
+vm.runInContext('game.level.puzzle.songT = game.level.puzzle.beat.at + 0.31', sandbox);
+frames(5);
+check('a missed beat never resets progress (next beat simply queues up)',
+  BB().hits === 2 && BB().lamps[0] === 2 && !!BB().beat && BB().beat.at > BB().songT);
+// play the show through: the band must join in order, then the finale fires
+const beatHit = () => {
+  vm.runInContext('game.level.puzzle.songT = game.level.puzzle.beat.at', sandbox);
+  tap('Space');
+  frames(3);
+};
+beatHit(); beatHit();
+check('four tire hits and the TIRE DRUM joins the band', BB().instruments[0].joined && BB().stage === 1);
+for (let i = 0; i < 4; i++) beatHit();
+check('the HUBCAP CYMBAL joins second', BB().instruments[1].joined && BB().stage === 2);
+for (let i = 0; i < 4; i++) beatHit();
+check('the EXHAUST HORN joins third', BB().instruments[2].joined && BB().stage === 3);
+for (let i = 0; i < 4; i++) beatHit();
+check('the ENGINE BASS joins last — the full band is live', BB().instruments[3].joined && BB().stage === 4);
+for (let i = 0; i < 6; i++) beatHit();
+check('six full-band hits trigger the monster-truck finale', BB().state === 'finale');
+frames(480); // doors fly open, truck rolls in, rev solo, THE BACKFLIP, candy
+check('the finale lands done with the golden star revealed', BB().state === 'done' && !!G().level.goalStar);
+put(1090 - 28, 620 - 94);
+frames(20);
+check('the star starts the PIT STOP SUPERSTAR party', G().endPhase === 'party' && G().level.n === 'beatbash');
+check('beat bash completion is remembered', G().miniDone.beatbash === true && sandbox.localStorage.getItem('ffbg_mini').includes('beatbash'));
+frames(320);
+tap('Space');
+frames(5);
+check('the garage exits back to the rally, still in the truck', G().level.n === 7 && G().state === 'play' && G().player.vehicle === 'truck');
+check('no band state leaks into the rally', G().level.puzzle === null);
+// the completed door goes dormant for racers; replay stays one Space away
+vm.runInContext("game.player.x = 2590; game.player.y = 620 - 97; game.player.vx = 460;", sandbox);
+frames(30, { ArrowRight: 1 });
+check('the completed garage never swallows a racer again', G().level.n === 7 && G().player.x > 2740);
+vm.runInContext("game.player.x = 2660; game.player.y = 620 - 97; game.player.vx = 0;", sandbox);
+frames(6);
+check('standing on the trophy door alone does not re-enter', G().level.n === 7);
+tap('Space');
+frames(5);
+check('standing + Space replays the whole show', G().level.n === 'beatbash' && G().state === 'intro');
+vm.runInContext('game.exitSub()', sandbox);
+frames(3);
+check('replay exits cleanly back to the rally', G().level.n === 7 && G().state === 'play');
+// and the rally still races to the trophy after all that
+vm.runInContext("game.player.x = 5320; game.player.y = 620 - 97; game.player.vx = 300; game.player.hearts = 3; game.player.inv = 2;", sandbox);
+frames(300, { ArrowRight: 1 });
+check('the rally still runs turbo → big ramp → trophy after the secret', G().raceDone === true);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {

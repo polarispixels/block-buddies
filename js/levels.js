@@ -20,7 +20,8 @@ const LEVEL_META = {
   piperoom: { name: 'SECRET PIPE ROOM', theme: 'cave', music: 'dirt' },
   torchcave: { name: 'TORCH CAVERN', theme: 'cave', music: 'cave' },
   zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' },
-  treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' }
+  treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' },
+  beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' } // the BAND is the music
 };
 
 function newLevel(n) {
@@ -401,6 +402,11 @@ function buildLevel(n) {
     candyArc(lv, 4180, 4560, 340, 540, 5);
     candyArc(lv, 5090, 5450, 300, 540, 5);
     candyArc(lv, 6050, 6700, 130, 480, 8);
+    // PIT STOP BEAT BASH: a pit garage between the two mid-course ramps thumps
+    // to a muffled beat, strobes light through the door seams, and a mechanic
+    // peeks out and slams the door. Racing past at truck speed never enters —
+    // stop (or press ★) to investigate, and FWOOMP: you're in the band room.
+    lv.subDoors.push(new SubDoor(2680, G, 'beatbash', 'garage'));
     spider(lv, 2050, G, 'walk', { range: 150 }); // the build zone stays enemy-free
     spider(lv, 2250, G, 'tornado', { range: 220 });
     spider(lv, 3700, G, 'tornado', { range: 250 });
@@ -991,6 +997,18 @@ function buildLevel(n) {
     lv.decor.floorFerns = [];
     for (let x = 80; x < 2320; x += rand(150, 290)) lv.decor.floorFerns.push({ x, g: GF, s: rand(0.8, 1.4), c: randi(0, 3) });
     for (let x = 3180; x < 4560; x += rand(150, 290)) lv.decor.floorFerns.push({ x, g: GB, s: rand(0.8, 1.4), c: randi(0, 3) });
+  }
+
+  if (n === 'beatbash') { // ---------------- PIT STOP BEAT BASH (rhythm!)
+    // One single non-scrolling screen: the whole garage band is observable at
+    // once and the shrinking beat ring is always in view. Flat floor, zero
+    // enemies, zero hazards — this room is a different GENRE, not a level.
+    // The entire show lives in lv.puzzle (BeatBash): count-in, beats, band
+    // build-up, monster-truck finale, golden star.
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 70, y: 460 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new BeatBash(G);
   }
 
   if (n === 'zerog') { // ---------------- ZERO-G STAR CHAMBER (spatial planning)

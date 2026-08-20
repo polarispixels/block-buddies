@@ -8,6 +8,53 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.12.0] - 2026-08-19
+
+### Added — PIT STOP BEAT BASH: the first rhythm game (a whole new genre inside a secret)
+
+Monster Truck Rally hides a pit garage that is very obviously having a party
+inside: the whole building thumps to a muffled BOOM-BOOM-…-HONK, colored light
+strobes through the roller-door seams, a wrench occasionally flies off the
+roof, and every so often a tiny mechanic peeks out, sees you, and SLAMS the
+door. Racing past at monster-truck speed never interrupts the race — stop (or
+press ★) at the strange garage and you're pulled into the band room.
+
+- **One control, one idea.** Space/★ when the big colored ring shrinks onto
+  the glowing instrument. The hit window is ±0.3s (huge), a bouncing spacebar
+  icon teaches it wordlessly for the first two beats, and a dashed target
+  circle always shows where to look.
+- **Misses are jokes, never punishment.** No lives, no game over, no resets:
+  a wrong-time press gets a weak *plop* or a sad deflating honk and a pit-crew
+  shrug ("?"); a beat nobody hits earns a confused tire wobble and the next
+  beat simply queues up. Cumulative progress only ever goes up.
+- **The band builds as you succeed.** Tire drum → hubcap cymbal → exhaust
+  horns → engine-block bass: every 4 good hits, the featured instrument JOINS
+  THE BAND and its layer starts looping in the groove, so the garage audibly
+  and visibly comes alive — string lights, lug-nut equalizer bars, dancing
+  wrenches, pumping pistons. Six more full-band hits (varied but readable
+  spacing) and…
+- **The monster-truck finale.** Music stops, garage shakes, the big doors fly
+  open, and the MONSTER TRUCK rolls in to play an engine-rev solo, do one
+  completely unnecessary backflip, and detonate a candy-and-confetti eruption.
+  The golden star pops out at the doorway: **PIT STOP SUPERSTAR!**
+- **All the secret plumbing comes free.** Completion persists in `ffbg_mini`,
+  the door becomes a dormant gold-star trophy (drive over it forever, replay
+  by standing on it + Space), and exiting restores the rally — truck, race,
+  and all — exactly as you left it.
+- **Deterministic rhythm engine** (`BeatBash`, on `lv.puzzle` like every
+  secret-room machine): a dt-driven song clock, fixed beat intervals, a fixed
+  8-step groove sequencer, and the shrinking ring as the single source of
+  timing truth — reliable under any frame-rate wobble, no audio sync needed.
+  New reusable hook: `lv.puzzle.drawBack()` paints a room interior *behind*
+  the solids and goal star. Nine new procedural sfx (tire kick, hubcap,
+  honks, bass, plop, count-in tick, muffled thumps, wrench clank).
+
+### Changed
+
+- The harness now also plays the whole Beat Bash through (drive-by immunity,
+  window edges, whiffs, misses, band order, finale, persistence, replay, and
+  a post-secret rally run): 392 checks (was 367).
+
 ## [1.11.0] - 2026-08-18
 
 ### Added — the JUNGLE TREEHOUSE TRAIL: the game's first mini-ADVENTURE

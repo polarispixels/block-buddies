@@ -1148,6 +1148,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'zerog') {
       outlineText(ctx, game.character === 'girl' ? 'BECCA IN THE STARS!' : 'JACK-JACK IN THE STARS!', W / 2, 140, 66, '#ffe156', '#3d3766');
       outlineText(ctx, 'YOU BUILT THE CONSTELLATION!', W / 2, 212, 34, '#7fd8ff', '#3d3766');
+    } else if (game.level.n === 'beatbash') {
+      outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
+      outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
     } else if (game.level.n === 'treehouse') {
       outlineText(ctx, 'BEST MONKEY FRIENDS!', W / 2, 140, 68, '#ffd24a', '#2f5a2a');
       outlineText(ctx, 'YOU RANG THE GREAT BANANA BELL!', W / 2, 212, 34, '#7be07b', '#2f5a2a');
@@ -1191,6 +1194,9 @@ function renderWorld() {
   let sx = 0, sy = 0;
   if (game.shake > 0) { sx = rand(-1, 1) * game.shake * 14; sy = rand(-1, 1) * game.shake * 10; }
   ctx.translate(-Math.round(cam.x - sx), -Math.round(cam.y - sy));
+  // secret-room machines may paint a whole room interior BEHIND the solids and
+  // goal star (the Beat Bash garage walls/roller door live here)
+  if (lv.puzzle && lv.puzzle.drawBack) lv.puzzle.drawBack(ctx, t);
   drawSolids(ctx, lv, cam, t);
   drawHints(ctx, lv, t);
   for (const c of lv.checks) c.draw(ctx);

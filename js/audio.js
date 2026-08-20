@@ -164,6 +164,17 @@ const AudioSys = {
         break;
       case 'monkeysad': this.tone(620, 340, 0.5, 'sine', 0.11); this.tone(420, 240, 0.55, 'sine', 0.08, 0.45); break;
       case 'squawk': this.tone(1100, 500, 0.16, 'sawtooth', 0.13); this.noise(0.12, 0.05, 0, 3600); this.tone(900, 420, 0.14, 'sawtooth', 0.1, 0.16); break;
+      // ---- Pit Stop Beat Bash: the automotive band ----
+      case 'tireboom': this.tone(150, 48, 0.22, 'sine', 0.28); this.noise(0.07, 0.09, 0, 600); break; // tire drum = kick
+      case 'hubcap': this.noise(0.16, 0.07, 0, 9000); this.tone(2400, 1500, 0.1, 'square', 0.035); break; // hubcap = cymbal
+      case 'hornhit': this.tone(330, 330, 0.18, 'sawtooth', 0.11); this.tone(415, 415, 0.18, 'sawtooth', 0.09, 0.02); break; // exhaust horn = HONK
+      case 'hornflat': this.tone(262, 168, 0.5, 'sawtooth', 0.11); break; // the sad deflating honk
+      case 'bassbump': this.tone(65, 62, 0.26, 'square', 0.13); this.tone(130, 124, 0.2, 'sine', 0.06); break; // engine block = bass
+      case 'plop': this.tone(240, 78, 0.26, 'sine', 0.13); this.noise(0.05, 0.03, 0, 500); break; // a miss goes "plop" — that's all
+      case 'stick': this.tone(1150, 750, 0.05, 'square', 0.09); break; // count-in tick
+      case 'muffbeat': this.noise(0.09, 0.08, 0, 220); this.tone(72, 46, 0.16, 'sine', 0.15); break; // BOOM BOOM through the garage door
+      case 'muffhonk': this.tone(300, 205, 0.3, 'sawtooth', 0.055); this.noise(0.12, 0.04, 0, 350); break; // ...HONK (muffled)
+      case 'clank': this.tone(1400, 900, 0.07, 'square', 0.08); this.noise(0.08, 0.06, 0, 2400); break; // a wrench lands somewhere
     }
   },
 

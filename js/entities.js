@@ -3469,11 +3469,16 @@ class SubDoor {
       // a COMPLETED door goes dormant: walking over it never swallows you
       // again (that was a real playtest complaint on the cave-roof route).
       // Replay is deliberate: stand on the trophy marker and press Space/★.
-      if (!done || justP.Space) {
+      // The pit garage adds one rule: RACING past at monster-truck speed never
+      // hijacks the race — you have to stop (or press ★) to investigate.
+      const zoomBy = this.style === 'garage' && game.player.vehicle === 'truck' &&
+        Math.abs(game.player.vx) > 200 && !justP.Space;
+      if ((!done && !zoomBy) || justP.Space) {
         this.armed = false;
         if (this.style === 'pipe') AudioSys.sfx('blorp'); // FWOOOP — sucked in!
         if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
         if (this.style === 'ladder') AudioSys.sfx('monkey'); // welcomed up the tree
+        if (this.style === 'garage') AudioSys.sfx('hornhit'); // the band waves you in
         game.enterSub(this.sub);
         return;
       }
@@ -3487,6 +3492,7 @@ class SubDoor {
         : this.style === 'eyes' ? ['#ffe156', '#ff9f43']
         : this.style === 'asteroid' ? ['#ffd24a', '#ffe156']
         : this.style === 'ladder' ? ['#7be07b', '#ffe156']
+        : this.style === 'garage' ? ['#ffe156', '#ff8fb0', '#7fd8ff']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -3518,6 +3524,45 @@ class SubDoor {
       if (this.whoopT <= 0) {
         this.whoopT = rand(6, 11);
         if (Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.7) AudioSys.sfx('monkey');
+      }
+    }
+    // the pit garage's clue: the whole building THUMPS to a muffled beat,
+    // colored light flashes through the door seams, an occasional wrench flies
+    // off the roof, and a little mechanic peeks out — sees you — SLAMS the door
+    if (this.style === 'garage' && !done) {
+      const nearCam = Math.abs(this.cx - (game.cam.x + W / 2)) < W * 0.75;
+      this.beatT = (this.beatT ?? 0) + dt;
+      if (this.beatT >= 0.62) {
+        this.beatT -= 0.62;
+        this.beatN = (this.beatN ?? 0) + 1;
+        this.thump = 1;
+        if (nearCam) {
+          AudioSys.sfx('muffbeat');
+          if (this.beatN % 4 === 3) AudioSys.sfx('muffhonk'); // BOOM BOOM ... HONK
+        }
+      }
+      this.thump = Math.max(0, (this.thump ?? 0) - dt * 4);
+      this.wrenchT = (this.wrenchT ?? rand(3, 6)) - dt;
+      if (this.wrenchT <= 0) {
+        this.wrenchT = rand(4.5, 8);
+        Particles.burst(this.cx + rand(-20, 20), this.y - 40, 2, { colors: ['#8a8a9a', '#c9c1d6'], type: 'block', sp1: 240, l0: 0.9, l1: 1.4, s1: 10, grav: 700, up: 320 });
+        if (nearCam) AudioSys.sfx('clank');
+      }
+      // the peek-a-boo mechanic (only when the hero is close enough to see it)
+      if (this.peekAnim > 0) {
+        const prev = this.peekAnim;
+        this.peekAnim -= dt;
+        if (prev > 0.3 && this.peekAnim <= 0.3) { // SLAM!
+          if (nearCam) AudioSys.sfx('thud');
+          Particles.burst(this.cx, this.groundY - 6, 6, { colors: ['#b09a7a', '#8a8a9a'], sp1: 120, l1: 0.5, s1: 8, up: 40 });
+        }
+      } else {
+        this.peekT = (this.peekT ?? 3) - dt;
+        if (this.peekT <= 0 && Math.abs(game.player.cx - this.cx) < 430) {
+          this.peekT = rand(6, 9);
+          this.peekAnim = 1.3;
+          if (nearCam) AudioSys.sfx('hiccup');
+        }
       }
     }
   }
@@ -3758,6 +3803,81 @@ class SubDoor {
       }
       // a happy face carved low in the bark — the tree is friendly
       drawFace(ctx, cx - tw * 0.26, g - 34, 20, 'happy', t, 67);
+    } else if (this.style === 'garage') {
+      // a little pit-lane garage that is VERY obviously having a party inside:
+      // the roller door bounces to the beat, colored light strobes through the
+      // seams, and sometimes a mechanic peeks out and slams the door shut
+      const done2 = this.done();
+      const thump = done2 ? 0 : (this.thump ?? 0);
+      const peek = done2 ? 0 : Math.max(0, this.peekAnim ?? 0);
+      // door lift: peek raises the door bottom ~30px, then it slams back down
+      const lift = peek > 0.3 ? Math.min(1, (1.3 - peek) / 0.35) * 30 : peek > 0 ? peek / 0.3 * 30 : 0;
+      const bw = this.w + 52, bh = this.h + 44;
+      const squish = 1 + thump * 0.045;
+      ctx.save();
+      ctx.translate(cx, g);
+      ctx.scale(1 / squish, squish); // the whole building pumps to the beat
+      ctx.translate(-cx, -g);
+      // concrete building
+      ctx.fillStyle = '#b8b2c4';
+      rr(ctx, cx - bw / 2, g - bh, bw, bh, 8); ctx.fill();
+      ctx.strokeStyle = '#7a7490'; ctx.lineWidth = 4;
+      rr(ctx, cx - bw / 2, g - bh, bw, bh, 8); ctx.stroke();
+      // flat roof slab + a stubby exhaust stack puffing to the music
+      ctx.fillStyle = '#8a8496';
+      rr(ctx, cx - bw / 2 - 10, g - bh - 14, bw + 20, 20, 6); ctx.fill();
+      ctx.fillStyle = '#6f6a80';
+      rr(ctx, cx + bw / 2 - 26, g - bh - 40, 16, 30, 4); ctx.fill();
+      if (!done2 && thump > 0.7) {
+        Particles.burst(cx + bw / 2 - 18, g - bh - 44, 1, { color: 'rgba(200,200,210,0.55)', sp1: 25, grav: -110, l1: 0.7, s1: 9, up: 10 });
+      }
+      // roof sign: a tire with a bouncing music note — "band inside"
+      ctx.fillStyle = '#2e2430';
+      ctx.beginPath(); ctx.arc(cx - bw / 2 + 20, g - bh - 26, 16, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#c9c1d6';
+      ctx.beginPath(); ctx.arc(cx - bw / 2 + 20, g - bh - 26, 6, 0, TAU); ctx.fill();
+      const nb = Math.sin(t * 6) * 4;
+      ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx + 6, g - bh - 24 + nb); ctx.lineTo(cx + 6, g - bh - 44 + nb); ctx.stroke();
+      ctx.fillStyle = '#5a4a86';
+      ctx.beginPath(); ctx.ellipse(cx + 2, g - bh - 22 + nb, 6, 4.5, -0.4, 0, TAU); ctx.fill();
+      // the corrugated roller door (this is the actual doorway)
+      const dw = this.w - 4, dh = this.h - 22;
+      ctx.fillStyle = '#3a3448';
+      rr(ctx, cx - dw / 2 - 5, g - dh - 5, dw + 10, dh + 5, 6); ctx.fill();
+      ctx.fillStyle = '#ffb62b';
+      rr(ctx, cx - dw / 2, g - dh - lift, dw, dh, 5); ctx.fill();
+      ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 3;
+      rr(ctx, cx - dw / 2, g - dh - lift, dw, dh, 5); ctx.stroke();
+      // slats, with party light strobing through the seams
+      const hue = ['#ff5fa2', '#7fd8ff', '#ffe156', '#7be07b'][(this.beatN ?? 0) % 4];
+      for (let sy = g - dh - lift + 14; sy < g - lift - 8; sy += 16) {
+        ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(cx - dw / 2 + 4, sy); ctx.lineTo(cx + dw / 2 - 4, sy); ctx.stroke();
+        if (!done2) {
+          ctx.save();
+          ctx.globalAlpha = 0.35 + thump * 0.55;
+          ctx.strokeStyle = hue; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(cx - dw / 2 + 8, sy); ctx.lineTo(cx + dw / 2 - 8, sy); ctx.stroke();
+          ctx.restore();
+        }
+      }
+      // glow spilling out under the door (and the peeking mechanic in the gap)
+      if (!done2) {
+        ctx.save();
+        ctx.globalAlpha = 0.4 + thump * 0.5;
+        ctx.fillStyle = hue;
+        ctx.beginPath(); ctx.ellipse(cx, g, dw / 2 + 8 + thump * 8, 7 + lift * 0.5, 0, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      if (lift > 8) { // the tiny mechanic: goggles, big eyes, instant regret
+        ctx.fillStyle = '#0e0a1c';
+        rr(ctx, cx - dw / 2 + 4, g - lift, dw - 8, lift, 3); ctx.fill();
+        ctx.fillStyle = '#c9c1d6';
+        ctx.beginPath(); ctx.arc(cx, g - lift / 2 + 2, Math.min(12, lift * 0.45), 0, TAU); ctx.fill();
+        drawFace(ctx, cx, g - lift / 2 + 3, Math.min(16, lift * 0.62), 'surprised', t, 73);
+      }
+      ctx.restore();
     } else { // cloud swirl archway
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       for (let i = 0; i < 7; i++) {
@@ -5991,6 +6111,545 @@ class TreehouseTrail {
     // WHEEE! while flying
     if (this.seq && this.seq.phase === 'fly' && game.player) {
       outlineText(ctx, 'WHEEE!', game.player.cx, game.player.y - 46, 40, '#ffe156', '#2f5a2a');
+    }
+  }
+}
+
+// ================================================================ pit stop beat bash
+// The rally's secret RHYTHM GAME — Block Buddies' first non-platformer genre.
+// A pit garage has turned into an automotive band stage: tire drum, hubcap
+// cymbal, exhaust horn, engine-block bass. One control: Space/★ when the big
+// colored ring shrinks onto the glowing instrument. The window is huge, misses
+// are jokes (plop / flat honk / confused tire — nothing is ever lost), and
+// every 4 good hits another instrument JOINS THE BAND, so the room audibly
+// and visibly comes alive. 6 more hits with the full band running triggers
+// the finale: the roller door flies up and the MONSTER TRUCK arrives to play
+// an engine-rev solo and do one completely unnecessary backflip. The golden
+// star pops out at the doorway -> subWin -> ffbg_mini persistence, replay and
+// the dormant trophy door all come free, exactly like every other secret.
+// Deterministic throughout: a dt-driven song clock, fixed beat intervals, and
+// a fixed 8-step groove sequencer — the shrinking ring IS the timing source.
+const BB_WINDOW = 0.3;   // +/- seconds around the beat that count as a HIT
+const BB_LEAD = 1.1;     // seconds the ring takes to shrink onto the target
+const BB_LAMPS = 4;      // good hits per instrument before it joins the band
+const BB_JAM = 6;        // full-band hits that trigger the finale
+class BeatBash {
+  constructor(groundY) {
+    this.g = groundY;
+    this.t = rand(9);
+    this.state = 'waiting'; // -> 'countin' -> 'jam' -> 'finale' -> 'done'
+    this.instruments = [
+      { key: 'tire',   x: 260, sfx: 'tireboom', kind: 'fire',    joined: false, anim: 0, wob: 0 },
+      { key: 'hubcap', x: 455, sfx: 'hubcap',   kind: 'ice',     joined: false, anim: 0, wob: 0 },
+      { key: 'horn',   x: 635, sfx: 'hornhit',  kind: 'power',   joined: false, anim: 0, wob: 0 },
+      { key: 'engine', x: 830, sfx: 'bassbump', kind: 'rainbow', joined: false, anim: 0, wob: 0 }
+    ];
+    this.lamps = [0, 0, 0, 0]; // per-instrument progress bulbs
+    this.stage = 0;            // 0..3 = featured instrument, 4 = full-band jam
+    this.hits = 0;             // cumulative successes — NEVER decreases
+    this.jamHits = 0;
+    this.beat = null;          // { at: songT, target: instrument index }
+    this.songT = 0;            // the deterministic song clock
+    this.barT = 0; this.lastStep = -1; this.stepFlash = 0;
+    this.ct = 0;               // count-in clock
+    this.missT = 0;            // crew-shrug timer (comedy, no penalty)
+    this.whiffN = 0;
+    this.finT = 0;
+    this.crewJump = 0;
+  }
+  instrumentY(i) { // visual center of each instrument (ring target)
+    return [this.g - 78, this.g - 150, this.g - 120, this.g - 88][i];
+  }
+  scheduleBeat() {
+    const iv = this.stage === 0 ? 1.9
+      : this.stage < 4 ? 1.5
+      : [1.1, 0.8, 0.95, 1.5][this.jamHits % 4]; // varied but readable spacing
+    this.beat = { at: this.songT + Math.max(iv, 0.8), target: this.stage < 4 ? this.stage : this.jamHits % 4 };
+  }
+  hitBeat() {
+    const i = this.beat.target, ins = this.instruments[i];
+    ins.anim = 1;
+    this.hits++;
+    this.crewJump = 1;
+    AudioSys.sfx(ins.sfx);
+    Particles.burst(ins.x, this.instrumentY(i) - 20, 10, { colors: [POW[ins.kind].c, '#ffe156', '#fff'], type: 'star', sp1: 260, l1: 0.7, s1: 10 });
+    if (game.player) game.player.setMood('grin', 0.5);
+    if (this.stage < 4) {
+      this.lamps[i]++;
+      if (this.lamps[i] >= BB_LAMPS) this.joinBand(i);
+    } else {
+      this.jamHits++;
+      if (this.jamHits >= BB_JAM) { this.startFinale(); return; }
+    }
+    this.scheduleBeat();
+  }
+  joinBand(i) {
+    const ins = this.instruments[i];
+    ins.joined = true;
+    this.stage++;
+    AudioSys.sfx('powerup');
+    AudioSys.sfx('cheer');
+    game.shake = Math.max(game.shake, 0.2);
+    Particles.burst(ins.x, this.instrumentY(i) - 40, 22, { colors: RAINBOW, type: 'confetti', sp1: 340, l0: 0.9, l1: 1.9, s1: 11, grav: 300, up: 240 });
+    if (this.stage === 4) AudioSys.sfx('fanfare'); // THE FULL BAND IS LIVE
+  }
+  missBeat() { // the beat sailed by — a confused instrument, a shrug, move on
+    const ins = this.instruments[this.beat.target];
+    ins.wob = 1;
+    this.missT = 0.9;
+    AudioSys.sfx('plop');
+    this.scheduleBeat();
+  }
+  whiff() { // pressed at the wrong moment — funny sound, nothing lost at all
+    this.missT = 0.7;
+    this.whiffN++;
+    AudioSys.sfx(this.whiffN % 2 ? 'plop' : 'hornflat');
+    if (game.player) Particles.burst(game.player.cx, game.player.y + game.player.h, 4, { colors: ['#b8b2c4'], sp1: 90, l1: 0.4, s1: 7, up: 40 });
+  }
+  startFinale() {
+    this.state = 'finale';
+    this.finT = 0;
+    this.beat = null;
+    AudioSys.sfx('rumble');
+    game.shake = Math.max(game.shake, 0.5);
+  }
+  grooveOn() { // the background layers pause for the finale build-up + party
+    return (this.state === 'jam' || this.state === 'done') && !game.endPhase;
+  }
+  update(dt, pl) {
+    this.t += dt;
+    this.missT = Math.max(0, this.missT - dt);
+    this.crewJump = Math.max(0, this.crewJump - dt * 3);
+    this.stepFlash = Math.max(0, this.stepFlash - dt * 6);
+    for (const ins of this.instruments) {
+      ins.anim = Math.max(0, ins.anim - dt * 3.5);
+      ins.wob = Math.max(0, ins.wob - dt * 1.4);
+    }
+    if (this.state === 'waiting') {
+      if (pl.x > 300) { // stepping up to the stage starts the show
+        this.state = 'countin'; this.ct = 0;
+        AudioSys.sfx('hornhit');
+        this.crewJump = 1;
+      }
+      return;
+    }
+    if (this.state === 'countin') { // four ceiling lamps tick in: 1..2..3..4!
+      const prev = this.ct;
+      this.ct += dt;
+      for (const tt of [0.4, 0.9, 1.4, 1.9]) {
+        if (prev < tt && this.ct >= tt) { AudioSys.sfx('stick'); this.stepFlash = 1; }
+      }
+      if (this.ct >= 2.4) {
+        this.state = 'jam';
+        this.songT = 0; this.barT = 0; this.lastStep = -1;
+        this.scheduleBeat();
+      }
+      return;
+    }
+    // ---- the groove sequencer (fixed 8-step bar, 0.25s per step) ----
+    if (this.grooveOn()) {
+      this.barT += dt;
+      const idx = Math.floor(this.barT / 0.25);
+      if (idx !== this.lastStep) {
+        this.lastStep = idx;
+        const s = idx % 8, ins = this.instruments;
+        const full = this.state === 'done';
+        if ((ins[0].joined || full) && (s === 0 || s === 4)) { AudioSys.sfx('tireboom'); ins[0].anim = Math.max(ins[0].anim, 0.5); }
+        if ((ins[1].joined || full) && (s === 2 || s === 6)) { AudioSys.sfx('hubcap'); ins[1].anim = Math.max(ins[1].anim, 0.5); }
+        if ((ins[2].joined || full) && s === 4 && Math.floor(idx / 8) % 2 === 1) { AudioSys.sfx('hornhit'); ins[2].anim = Math.max(ins[2].anim, 0.5); }
+        if ((ins[3].joined || full) && s % 2 === 0) { AudioSys.sfx('bassbump'); ins[3].anim = Math.max(ins[3].anim, 0.4); }
+        this.stepFlash = 1;
+      }
+    }
+    if (this.state === 'jam') {
+      this.songT += dt;
+      // the ONE input: Space/★ — hit if the ring is on the target, else whiff
+      if (justP.Space && game.state === 'play' && !game.endPhase) {
+        if (this.beat && Math.abs(this.songT - this.beat.at) <= BB_WINDOW) this.hitBeat();
+        else this.whiff(); // early presses never consume the pending beat
+      }
+      // a beat nobody hit drifts by — comedy shrug, then the next one comes
+      if (this.beat && this.songT > this.beat.at + BB_WINDOW) this.missBeat();
+      return;
+    }
+    if (this.state === 'finale') {
+      const prev = this.finT;
+      this.finT += dt;
+      const cue = (tt) => prev < tt && this.finT >= tt;
+      if (this.finT < 0.9) game.shake = Math.max(game.shake, 0.25); // the garage shakes...
+      if (cue(0.9)) AudioSys.sfx('grind'); // ...the big doors fly open...
+      if (cue(2.3)) { AudioSys.sfx('rev'); AudioSys.sfx('cheer'); } // ...IT'S THE TRUCK
+      for (const tt of [4.1, 4.5, 4.9, 5.3]) { // the engine-rev solo
+        if (cue(tt)) {
+          AudioSys.sfx('rev');
+          game.shake = Math.max(game.shake, 0.22);
+          const tp = this.truckPose();
+          if (tp) Particles.burst(tp.x + 158, tp.y - 6, 5, { colors: ['#ff9f43', '#ffe156', 'rgba(200,200,210,0.7)'], type: 'flame', sp1: 180, grav: -140, l1: 0.6, s1: 11, up: 40 });
+        }
+      }
+      if (cue(5.9)) AudioSys.sfx('launch'); // one completely unnecessary backflip
+      if (cue(6.9)) {
+        AudioSys.sfx('thud');
+        game.shake = Math.max(game.shake, 0.45);
+        Particles.burst(665, this.g, 14, { colors: ['#b09a7a', '#8a8a9a'], sp1: 260, l1: 0.7, s1: 11, up: 90 });
+      }
+      if (cue(7.4)) { // candy eruption + the golden star answers the music
+        AudioSys.sfx('chest'); AudioSys.sfx('cheer');
+        game.shake = Math.max(game.shake, 0.5);
+        Particles.candyBurst(665, this.g - 200, 22);
+        Particles.burst(665, this.g - 180, 30, { colors: RAINBOW, type: 'confetti', sp1: 420, l0: 1, l1: 2.2, s1: 12, grav: 300, up: 320 });
+        for (let i = 0; i < 8; i++) {
+          const c = new Pickup(665 + rand(-60, 60), this.g - 190, 'candy');
+          c.physics = true; c.vx = rand(-260, 260); c.vy = rand(-620, -260);
+          game.pickups.push(c);
+        }
+        game.level.goalStar = { x: 1090, y: 480 };
+        Particles.burst(1090, 480, 22, { colors: ['#ffd24a', '#ffe156', '#fff'], type: 'star', sp1: 320, l1: 1, s1: 12, grav: 120 });
+        this.state = 'done';
+        this.barT = 0; this.lastStep = -1; // the full band jams on forever
+      }
+      return;
+    }
+  }
+  doorK() { // 0 = roller door closed, 1 = fully open
+    if (this.state === 'done') return 1;
+    if (this.state !== 'finale') return 0;
+    return clamp((this.finT - 0.9) / 1.3, 0, 1);
+  }
+  truckPose() { // where the monster truck is during the finale / afterparty
+    const w = 176, h = 112, park = 560;
+    if (this.state === 'done') {
+      return { x: park, y: this.g - h - Math.abs(Math.sin(this.barT * TAU / 2)) * 6, w, h, rot: 0 };
+    }
+    if (this.state !== 'finale' || this.finT < 2.3) return null;
+    const f = this.finT;
+    let x = park, y = this.g - h, rot = 0;
+    if (f < 3.9) { // rolls in through the open door
+      const k = clamp((f - 2.3) / 1.6, 0, 1);
+      x = lerp(1330, park, k * k * (3 - 2 * k));
+    } else if (f >= 5.9 && f < 6.9) { // THE BACKFLIP
+      const k = (f - 5.9) / 1.0;
+      y -= Math.sin(k * Math.PI) * 165;
+      rot = k * TAU;
+    } else if (f >= 4.1 && f < 5.5) { // rev solo: suspension bouncing hard
+      y -= Math.abs(Math.sin((f - 4.1) * 12)) * 12;
+    }
+    return { x, y, w, h, rot };
+  }
+  lights() { return []; }
+  // ---- painted BEFORE solids/goal star (game.js drawBack hook): the room ----
+  drawBack(ctx, t) {
+    const g = this.g;
+    // back wall
+    const wg = ctx.createLinearGradient(0, 0, 0, g);
+    wg.addColorStop(0, '#4a4258'); wg.addColorStop(1, '#5f5870');
+    ctx.fillStyle = wg;
+    ctx.fillRect(0, 0, W, g);
+    // wall panel seams
+    ctx.strokeStyle = 'rgba(30,24,44,0.35)'; ctx.lineWidth = 3;
+    for (let x = 0; x <= W; x += 160) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, g); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, 180); ctx.lineTo(W, 180); ctx.stroke();
+    // hazard stripe base band on the wall (the dirt floor stays — it's a
+    // rally-world garage, and drawSolids paints the ground after us anyway)
+    for (let x = 0; x < W; x += 56) {
+      ctx.fillStyle = (x / 56) % 2 ? '#ffb62b' : '#3a3448';
+      ctx.beginPath();
+      ctx.moveTo(x, g); ctx.lineTo(x + 28, g); ctx.lineTo(x + 56, g - 22); ctx.lineTo(x + 28, g - 22);
+      ctx.closePath(); ctx.fill();
+    }
+    // shelf of dancing tools (left)
+    ctx.fillStyle = '#3a3448';
+    rr(ctx, 40, 300, 130, 12, 4); ctx.fill();
+    const dance = this.grooveOn() && this.instruments.some(i2 => i2.joined) ? Math.sin(this.barT * TAU * 2) * 0.25 : 0;
+    for (let i = 0; i < 3; i++) {
+      ctx.save();
+      ctx.translate(70 + i * 36, 288);
+      ctx.rotate(dance * (i % 2 ? 1 : -1));
+      ctx.strokeStyle = '#c9c1d6'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -16); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -20, 7, 0.6, TAU - 0.6); ctx.stroke();
+      ctx.restore();
+    }
+    // spare tire stack (far left floor)
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = '#2e2430';
+      ctx.beginPath(); ctx.ellipse(80, g - 16 - i * 26, 46, 15, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#4a3a50';
+      ctx.beginPath(); ctx.ellipse(80, g - 16 - i * 26, 18, 6, 0, 0, TAU); ctx.fill();
+    }
+    // ---- the big roller door (right): closed, then flung open for the truck ----
+    const dk = this.doorK();
+    const dx = 950, dw = 300, dh = 400;
+    // doorway: outside is night, spotlights and stars
+    ctx.fillStyle = '#141028';
+    rr(ctx, dx, g - dh, dw, dh, 10); ctx.fill();
+    if (dk > 0.15) {
+      ctx.fillStyle = '#fff';
+      for (let i = 0; i < 8; i++) {
+        const sx = dx + 30 + hash2(i, 3) * (dw - 60), sy = g - dh + 24 + hash2(i, 7) * (dh * 0.5);
+        starPath(ctx, sx, sy, 4 + hash2(i, 11) * 3, 2);
+        ctx.fill();
+      }
+      ctx.save();
+      ctx.globalAlpha = 0.1 + 0.05 * Math.sin(t * 2);
+      ctx.fillStyle = '#ffe9a0';
+      for (const ox of [70, 200]) {
+        ctx.beginPath();
+        ctx.moveTo(dx + ox, g - 6);
+        ctx.lineTo(dx + ox - 40, g - dh + 10); ctx.lineTo(dx + ox + 40, g - dh + 10);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // the door itself rolls UP into the lintel (top edge stays put, height shrinks)
+    const doorY = g - dh;
+    const doorH = dh * (1 - dk) + 26 * dk;
+    ctx.fillStyle = '#ffb62b';
+    rr(ctx, dx + 4, doorY, dw - 8, doorH, 8); ctx.fill();
+    ctx.strokeStyle = '#c2831a'; ctx.lineWidth = 4;
+    rr(ctx, dx + 4, doorY, dw - 8, doorH, 8); ctx.stroke();
+    for (let sy = doorY + 20; sy < doorY + doorH - 12; sy += 26) {
+      ctx.beginPath(); ctx.moveTo(dx + 12, sy); ctx.lineTo(dx + dw - 12, sy); ctx.stroke();
+    }
+    // door frame
+    ctx.fillStyle = '#3a3448';
+    rr(ctx, dx - 14, g - dh - 22, dw + 28, 26, 6); ctx.fill();
+    rr(ctx, dx - 14, g - dh - 10, 16, dh + 10, 5); ctx.fill();
+    rr(ctx, dx + dw - 2, g - dh - 10, 16, dh + 10, 5); ctx.fill();
+    // ---- string of party lights across the ceiling ----
+    ctx.strokeStyle = 'rgba(30,24,44,0.6)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(20, 60); ctx.quadraticCurveTo(W / 2, 118, W - 20, 60); ctx.stroke();
+    const lit = this.state !== 'waiting';
+    for (let i = 0; i < 12; i++) {
+      const k = i / 11;
+      const lx = lerp(20, W - 20, k), ly = 60 + Math.sin(k * Math.PI) * 55;
+      const on = lit && (this.state === 'countin'
+        ? i % 3 === (Math.floor(this.ct / 0.5) % 4) % 3 && this.stepFlash > 0.3
+        : (this.lastStep + i) % 3 === 0 || this.stepFlash > 0.6);
+      ctx.fillStyle = on ? RAINBOW[i % RAINBOW.length] : '#3a3448';
+      ctx.beginPath(); ctx.arc(lx, ly + 10, on ? 9 : 7, 0, TAU); ctx.fill();
+      if (on) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(lx, ly + 10, 18, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // ---- lug-nut equalizer bars above the stage ----
+    const joinedN = this.instruments.filter(i2 => i2.joined).length + (this.state === 'done' ? 4 : 0);
+    for (let i = 0; i < 8; i++) {
+      const ex = 250 + i * 78;
+      const amp = joinedN === 0 ? 1 : 1 + Math.round(Math.abs(Math.sin(this.barT * TAU + i)) * (1.5 + joinedN));
+      for (let j = 0; j < amp; j++) {
+        ctx.fillStyle = j === amp - 1 && joinedN ? '#ffe156' : '#8a8496';
+        ctx.beginPath(); ctx.arc(ex, 250 - j * 22, 9, 0, TAU); ctx.fill();
+      }
+    }
+    // the stage riser
+    ctx.fillStyle = '#3a3448';
+    rr(ctx, 150, g - 26, 770, 34, 10); ctx.fill();
+    ctx.fillStyle = '#57536a';
+    rr(ctx, 150, g - 26, 770, 10, 8); ctx.fill();
+  }
+  // ---- painted after solids: the band, the crew, the truck, the beat ring ----
+  draw(ctx, t) {
+    const g = this.g;
+    this.drawInstruments(ctx, t);
+    this.drawCrew(ctx, t);
+    // the monster truck (finale entrance, solo, backflip, afterparty bounce)
+    const tp = this.truckPose();
+    if (tp) {
+      ctx.save();
+      if (tp.rot) {
+        ctx.translate(tp.x + tp.w / 2, tp.y + tp.h / 2);
+        ctx.rotate(-tp.rot);
+        ctx.translate(-(tp.x + tp.w / 2), -(tp.y + tp.h / 2));
+      }
+      drawTruckBody(ctx, tp.x, tp.y, tp.w, tp.h, t, { driving: this.state === 'finale', facing: -1, mood: 'grin', turbo: this.state === 'finale' && this.finT >= 4.1 && this.finT < 5.5 });
+      ctx.restore();
+      // headlight beam during the solo
+      if (this.state === 'finale' && this.finT >= 4.1 && this.finT < 5.9) {
+        ctx.save();
+        ctx.globalAlpha = 0.25 + 0.15 * Math.sin(t * 14);
+        ctx.fillStyle = '#ffe9a0';
+        ctx.beginPath();
+        ctx.moveTo(tp.x + 6, tp.y + 60);
+        ctx.lineTo(tp.x - 320, tp.y + 20); ctx.lineTo(tp.x - 320, tp.y + 120);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // ---- THE BEAT RING: the one thing to watch ----
+    if (this.state === 'jam' && this.beat) {
+      const remain = this.beat.at - this.songT;
+      const i = this.beat.target, ins = this.instruments[i];
+      const cx = ins.x, cy = this.instrumentY(i);
+      const p = POW[ins.kind];
+      // target circle (always visible so the eye knows where to look)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 5;
+      ctx.setLineDash([12, 10]); ctx.lineDashOffset = -t * 40;
+      ctx.beginPath(); ctx.arc(cx, cy, 58, 0, TAU); ctx.stroke();
+      ctx.restore();
+      if (remain <= BB_LEAD) {
+        const k = clamp(1 - remain / BB_LEAD, 0, 1);
+        const r = lerp(210, 58, k);
+        const inWin = Math.abs(remain) <= BB_WINDOW;
+        ctx.save();
+        ctx.lineWidth = inWin ? 14 : 10;
+        ctx.strokeStyle = inWin ? '#fff' : p.c;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+        ctx.lineWidth = 4; ctx.strokeStyle = inWin ? p.glow : 'rgba(255,255,255,0.6)';
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+        ctx.restore();
+      }
+      // wordless tutorial: the spacebar bounces under the target until 2 hits
+      if (this.hits < 2) drawSpacebar(ctx, cx, cy + 128, 130, t);
+    }
+    // count-in: the drum flashes awake
+    if (this.state === 'countin' && this.stepFlash > 0.3) {
+      ctx.save();
+      ctx.globalAlpha = this.stepFlash * 0.4;
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(this.instruments[0].x, this.instrumentY(0), 90, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+  drawInstruments(ctx, t) {
+    const g = this.g;
+    const featured = this.state === 'jam' ? (this.beat ? this.beat.target : this.stage) : -1;
+    for (let i = 0; i < 4; i++) {
+      const ins = this.instruments[i];
+      const live = ins.joined || this.state === 'done' || i === featured || this.state !== 'jam';
+      const pop = 1 + ins.anim * 0.14;
+      const wob = Math.sin(t * 22) * ins.wob * 0.09; // the "confused" wobble
+      ctx.save();
+      ctx.translate(ins.x, g - 14);
+      ctx.rotate(wob);
+      ctx.scale(pop, 2 - pop); // squash on hit
+      ctx.translate(-ins.x, -(g - 14));
+      ctx.globalAlpha = live ? 1 : 0.55;
+      const mood = ins.wob > 0.15 ? 'dizzy' : ins.anim > 0.25 ? 'grin' : ins.joined || this.state === 'done' ? 'happy' : 'sleepy';
+      if (i === 0) { // TIRE DRUM
+        ctx.fillStyle = '#2e2430';
+        ctx.beginPath(); ctx.arc(ins.x, g - 78, 64, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#1a1420'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(ins.x, g - 78, 64, 0, TAU); ctx.stroke();
+        ctx.fillStyle = '#4a3a50';
+        for (let k = 0; k < 10; k++) {
+          const a = k * TAU / 10 + 0.2;
+          ctx.beginPath(); ctx.arc(ins.x + Math.cos(a) * 55, g - 78 + Math.sin(a) * 55, 6.5, 0, TAU); ctx.fill();
+        }
+        ctx.fillStyle = '#e8482b';
+        ctx.beginPath(); ctx.arc(ins.x, g - 78, 34, 0, TAU); ctx.fill();
+        drawFace(ctx, ins.x, g - 76, 42, mood, t, 81);
+      } else if (i === 1) { // HUBCAP CYMBAL on a stand
+        ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(ins.x, g - 14); ctx.lineTo(ins.x, g - 138); ctx.stroke();
+        ctx.save();
+        ctx.translate(ins.x, g - 150);
+        ctx.rotate(Math.sin(t * 16) * ins.anim * 0.3);
+        const hg = ctx.createLinearGradient(-58, 0, 58, 0);
+        hg.addColorStop(0, '#9a94b0'); hg.addColorStop(0.5, '#e8e4f4'); hg.addColorStop(1, '#9a94b0');
+        ctx.fillStyle = hg;
+        ctx.beginPath(); ctx.ellipse(0, 0, 60, 16, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#6f6a80'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#c9c1d6';
+        ctx.beginPath(); ctx.arc(0, -2, 10, 0, TAU); ctx.fill();
+        drawFace(ctx, 0, 4, 22, mood, t, 82);
+        ctx.restore();
+      } else if (i === 2) { // EXHAUST-PIPE HORNS
+        for (let k = 0; k < 3; k++) {
+          const px = ins.x - 34 + k * 34, ph = 90 + k * 32;
+          ctx.fillStyle = '#8a8a9a';
+          rr(ctx, px - 11, g - 14 - ph, 22, ph, 6); ctx.fill();
+          ctx.strokeStyle = '#6f6a80'; ctx.lineWidth = 3;
+          rr(ctx, px - 11, g - 14 - ph, 22, ph, 6); ctx.stroke();
+          ctx.fillStyle = '#c9c1d6';
+          ctx.beginPath(); ctx.ellipse(px, g - 14 - ph, 15, 7, 0, 0, TAU); ctx.fill();
+          if (ins.anim > 0.4) { // toot! smoke ring + note
+            ctx.save();
+            ctx.globalAlpha = ins.anim;
+            ctx.strokeStyle = 'rgba(230,230,240,0.9)'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(px, g - 34 - ph - (1 - ins.anim) * 40, 10 + (1 - ins.anim) * 14, 0, TAU); ctx.stroke();
+            ctx.restore();
+          }
+        }
+        drawFace(ctx, ins.x, g - 70, 30, mood, t, 83);
+      } else { // ENGINE-BLOCK BASS
+        ctx.fillStyle = '#57536a';
+        rr(ctx, ins.x - 62, g - 118, 124, 104, 12); ctx.fill();
+        ctx.strokeStyle = '#3a3448'; ctx.lineWidth = 4;
+        rr(ctx, ins.x - 62, g - 118, 124, 104, 12); ctx.stroke();
+        // pistons pump with the groove once the bass has joined
+        const pk = (ins.joined || this.state === 'done') && this.grooveOn() ? Math.abs(Math.sin(this.barT * TAU * 2)) : ins.anim;
+        for (let k = 0; k < 3; k++) {
+          const px = ins.x - 34 + k * 34;
+          ctx.fillStyle = '#c9c1d6';
+          rr(ctx, px - 9, g - 140 - (k % 2 ? pk : 1 - pk) * 16, 18, 34, 5); ctx.fill();
+        }
+        ctx.fillStyle = POW.power.c;
+        ctx.beginPath(); ctx.arc(ins.x + 40, g - 98, 10 + pk * 3, 0, TAU); ctx.fill();
+        drawFace(ctx, ins.x - 6, g - 64, 36, mood, t, 84);
+      }
+      ctx.restore();
+      // progress lamps: 4 sockets over each instrument (its "join the band" meter)
+      if (this.state === 'jam' || this.state === 'countin') {
+        for (let k = 0; k < BB_LAMPS; k++) {
+          const lx = ins.x - 33 + k * 22, ly = this.instrumentY(i) - 96;
+          const on = this.lamps[i] > k;
+          ctx.fillStyle = on ? '#ffe156' : 'rgba(30,24,44,0.55)';
+          ctx.beginPath(); ctx.arc(lx, ly, 7.5, 0, TAU); ctx.fill();
+          ctx.strokeStyle = on ? '#c8861b' : '#3a3448'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(lx, ly, 7.5, 0, TAU); ctx.stroke();
+        }
+      }
+    }
+    // the full-band jam meter: 6 gold stars over the whole stage
+    if (this.state === 'jam' && this.stage >= 4) {
+      for (let k = 0; k < BB_JAM; k++) {
+        const on = this.jamHits > k;
+        ctx.save();
+        ctx.globalAlpha = on ? 1 : 0.35;
+        ctx.fillStyle = on ? '#ffd24a' : '#fff';
+        starPath(ctx, 415 + k * 52, 158, 17, 8, 5, -Math.PI / 2 + Math.sin(t * 3 + k) * 0.12);
+        ctx.fill();
+        if (on) { ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke(); }
+        ctx.restore();
+      }
+    }
+  }
+  drawCrew(ctx, t) {
+    // three lug-nut pit-crew buddies stage right: they bounce with the groove,
+    // go nuts on every hit, and one shrugs "?" on a miss — comedy, not blame
+    const g = this.g;
+    const wild = this.state === 'finale' || this.state === 'done';
+    for (let i = 0; i < 3; i++) {
+      const bx = this.doorK() > 0 ? 145 + i * 56 : 975 + i * 56; // they clear the whole stage for the truck
+      const phase = t * (wild ? 9 : 4) + i * 1.4;
+      const hop = (this.crewJump > 0 || wild ? Math.abs(Math.sin(phase)) * (wild ? 26 : 16) : Math.abs(Math.sin(phase)) * 4);
+      const by = g - 24 - hop;
+      const shrug = this.missT > 0 && i === 1;
+      ctx.save();
+      ctx.fillStyle = ['#e8482b', '#4a6cff', '#57d357'][i];
+      ctx.beginPath(); ctx.arc(bx, by, 19, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,24,44,0.5)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(bx, by, 19, 0, TAU); ctx.stroke();
+      // little cap
+      ctx.fillStyle = '#ffb62b';
+      ctx.beginPath(); ctx.arc(bx, by - 6, 15, Math.PI, TAU); ctx.fill();
+      rr(ctx, bx + 6, by - 10, 14, 5, 2); ctx.fill();
+      // arms: up cheering, or shrugging
+      ctx.strokeStyle = '#3a2a3a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      const ay = shrug ? by - 4 : (this.crewJump > 0 || wild ? by - 22 : by + 8);
+      ctx.beginPath();
+      ctx.moveTo(bx - 16, by + 2); ctx.lineTo(bx - 26, ay);
+      ctx.moveTo(bx + 16, by + 2); ctx.lineTo(bx + 26, ay);
+      ctx.stroke();
+      drawFace(ctx, bx, by + 3, 24, shrug ? 'surprised' : wild || this.crewJump > 0 ? 'grin' : 'happy', t, 90 + i);
+      if (shrug) outlineText(ctx, '?', bx, by - 38, 30, '#ffe156', '#3a3448');
+      ctx.restore();
     }
   }
 }

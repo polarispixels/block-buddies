@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.11.0</span>
+  <span class="badge">v1.12.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -153,7 +153,7 @@ changelog lacks an entry for it, or if this page doesn't mention it.</p>
   <tr><td><code>js/util.js</code></td><td><code>GAME_VERSION</code>, constants (<code>W=1280</code>, <code>H=720</code>), drawing helpers (<code>rr</code>, <code>drawFace</code>, <code>drawBlock</code>, <code>drawCrown</code>, keycaps, candy), palettes (<code>POW</code>, <code>RAINBOW</code>), keyboard input (<code>keys</code>/<code>justP</code>), <code>TouchUI</code> (two-thumb layout + fullscreen button + title tap hook)</td></tr>
   <tr><td><code>js/audio.js</code></td><td><code>AudioSys</code>: procedural sound effects (one <code>sfx(name)</code> switch) and step-sequenced music (<code>SONGS</code> table, midi-note arrays per theme). Unlocked on first user input.</td></tr>
   <tr><td><code>js/particles.js</code></td><td><code>Particles</code> pool (star / sparkle / heart / block / confetti / candy / flame / bubble), <code>candyBurst</code></td></tr>
-  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>, <code>TruckBuild</code>), <code>FireBreather</code>, the <code>Spino</code> boss, <code>SubDoor</code> (mini-game entrances), <code>Vine</code> (swinging vines, <code>lv.vines</code>), <code>Monkey</code> (the companion), and the secret-room machines (<code>PipeWorks</code>, <code>TorchCavern</code>, <code>StarChamber</code>, <code>TreehouseTrail</code> — attached as <code>lv.puzzle</code>)</td></tr>
+  <tr><td><code>js/entities.js</code></td><td><code>moveEntity</code> physics (AABB, one-way platforms, bouncy, breakable, auto step-up), <code>Player</code> (incl. vehicles and water/space movement), <code>Spider</code> (all enemy variants), <code>Centipede</code>, <code>Projectile</code>, <code>Pickup</code>, <code>Checkpoint</code>, <code>Gate</code>, <code>Zombie</code>, <code>Magma</code>, <code>LavaBlob</code>, <code>Shoe</code>, <code>Chest</code>, <code>ParkedTruck</code>/<code>drawTruckBody</code>, <code>ParkedUnicorn</code>/<code>drawUnicornBody</code>, the adventure-mission kit (<code>Mission</code>, <code>MissionGate</code>, <code>MissionItem</code>, <code>MissionToken</code>, <code>Shrine</code>, <code>CollectionPuzzle</code>, <code>TruckBuild</code>), <code>FireBreather</code>, the <code>Spino</code> boss, <code>SubDoor</code> (mini-game entrances), <code>Vine</code> (swinging vines, <code>lv.vines</code>), <code>Monkey</code> (the companion), and the secret-room machines (<code>PipeWorks</code>, <code>TorchCavern</code>, <code>StarChamber</code>, <code>TreehouseTrail</code>, <code>BeatBash</code> — the rhythm game — attached as <code>lv.puzzle</code>)</td></tr>
   <tr><td><code>js/levels.js</code></td><td><code>LEVEL_META</code>, <code>buildLevel(n)</code> (all level data), <code>buildSpaceMaze()</code>, theme rendering: <code>drawBG</code>, <code>drawSolids</code> (incl. lava pools, ramps, turbo pads, goal star, steam vents, rising lava, bubble currents, valves, shell switches), <code>drawDecor</code> (incl. castle, grandstand, royals, mini-game landmarks)</td></tr>
   <tr><td><code>js/game.js</code></td><td>The <code>game</code> state machine, boss and ending flows, cutscenes (<code>updateCut</code>), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop</td></tr>
 </table></div>
@@ -383,6 +383,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Enemies</dt><dd>4 <strong>dirt tornadoes</strong> (new: tall wandering dust devils), 3 walking and 1 jumping spider.</dd>
   <dt>New here</dt><dd>The <strong>truck assembly mission</strong> (<code>TruckBuild</code>: MissionTokens with <code>'wheels'</code>/<code>'engine'</code>/<code>'core'</code> skins, a crane + floor switch, and a parts-attach ceremony that spawns the <code>ParkedTruck</code>), the <strong>truck vehicle</strong> itself (faster than the wheel, monster tires), ramps with automatic mid-air backflips, and the turbo pad (a burst of flame-trailing speed). A tiny easter egg is parked somewhere in this world — we don't say where.</dd>
   <dt>Ending</dt><dd>Finish line → grandstand celebration → <strong>CANDY TROPHY</strong> ("YOU WIN THE RACE!") → party → unlocks Unicorn Forest.</dd>
+  <dt>Secret</dt><dd>Between the two mid-course ramps (x≈2680), a pit garage <em>thumps to a muffled beat</em> — light strobes through the door seams, a wrench sails off the roof, and a tiny mechanic peeks out and slams the door. Racing past never interrupts; <em>stop</em> at it (or press ★) to discover <strong>Pit Stop Beat Bash</strong>, the game's first rhythm game (see Mini-games).</dd>
   <dt>Pickups</dt><dd>Fire, ice, rainbow, heart ×2, big candy arcs over every ramp.</dd>
   <dt>Cameos</dt><dd>Lava pools from Lava World are the track hazards; all three throwable powers appear together for the first time since the base game; walk/jump spiders patrol the infield.</dd>
 </dl>
@@ -449,7 +450,11 @@ Rally's in-world truck-assembly mission, which shares the same collection gramma
   <code>'eyes'</code> dark side tunnel with blinking glow-eyes and a tiny torch,
   <code>'asteroid'</code> cracked boulder leaking golden sparkles,
   <code>'ladder'</code> a rope ladder down a giant trunk with a tiny treehouse far above (leaves
-  flutter down and a faint monkey whoop plays — the clue). Doors re-arm only after the player moves a door-width away
+  flutter down and a faint monkey whoop plays — the clue),
+  <code>'garage'</code> a pit garage thumping to a muffled beat with strobing door seams, flying
+  wrenches, and a peek-and-slam mechanic (the clue) — and the one door with a speed rule: overlapping
+  it in the <em>truck</em> above 200&nbsp;px/s never enters, so a race is never hijacked; stopping (or
+  ★) enters. Doors re-arm only after the player moves a door-width away
   horizontally, so exiting (or jumping in place) never instantly re-enters. <strong>Completed doors go
   dormant (v1.8.3):</strong> they shrink into a quiet trophy marker with a gold star, walking over
   them never re-enters (doors often sit on normal walking routes), and replaying is deliberate —
@@ -465,11 +470,13 @@ Rally's in-world truck-assembly mission, which shares the same collection gramma
   <code>exitSub()</code> instead of advancing the world chain.</li>
   <li><strong>Secret-room machines (since v1.10.0)</strong> — a puzzle room's whole mechanism is one
   class on the sublevel object (<code>lv.puzzle</code> = <code>PipeWorks</code> / <code>TorchCavern</code> /
-  <code>StarChamber</code>), updated and drawn by two generic hooks in <code>game.js</code> (the same
+  <code>StarChamber</code> / <code>TreehouseTrail</code> / <code>BeatBash</code>), updated and drawn by generic hooks in <code>game.js</code> (the same
   pattern as <code>lv.mission</code>/<code>lv.truckBuild</code>). Their finales reveal
   <code>lv.goalStar</code>, so completion/persistence/replay all come from the shared system, and
   <code>exitSub</code> guarantees nothing leaks back into the host. <code>lv.puzzle.lights()</code> feeds
-  extra light sources into the darkness overlay (Torch Cavern), and sub-doors themselves now glow in
+  extra light sources into the darkness overlay (Torch Cavern), an optional
+  <code>lv.puzzle.drawBack()</code> hook (since v1.12.0) paints a whole room interior <em>behind</em>
+  the solids and goal star (the Beat Bash garage), and sub-doors themselves glow in
   dark levels so secrets stay findable.</li>
   <li><strong>Camera came free</strong> — <code>updateCamera</code> always tracked both axes when
   <code>lv.h &gt; H</code>, so vertical (Cloud Climb, Sky Flight) and diagonal (Secret Ascent)
@@ -604,6 +611,24 @@ BANANA BELL</strong> — BONG ×3, candy rain, the golden star appears. Everythi
 friendship, monkey — class <code>Monkey</code> — and the whole <code>TreehouseTrail</code> mechanism)
 lives on the sublevel object as <code>lv.puzzle</code>, so deaths lose nothing and
 <code>exitSub</code> can't leak.</p>
+<h3>Pit Stop Beat Bash <small>(thumping pit garage in Monster Truck Rally — v1.12.0)</small></h3>
+<p><strong>The first rhythm game — a whole new genre inside a secret.</strong> One non-scrolling
+garage-band stage (1280 × 720, zero enemies, zero hazards; the whole show is <code>BeatBash</code> on
+<code>lv.puzzle</code>). One control: <strong>Space/★ when the big colored ring shrinks onto the
+glowing instrument</strong> — a dashed target circle marks where to look and a bouncing spacebar
+teaches it wordlessly for the first two beats. The window is ±0.3&nbsp;s (huge) and misses are pure
+comedy: a weak <em>plop</em> or sad deflating honk, a pit-crew shrug ("?"), a confused tire wobble —
+no lives, no game over, no lost progress, ever. Walking up to the stage starts a four-lamp count-in;
+then every 4 good hits an instrument <strong>joins the band</strong> in order — tire drum (kick) →
+hubcap cymbal → exhaust horns → engine-block bass — each adding its layer to a fixed 8-step groove so
+the room audibly and visibly comes alive (string lights, lug-nut equalizer, dancing wrenches, pumping
+pistons, three bouncing lug-nut crew buddies). Six more full-band hits with varied-but-readable
+spacing trigger the finale: the music stops, the garage shakes, the roller door flies open and the
+<strong>MONSTER TRUCK</strong> rolls in for an engine-rev solo, one completely unnecessary backflip,
+and a candy-and-confetti eruption — the golden star pops out at the doorway. <em>PIT STOP
+SUPERSTAR!</em> The rhythm engine is fully deterministic (dt-driven song clock, fixed beat intervals
+and groove steps; the ring is the timing source, audio just agrees with it), so it holds up under any
+frame-rate wobble and is testable in the headless harness.</p>
 <h3>Adding a future mini-game</h3>
 <ol>
   <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
@@ -635,10 +660,13 @@ beyond the obvious level. The rules that keep secrets fair for a five-year-old:<
 </ul>
 
 <h3>Agreed backlog (do not build until playtests pick the next group)</h3>
-<p>Candidate future experiences, agreed with Ryan — keep new systems compatible with them: a future
-<strong>rhythm mini-game</strong>, plus more cognitive puzzles and world sublevels. (The Secret Pipe
-Room, Zombie Torch Puzzle, and Space Zero-G Chamber shipped in v1.10.0 as <strong>Secrets Pack
-II</strong>; the <strong>Jungle Treehouse Trail</strong> shipped in v1.11.0.) Design pillar to
+<p>Candidate future experiences, agreed with Ryan — keep new systems compatible with them: more
+<strong>new-genre secrets</strong> (the rhythm-game hypothesis proved out — a secret CAN switch genre
+for a few minutes and still feel like Block Buddies), more cognitive puzzles, character/favor
+adventures, and world sublevels. (The Secret Pipe Room, Zombie Torch Puzzle, and Space Zero-G
+Chamber shipped in v1.10.0 as <strong>Secrets Pack II</strong>; the <strong>Jungle Treehouse
+Trail</strong> shipped in v1.11.0; the <strong>Pit Stop Beat Bash</strong> rhythm game shipped in
+v1.12.0.) Design pillar to
 keep growing: <em>curiosity + experimentation + thinking + discovery</em> — a mix of required
 experiences, visually-hinted discoveries, and true optional secrets (never gate progression behind a
 secret; see the secret design rules above).</p>
@@ -661,7 +689,7 @@ Presses must be ≤1.2&nbsp;s apart:</p>
   <tr><th><code>localStorage</code> key</th><th>Meaning</th></tr>
   <tr><td><code>ffbg_unlocked</code></td><td>Highest unlocked level, <code>1</code>–<code>10</code> (internal — one higher than the displayed world number)</td></tr>
   <tr><td><code>ffbg_char</code></td><td>Chosen hero: <code>'boy'</code> or <code>'girl'</code></td></tr>
-  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze,piperoom,torchcave,zerog,treehouse</code>) — a gold star appears over a completed door</td></tr>
+  <tr><td><code>ffbg_mini</code></td><td>Comma list of completed mini-games (<code>cloudclimb,ascent,skyflight,volcanoescape,bubblemaze,piperoom,torchcave,zerog,treehouse,beatbash</code>) — a gold star appears over a completed door</td></tr>
   <tr><td><code>ffbg_royal</code></td><td><code>'1'</code> after the Unicorn Forest coronation — the hero is drawn with a crown everywhere, permanently</td></tr>
 </table></div>
 <p class="callout">Changing the meaning or format of these keys is a <strong>MAJOR</strong> version bump —
@@ -669,7 +697,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all nine mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 367 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all ten mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, and playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 392 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -726,7 +754,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.11.0 · built for Jack ·
+  Block Buddies v1.12.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.
