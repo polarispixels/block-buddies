@@ -1033,10 +1033,13 @@ function buildLevel(n) {
     addGround(lv, 0, 3000, G);
     lv.puzzle = new ZombieTown(G);
     for (const s of lv.puzzle.solids) lv.solids.push(s);
-    lv.hints.push({ x: 210, y: G - 200, icon: 'arrows' });
-    candyRow(lv, 850, 1000, G - 55, 2);
+    lv.hints.push({ x: 320, y: G - 260, icon: 'arrows' });
+    // candy placement is part of the puzzle spread: none near the hungry
+    // zombie's alley (the nearest is back in the square), a rooftop row that
+    // sketches the walk back to granny, and an arc tracing the haystack launch
     candyRow(lv, 1560, 2060, G - 55, 4);
-    candyRow(lv, 2200, 2350, G - 55, 2);
+    candyRow(lv, 760, 940, 430, 3);
+    candyArc(lv, 990, 1120, 330, 540, 4);
   }
 
   if (n === 'zerog') { // ---------------- ZERO-G STAR CHAMBER (spatial planning)

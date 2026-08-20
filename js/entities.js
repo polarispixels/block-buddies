@@ -6750,10 +6750,13 @@ class ZombieTown {
     this.revealDone = false;
     // physical bits the level adopts (all skipDraw — the town draws itself)
     this.solids = [
-      { x: 290, y: 462, w: 260, h: 20, oneWay: true, skipDraw: true, plat: true }, // granny's roof
-      { x: 590, y: 576, w: 130, h: 44, oneWay: true, bouncy: true, bounceVy: -950, skipDraw: true }, // the haystack (jump on = BOING)
-      { x: 1055, y: 572, w: 56, h: 48, skipDraw: true },  // crate step
-      { x: 1113, y: 524, w: 58, h: 96, skipDraw: true }   // crate stack
+      // the problems and their answers live on OPPOSITE ends of town — the fun
+      // is noticing something down the street and thinking "wait, THAT's it!"
+      { x: 290, y: 462, w: 320, h: 20, oneWay: true, skipDraw: true, plat: true }, // granny's roof (290-610)
+      { x: 710, y: 472, w: 270, h: 20, oneWay: true, skipDraw: true, plat: true }, // the shop roof next door (710-980)
+      { x: 990, y: 576, w: 130, h: 44, oneWay: true, bouncy: true, bounceVy: -950, skipDraw: true }, // the haystack, PAST the shop (jump on = BOING, then rooftop-walk back to granny)
+      { x: 2225, y: 572, w: 56, h: 48, skipDraw: true },  // crate step (by house C, way across town)
+      { x: 2283, y: 524, w: 58, h: 96, skipDraw: true }   // crate stack
     ];
     // the cast (y = feet)
     this.npcs = [
@@ -6762,10 +6765,10 @@ class ZombieTown {
       { kind: 'scaredy', x: 2600, y: groundY, facing: -1, state: 'need', target: 1890, bob: 0, rt: 0 },
       { kind: 'carter', x: 2780, y: groundY, facing: 1, state: 'need', target: 1975, bob: 0 }
     ];
-    this.balloon = { x: 1210, y: 350, state: 'stuck', bobT: rand(9) };
+    this.balloon = { x: 2372, y: 310, state: 'stuck', bobT: rand(9) }; // snagged on house C's chimney, a whole town away from the kid
     this.zombie = { x: 2480, y: groundY, state: 'waiting', facing: 1, bob: rand(9), bubbleT: 0, munchT: 0 };
     this.cart = { x: 2850, state: 'broken', bounce: 0, hopT: 0 };
-    this.wheel = { x: 2950, y: groundY, state: 'waiting', spin: 0 };
+    this.wheel = { x: 205, y: groundY, state: 'waiting', spin: 0 }; // wedged by the old well at the FAR end from the cart
     this.candyFly = null; // {t, x0, y0}
     this.festT = 0;
     this.fw = [];         // rising firework rockets {x, y0, targetY, t, hue}
@@ -6816,16 +6819,16 @@ class ZombieTown {
     const gr = this.npcs[0], kid = this.npcs[1], sc = this.npcs[2], ct = this.npcs[3];
     // granny: reached on her roof -> she trusts the haystack now
     if (gr.state === 'need' && Math.abs(pl.cx - gr.x) < 80 && pl.y + pl.h <= 482) this.solveGranny();
-    if (gr.state === 'leap') {
+    if (gr.state === 'leap') { // one enormous cartoon arc, clear over the shop, into the hay
       gr.lt += dt;
-      const k = Math.min(1, gr.lt / 0.9);
-      gr.x = lerp(430, 655, k);
-      gr.y = lerp(462, 576, k) - Math.sin(k * Math.PI) * 130;
+      const k = Math.min(1, gr.lt / 1.1);
+      gr.x = lerp(430, 1055, k);
+      gr.y = lerp(462, 576, k) - Math.sin(k * Math.PI) * 150;
       gr.facing = 1;
       if (k >= 1) {
         gr.state = 'walk'; gr.y = g;
         AudioSys.sfx('poof'); AudioSys.sfx('cheer');
-        Particles.burst(655, 570, 16, { colors: ['#e8c56a', '#d9b04a'], type: 'block', sp1: 240, l1: 0.8, s1: 9, grav: 500, up: 160 });
+        Particles.burst(1055, 570, 16, { colors: ['#e8c56a', '#d9b04a'], type: 'block', sp1: 240, l1: 0.8, s1: 9, grav: 500, up: 160 });
       }
     }
     // balloon: bump it loose, it happily tails the hero; deliver it to the kid
@@ -6876,19 +6879,21 @@ class ZombieTown {
       z.x += clamp(tx - z.x, -1, 1) * 150 * dt;
       z.facing = tx > z.x ? 1 : -1;
     }
-    // the cart: touch the runaway wheel and it rolls itself home — KLUNK
+    // the cart: the wheel is wedged by the well at the town's OTHER end.
+    // ★ pops it loose — then it rolls itself the whole street home. KLUNK.
     const w = this.wheel, c = this.cart;
-    if (w.state === 'waiting' && Math.abs(pl.cx - w.x) < 55 && Math.abs(pl.y + pl.h - g) < 60) {
+    if (w.state === 'waiting' && justP.Space && Math.abs(pl.cx - w.x) < 90 && pl.onGround) {
       w.state = 'rolling';
-      AudioSys.sfx('switch');
+      AudioSys.sfx('switch'); AudioSys.sfx('boing');
+      Particles.burst(w.x, g - 24, 10, { colors: ['#8a8a9a', '#6a5a4a'], type: 'block', sp1: 200, l1: 0.6, s1: 8, grav: 700, up: 120 });
       if (game.player) game.player.setMood('grin', 0.8);
     }
     if (w.state === 'rolling') {
-      w.x -= 250 * dt;
-      w.spin -= 250 * dt / 26;
+      w.x += 420 * dt;
+      w.spin += 420 * dt / 26;
       if (chance(0.3)) Particles.burst(w.x, g, 1, { colors: ['#6a5a4a'], sp1: 60, l1: 0.4, s1: 6, up: 30 });
-      if (w.x <= c.x + 36) {
-        w.state = 'attached'; w.x = c.x + 36;
+      if (w.x >= c.x + 91) {
+        w.state = 'attached'; w.x = c.x + 91;
         c.state = 'fixed'; c.bounce = 1; c.hopT = 0;
         AudioSys.sfx('thud'); AudioSys.sfx('boing'); AudioSys.sfx('cheer');
         game.shake = Math.max(game.shake, 0.15);
@@ -7047,13 +7052,13 @@ class ZombieTown {
       }
     }
     // the houses of Zombie Town
-    this.drawHouse(ctx, t, 300, 240, 150, 0, this.npcs[0].state !== 'need'); // granny's (her roof is the solid)
-    this.drawHouse(ctx, t, 790, 230, 130, 1, this.solvedCount() >= 2);
+    this.drawHouse(ctx, t, 300, 290, 150, 0, this.npcs[0].state !== 'need'); // granny's (her roof is the solid)
+    this.drawHouse(ctx, t, 720, 250, 130, 1, this.solvedCount() >= 2); // the shop (its roof is the walkway back)
     this.drawHouse(ctx, t, 2180, 220, 140, 2, this.solvedCount() >= 3);
     this.drawHouse(ctx, t, 2490, 180, 120, 3, this.solvedCount() >= 1);
     // festival zombie peekers appear in doorways as the town wakes up
-    if (this.solvedCount() >= 2 && !this.festive()) this.drawTinyZombie(ctx, t, 905, this.g, 1, 'happy', 0.8);
-    if (this.solvedCount() >= 3 && !this.festive()) this.drawTinyZombie(ctx, t, 2295, this.g, -1, 'happy', 0.8);
+    if (this.solvedCount() >= 2 && !this.festive()) this.drawTinyZombie(ctx, t, 762, this.g, 1, 'happy', 0.8);
+    if (this.solvedCount() >= 3 && !this.festive()) this.drawTinyZombie(ctx, t, 2222, this.g, -1, 'happy', 0.8);
     // the well Jack climbed out of (with the ladder still poking out)
     ctx.fillStyle = '#5f6070';
     rr(ctx, 40, g - 54, 76, 54, 8); ctx.fill();
@@ -7064,11 +7069,10 @@ class ZombieTown {
     ctx.moveTo(66, g - 62); ctx.lineTo(90, g - 62); ctx.moveTo(66, g - 80); ctx.lineTo(90, g - 80);
     ctx.stroke();
     // streetlights (they come on as the town comes alive)
-    [240, 760, 1450, 2130, 2450, 2900].forEach((lx, i) => this.drawLamp(ctx, t, lx, this.lampsOn(i)));
-    this.drawLamp(ctx, t, 1230, this.lampsOn(2), true); // the balloon lamp (arm points left)
+    [240, 1180, 1450, 2130, 2450, 2900].forEach((lx, i) => this.drawLamp(ctx, t, lx, this.lampsOn(i)));
     // wooden fences filling the street gaps
     ctx.strokeStyle = '#4a3e5c'; ctx.lineWidth = 5;
-    for (const [fx0, fx1] of [[560, 590], [1970, 2130], [2680, 2990]]) {
+    for (const [fx0, fx1] of [[618, 702], [1970, 2130], [2680, 2990]]) {
       for (let fx = fx0; fx < fx1; fx += 26) {
         ctx.beginPath(); ctx.moveTo(fx, g); ctx.lineTo(fx, g - 44); ctx.stroke();
       }
@@ -7201,17 +7205,17 @@ class ZombieTown {
     const g = this.g;
     // haystack + crates (their solids are invisible; these are the real looks)
     ctx.fillStyle = '#e8c56a';
-    ctx.beginPath(); ctx.ellipse(655, g - 22, 68, 40, 0, Math.PI, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(1055, g - 22, 68, 40, 0, Math.PI, TAU); ctx.fill();
     ctx.strokeStyle = '#c9a13e'; ctx.lineWidth = 3;
     for (const [ox, oy] of [[-30, -18], [4, -30], [32, -14]]) {
-      ctx.beginPath(); ctx.moveTo(655 + ox, g + oy); ctx.lineTo(655 + ox + 12, g + oy - 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(1055 + ox, g + oy); ctx.lineTo(1055 + ox + 12, g + oy - 10); ctx.stroke();
     }
-    for (const [cx2, cy2, cs] of [[1083, g - 24, 48], [1142, g - 48, 92]]) {
+    for (const cr of [this.solids[3], this.solids[4]]) { // the crates, straight from their solids
       ctx.fillStyle = '#8a6a4a';
-      rr(ctx, cx2 - cs / 2 + (cs > 50 ? 0 : 0), cy2 - cs / 2 - (cs > 50 ? 24 : 0), 56, cs, 5); ctx.fill();
+      rr(ctx, cr.x, cr.y, cr.w, cr.h, 5); ctx.fill();
       ctx.strokeStyle = '#5f4a30'; ctx.lineWidth = 3;
-      rr(ctx, cx2 - cs / 2, cy2 - cs / 2 - (cs > 50 ? 24 : 0), 56, cs, 5); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx2 - cs / 2, cy2 - cs / 2 - (cs > 50 ? 24 : 0)); ctx.lineTo(cx2 + 28, cy2 + cs / 2 - (cs > 50 ? 24 : 0)); ctx.stroke();
+      rr(ctx, cr.x, cr.y, cr.w, cr.h, 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cr.x, cr.y); ctx.lineTo(cr.x + cr.w, cr.y + cr.h); ctx.stroke();
     }
     // the cast
     for (const n of this.npcs) this.drawNpc(ctx, t, n);
@@ -7225,13 +7229,14 @@ class ZombieTown {
     }
     this.drawBalloon(ctx, t);
     this.drawCart(ctx, t);
-    // the runaway wheel, leaning on the fence (until touched — then it rolls home)
+    // the runaway wheel, wedged by the well (★ pops it loose, then it rolls home)
     const w = this.wheel;
     if (w.state === 'waiting' || w.state === 'rolling') {
+      const near = game.player && Math.abs(game.player.cx - w.x) < 120;
       ctx.save();
       ctx.translate(w.x, g - 26);
       if (w.state === 'waiting') {
-        ctx.rotate(0.16); // leaning, a little embarrassed
+        ctx.rotate(0.12 + (near ? Math.sin(t * 18) * 0.06 : 0)); // it strains against the rocks
         ctx.save();
         ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 3); // "psst, over here"
         ctx.fillStyle = '#ffe156';
@@ -7240,6 +7245,12 @@ class ZombieTown {
       }
       this.drawWheelShape(ctx, 0, 0, w.spin);
       ctx.restore();
+      if (w.state === 'waiting') {
+        ctx.fillStyle = '#5f6070'; // the wedge rocks
+        ctx.beginPath(); ctx.ellipse(w.x - 24, g - 8, 13, 9, -0.3, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(w.x + 22, g - 7, 11, 8, 0.3, 0, TAU); ctx.fill();
+        if (near) drawSpacebar(ctx, w.x, g - 108, 92, t); // the game's usual wordless nudge
+      }
     }
     if (this.candyFly) { // one candy, airmail
       const k = this.candyFly.t / 0.45;
@@ -7418,7 +7429,11 @@ class ZombieTown {
     const bx = b.x + (b.state === 'stuck' ? Math.sin(b.bobT * 1.8) * 4 : 0);
     const by = b.y + (b.state === 'stuck' ? Math.sin(b.bobT * 2.3) * 3 : 0);
     ctx.strokeStyle = 'rgba(233,228,244,0.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx, by + 18); ctx.quadraticCurveTo(bx + 5, by + 34, bx - 2, by + 46); ctx.stroke();
+    if (b.state === 'stuck') { // its string is snagged on house C's chimney
+      ctx.beginPath(); ctx.moveTo(bx, by + 18); ctx.quadraticCurveTo(bx - 14, (by + 424) / 2, 2359, 424); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(bx, by + 18); ctx.quadraticCurveTo(bx + 5, by + 34, bx - 2, by + 46); ctx.stroke();
+    }
     ctx.fillStyle = '#ff5fa2';
     ctx.beginPath(); ctx.ellipse(bx, by, 16, 19, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#c93e78'; ctx.lineWidth = 2.5;

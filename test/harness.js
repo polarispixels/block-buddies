@@ -1460,29 +1460,42 @@ frames(280);
 check('after the reveal the hero has control back', !G().cut && G().state === 'play');
 check('town loaded: four townspeople need help, no festival, no star',
   ZT().npcs.every(n => n.state === 'need') && ZT().state === 'explore' && G().level.goalStar === null);
-// granny: RIDE the haystack bounce for real — jump on, BOING, steer left, land on her roof
-put(600, 620 - 94);
+// granny: her "ladder" is a haystack two houses down the street — ride the
+// WHOLE route: jump on the hay, steer left onto the shop roof, leap the
+// rooftop gap, walk the ridge to her
+put(1040, 620 - 94);
 frames(5);
 tap('ArrowUp');
 frames(52); // jump, come down on the hay, BOING
 check('landing on the haystack launches the hero', G().player.vy < -300 || G().player.y + 94 < 540);
-frames(75, { ArrowLeft: 1 });
-check('the bounce (with a little steering) reaches the rooftop', G().player.y + 94 <= 482);
-put(430 - 28, 462 - 94); // stand beside her on the roof
-frames(10);
+frames(70, { ArrowLeft: 1 });
+check('steering left lands on the shop rooftop', Math.abs(G().player.y + 94 - 472) < 6);
+put(745, 472 - 94); // stroll to the shop roof's edge
+frames(3);
+tap('ArrowUp');
+frames(60, { ArrowLeft: 1 });
+check("the rooftop gap-jump carries over onto granny's roof", Math.abs(G().player.y + 94 - 462) < 6);
+frames(30, { ArrowLeft: 1 });
 check('reaching granny up there is the whole solution (WHEE incoming)',
   ['leap', 'walk', 'square'].includes(ZT().npcs[0].state));
-frames(80);
-check('granny lands in the hay and trots off to the square', ['walk', 'square'].includes(ZT().npcs[0].state) && ZT().npcs[0].y === 620);
-// balloon: climb the crates, bump it loose, walk it home — it tails the hero
-put(1136, 524 - 94);
+frames(90);
+check('granny mega-leaps clear over the shop into the hay, then trots off',
+  ['walk', 'square'].includes(ZT().npcs[0].state) && ZT().npcs[0].y === 620);
+// balloon: snagged on a chimney a whole town away from the kid — and too
+// high for a plain ground jump (regression guard), so the crates matter
+put(2372 - 28, 620 - 94);
+frames(3);
+tap('ArrowUp');
+frames(60);
+check('a plain ground jump cannot reach the snagged balloon', ZT().balloon.state === 'stuck');
+put(2312, 524 - 94);
 frames(5);
 tap('ArrowUp');
-frames(14, { ArrowRight: 1 });
+frames(16, { ArrowRight: 1 });
 check('a crate-top jump knocks the balloon free', ZT().balloon.state === 'follow');
 put(1250, 620 - 94);
-frames(50);
-check('walking the balloon back delivers it to the kid', ZT().balloon.state === 'held' && ['walk', 'square'].includes(vm.runInContext('game.level.puzzle.npcs[1].state', sandbox)));
+frames(90);
+check('walking the balloon home across town delivers it to the kid', ZT().balloon.state === 'held' && ['walk', 'square'].includes(vm.runInContext('game.level.puzzle.npcs[1].state', sandbox)));
 // the clock tower refuses to start the festival early
 put(1800 - 28, 620 - 94);
 frames(3);
@@ -1504,12 +1517,16 @@ check('one candy spent from the counter: munch munch', vm.runInContext('game.can
 frames(80);
 check('zombie befriended, gentleman relieved, both square-bound',
   ZT().zombie.state === 'friend' && ['walk', 'square'].includes(ZT().npcs[2].state));
-// the cart: touch the runaway wheel and cause-and-effect does the rest
-put(2930, 620 - 94);
+// the cart: its wheel is wedged by the well at the town's OTHER end;
+// walking past does nothing — ★ pops it loose, then it rolls the whole street home
+put(240, 620 - 94);
 frames(8);
-check('touching the wheel sends it rolling home', ['rolling', 'attached'].includes(ZT().wheel.state));
-frames(60);
-check('KLUNK — the festival cart is fixed', ZT().cart.state !== 'broken' && ZT().wheel.state === 'attached');
+check('walking past the wedged wheel never triggers it', ZT().wheel.state === 'waiting');
+tap('Space');
+frames(8);
+check('★ pops the wheel loose and it rolls off toward the cart', ZT().wheel.state === 'rolling' && ZT().wheel.x > 240);
+frames(420); // it rolls the entire street, straight through the square
+check('KLUNK across the whole town — the festival cart is fixed', ZT().cart.state !== 'broken' && ZT().wheel.state === 'attached');
 frames(400);
 check('the carter RIDES his cart into the square (obviously)', ZT().cart.state === 'parked' && ZT().npcs[3].state === 'square');
 frames(220);

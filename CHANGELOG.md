@@ -8,6 +8,30 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.13.1] - 2026-08-20
+
+### Changed — Zombie Town: the answers moved across town (Ryan's playtest note)
+
+Each problem's solution used to sit right beside it; now discovery takes real
+exploring, and every answer lives somewhere else in town:
+
+- **Granny's haystack** moved two houses down the street: bounce onto the
+  *shop* roof, leap the rooftop gap, and walk the ridge back to her — and her
+  thank-you leap is now one enormous cartoon arc clear over the shop into the
+  hay.
+- **The balloon** is now snagged on a chimney at the far end of town, a whole
+  street away from the kid — and floats high enough that only the crate climb
+  reaches it (a plain ground jump could quietly grab the old one; the harness
+  now guards against that).
+- **The cart's wheel** is wedged by the old well at the opposite end of the
+  map. Walking past does nothing; ★ pops it loose (it strains and wiggles as a
+  hint), and it then rolls the entire street home, straight through the
+  square.
+- **Candy** no longer spawns near the hungry tiny zombie — the nearest pieces
+  are back in the square or up on the rooftops (a candy row now sketches the
+  rooftop route, and an arc traces the haystack launch).
+- Harness rides all the new longer routes end-to-end: 423 checks (was 420).
+
 ## [1.13.0] - 2026-08-20
 
 ### Added — ZOMBIE TOWN AFTER DARK: a whole little world above the cave (Jack's idea)
