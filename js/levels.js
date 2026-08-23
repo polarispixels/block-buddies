@@ -105,6 +105,14 @@ function buildLevel(n) {
     // the SECRET PIPE ROOM: a suspiciously oversized pipe that keeps burping
     // candy — walk into it and FWOOOP, you're inside the machine room
     lv.subDoors.push(new SubDoor(2950, G, 'piperoom', 'pipe'));
+    // ---- Big Buddy lesson (v1.14.0): after the last checkpoint, a glowing
+    // turquoise block with a golden mushroom emblem floats overhead. Bonk it,
+    // chase the waddling gold shroom, grow HUGE, then meet the last spider —
+    // and an optional candy crate near the gate that only BIG Jack can smash.
+    // Bottom edge G-190: bonkable from the ground (jump rise 148 > 96 needed),
+    // tall enough that even Big Jack (130) strolls underneath.
+    lv.solids.push({ x: 3540, y: G - 242, w: 52, h: 52, buddy: true });
+    lv.solids.push({ x: 3920, y: G - 242, w: 52, h: 52, bigBonus: true });
     lv.checks.push(new Checkpoint(1800, G));
     lv.checks.push(new Checkpoint(3100, G));
     lv.gate = new Gate(4080, G);
@@ -583,6 +591,11 @@ function buildLevel(n) {
     // tiny treehouse peeks through the leaves far above, and every so often a
     // faint monkey whoop drifts down ("someone lives up there!")
     lv.subDoors.push(new SubDoor(260, G, 'treehouse', 'ladder'));
+    // ---- Big Buddy, lesson two (v1.14.0): a buddy block right at the jungle
+    // entrance so Jack can grow BEFORE the first fire dino — its flame then
+    // teaches "big soaks a hit" without a word. (Flame #1 reaches x≈758;
+    // the block at 560 keeps the bonk spot safely clear of it.)
+    lv.solids.push({ x: 560, y: G - 242, w: 52, h: 52, buddy: true });
     lv.hints.push({ x: 430, y: G - 190, icon: 'arrows' });
     lv.hints.push({ x: 850, y: G - 220, icon: 'up' }); // "jump!" — over the fire
     // ---- Dino Key adventure mission (collection): the Dinosaur Nest Shrine

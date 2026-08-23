@@ -1613,10 +1613,10 @@ vm.runInContext('game.player.shrinkDown()', sandbox);
 
 // Head-bonk: ride a real jump into a buddy block and a bonus block
 vm.runInContext(`
-  game.testBuddy = { x: 3540, y: 620 - 242, w: 52, h: 52, buddy: true };
-  game.testBonus = { x: 3920, y: 620 - 242, w: 52, h: 52, bigBonus: true };
+  game.testBuddy = { x: 1100, y: 620 - 242, w: 52, h: 52, buddy: true };
+  game.testBonus = { x: 1240, y: 620 - 242, w: 52, h: 52, bigBonus: true };
   game.level.solids.push(game.testBuddy, game.testBonus);
-  game.player.x = 3540 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h;
+  game.player.x = 1100 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h;
   game.player.vx = 0; game.player.vy = 0;
 `, sandbox);
 const pickupsBefore = G().pickups.length;
@@ -1624,24 +1624,88 @@ tap('ArrowUp');
 frames(40);
 check('bonk: jumping into a buddy block uses it', vm.runInContext('game.testBuddy.used', sandbox) === true);
 check('bonk: a GrowthShroom pops out', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom).length', sandbox) === 1);
-vm.runInContext('game.player.x = 3540 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+vm.runInContext('game.player.x = 1100 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
 tap('ArrowUp');
 frames(40);
 check('bonk: a used buddy block stays quiet', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom).length', sandbox) === 1);
 vm.runInContext('game.pickups = game.pickups.filter(p => !(p instanceof GrowthShroom));', sandbox);
 // small Jack cannot break the candy crate...
-vm.runInContext('game.player.x = 3920 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+vm.runInContext('game.player.x = 1240 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
 tap('ArrowUp');
 frames(40);
 check('bonk: small Jack cannot break the bonus crate', !vm.runInContext('game.testBonus.broken', sandbox));
 // ...Big Jack smashes it into candy
-vm.runInContext('game.player.grow(); game.player.x = 3920 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+vm.runInContext('game.player.grow(); game.player.x = 1240 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
 const candyBefore = G().pickups.length;
 tap('ArrowUp');
 frames(40);
 check('bonk: BIG Jack smashes the bonus crate', vm.runInContext('game.testBonus.broken', sandbox) === true);
 check('bonk: smashed crate rains candy', G().pickups.length >= candyBefore + 3);
 vm.runInContext('game.player.shrinkDown()', sandbox);
+
+// Real placements: meadow teaches, jungle reinforces (ridden with real jumps)
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+const mBuddy = G().level.solids.find(s => s.buddy);
+const mBonus = G().level.solids.find(s => s.bigBonus);
+check('meadow: buddy block placed after the last checkpoint', !!mBuddy && mBuddy.x > 3100 && mBuddy.x < 3700);
+check('meadow: candy crate before the gate, off the route', !!mBonus && mBonus.x > mBuddy.x && mBonus.x + mBonus.w < 4035);
+check('meadow: both blocks bonkable but walk-under-able', !!mBuddy && !!mBonus && mBuddy.y + mBuddy.h === 620 - 190 && mBonus.y + mBonus.h === 620 - 190);
+vm.runInContext('game.player.x = game.level.solids.find(s=>s.buddy).x + 26 - game.player.w/2; game.player.y = 620 - game.player.h; game.player.vy = 0; game.player.vx = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('meadow: real jump bonks the buddy block', mBuddy.used === true);
+frames(140); // let the shroom land and waddle
+vm.runInContext(`
+  (function(){
+    const sh = game.pickups.find(p => p instanceof GrowthShroom);
+    if (sh) { game.player.x = sh.x; game.player.y = sh.y - 30; }
+  })()
+`, sandbox);
+frames(5);
+check('meadow: chasing down the shroom makes Big Jack', G().player.big === true);
+vm.runInContext('game.player.x = game.level.solids.find(s=>s.bigBonus).x + 26 - game.player.w/2; game.player.y = 620 - game.player.h; game.player.vy = 0; game.player.vx = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('meadow: Big Jack cracks the candy crate on the way to the gate', mBonus.broken === true);
+
+// Dino Jungle: grow early, then let the first dino's flame teach the shrink lesson
+vm.runInContext('game.startLevel(10)', sandbox);
+frames(170);
+const jBuddy = G().level.solids.find(s => s.buddy);
+check('jungle: buddy block sits before the first fire dino', !!jBuddy && jBuddy.x + jBuddy.w < 758);
+vm.runInContext('game.player.x = game.level.solids.find(s=>s.buddy).x + 26 - game.player.w/2; game.player.y = 620 - game.player.h; game.player.vy = 0; game.player.vx = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('jungle: real jump bonks the jungle buddy block', !!jBuddy && jBuddy.used === true);
+frames(120);
+vm.runInContext(`
+  (function(){
+    const sh = game.pickups.find(p => p instanceof GrowthShroom);
+    if (sh) { game.player.x = sh.x; game.player.y = sh.y - 30; }
+  })()
+`, sandbox);
+frames(5);
+check('jungle: Big Jack rides again', G().player.big === true);
+// walk into the first dino's flame FOR REAL: force the flame stage and stand in it
+vm.runInContext(`
+  const d = game.spiders.find(s => s.kind === 'firedino');
+  d.state = 'angry'; d.cycleT = 2.75; // flame stage of the cycle
+  game.player.x = d.x - 120; game.player.y = 620 - game.player.h;
+  game.player.inv = 0; game.player.hearts = 3;
+`, sandbox);
+frames(10);
+check('jungle: dino flame shrinks Big Jack instead of taking a heart', G().player.big === false && G().player.hearts === 3);
+
+// Big survives a sub-room visit (exitSub restores the host player instance)
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+vm.runInContext('game.player.grow(); game.enterSub("piperoom");', sandbox);
+frames(170);
+check('sub: sublevel player starts normal-sized', G().player.big === false && G().player.h === 94);
+vm.runInContext('game.exitSub()', sandbox);
+frames(5);
+check('sub: Big Jack is still big back in the meadow', G().player.big === true && G().player.h === 130);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
