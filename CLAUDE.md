@@ -264,6 +264,15 @@ projectile from ground level at the enemy and asserts the hit.
   Solo work is fine when a task is small enough that delegation overhead would
   cost more than it saves.
 
+## Backlog
+
+`BACKLOG.md` (repo root) is the single source of truth for future work — a
+design document with a Status board at the top. Update its Status board in the
+same release commit that ships an item (mark `✅ shipped vX.Y.0` + one line on
+what was actually built). Current phase: Stage 2 puzzle expansions (Sunken
+Temple → Weather Factory → Frozen Observatory). Playtest notes may arrive as
+GitHub issues; fold them into BACKLOG.md during planning, then close them.
+
 ## Working agreements with Ryan
 
 - Ship in one shot: implement fully, verify with harness + screenshots, then
