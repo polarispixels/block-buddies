@@ -8,6 +8,16 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.14.1] - 2026-08-23
+
+### Added — Escape quits to the title (Ryan's desktop request)
+
+- Pressing **Escape** during any level (play, intro card, lose screen,
+  celebrations, mini-games) returns to the main menu. Physical keyboard only
+  (`justK`), so touch play is untouched. While fullscreen, the browser owns
+  Esc (it exits fullscreen) — that press is deliberately ignored, and a
+  second Esc then quits the level.
+
 ## [1.14.0] - 2026-08-23
 
 ### Added — Big Buddy growth system

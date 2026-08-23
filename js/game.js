@@ -811,6 +811,10 @@ function update(dt) {
   game.hudPulse = Math.max(0, game.hudPulse - dt * 2);
   game.heartFlash = Math.max(0, game.heartFlash - dt);
   if (justP.KeyM) AudioSys.toggleMute();
+  // Escape quits any level back to the title (desktop QoL). justK = physical
+  // keyboard only. While fullscreen the browser owns Esc (it exits fullscreen),
+  // so that press is ignored — a second Esc then quits the level.
+  if (justK.Escape && game.state !== 'title' && !document.fullscreenElement) game.goTitle();
   AudioSys.update();
   switch (game.state) {
     case 'title':

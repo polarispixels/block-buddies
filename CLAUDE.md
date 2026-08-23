@@ -201,7 +201,9 @@ everywhere via `drawBoy`/`drawHead`).
   JUMP + ★ action; underwater/space the right cluster becomes ▲▼. Tap
   anywhere = action (menus work by tapping). Title has tappable portraits
   and level medallions via `game.titleTap`.
-- **Title**: hero picker (Up/Down or tap; girl has curly blonde hair), level
+- **Title**: Escape (justK, keyboard only) quits any level back here — skipped
+  while `document.fullscreenElement` is set, since the browser owns that Esc
+  press to exit fullscreen. Hero picker (Up/Down or tap; girl has curly blonde hair), level
   picker (Left/Right ring or tap medallion, digits 0-9 [displayed numbers] jump, Space = play
   selected). Secret combos (physical keyboard only, via `justK` — touch
   presses can't fire them; ≤1.2s between presses): Up×5 = unlock all worlds
@@ -214,7 +216,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 456 checks; must print
+  actual badge/footer values). 463 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

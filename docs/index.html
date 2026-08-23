@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.14.0</span>
+  <span class="badge">v1.14.1</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -111,7 +111,7 @@ volcano, a planet. No gore, ever: enemies "poof" into stars and candy, or better
 <ul>
   <li><strong>Live URL:</strong> <a href="https://polarispixels.github.io/block-buddies/">polarispixels.github.io/block-buddies</a> (GitHub Pages, <code>main</code> branch, repo root; deploy = push, rebuild ~40–60&nbsp;s)</li>
   <li><strong>Canvas:</strong> 1280 × 720 logical pixels (<code>W</code>/<code>H</code> in <code>js/util.js</code>), scaled to fit the screen</li>
-  <li><strong>Controls:</strong> Arrow keys move/jump/duck (or swim/fly), <kbd>Space</kbd> = action (throw power, advance dialogs, open things). Touch: left-thumb ◀▶▼ cluster, right-thumb JUMP + ★ action (becomes ▲▼ underwater/space). Worlds are numbered <strong>0–9</strong> (0 = the training meadow); digits 0–9 jump straight to that world from the title.</li>
+  <li><strong>Controls:</strong> Arrow keys move/jump/duck (or swim/fly), <kbd>Space</kbd> = action (throw power, advance dialogs, open things). Touch: left-thumb ◀▶▼ cluster, right-thumb JUMP + ★ action (becomes ▲▼ underwater/space). Worlds are numbered <strong>0–9</strong> (0 = the training meadow); digits 0–9 jump straight to that world from the title. <kbd>Esc</kbd> quits any level back to the title (keyboard only; while fullscreen the first Esc just exits fullscreen), and <kbd>M</kbd> toggles mute.</li>
 </ul>
 
 <h2 id="versioning">Versioning (SEMVER)</h2>
@@ -762,7 +762,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 456 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 463 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -819,7 +819,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.14.0 · built for Jack ·
+  Block Buddies v1.14.1 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

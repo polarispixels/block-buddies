@@ -1709,6 +1709,40 @@ check('sub: Big Jack is still big back in the meadow', G().player.big === true &
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- Escape quits to the title (desktop QoL, v1.14.1) ----------------
+vm.runInContext('game.startLevel(2)', sandbox);
+frames(170);
+check('escape: setup reaches play in level 2', G().state === 'play' && G().level.n === 2);
+tap('Escape');
+frames(3);
+check('escape: Escape during play returns to the title', G().state === 'title');
+vm.runInContext('game.startLevel(3)', sandbox);
+frames(5);
+check('escape: setup reaches the intro card', G().state === 'intro');
+tap('Escape');
+frames(3);
+check('escape: Escape during the intro card also exits', G().state === 'title');
+// fullscreen guard: the browser owns Esc while fullscreen (it exits fullscreen),
+// so that press must NOT also quit the level
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+vm.runInContext('document.fullscreenElement = {}', sandbox);
+tap('Escape');
+frames(3);
+check('escape: ignored while fullscreen (browser owns that press)', G().state === 'play');
+vm.runInContext('document.fullscreenElement = null', sandbox);
+tap('Escape');
+frames(3);
+check('escape: works again once out of fullscreen', G().state === 'title');
+// touch can never fire it: TouchUI presses fill justP, not justK
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+vm.runInContext('TouchUI.press("Escape")', sandbox);
+frames(3);
+check('escape: a synthetic touch press cannot quit the level', G().state === 'play');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {
