@@ -9,6 +9,7 @@ function moveEntity(e, lv, dt) {
     if (s.broken || s.oneWay) continue;
     if (overlaps(e, s)) {
       if (s.breakable && e.isPlayer && e.superT > 0) { game.smashWall(s); res.smashed = true; continue; }
+      if (s.bigBrick && e.isPlayer && e.big) { game.smashWall(s, ['#c94f3d', '#a83a2e', '#e8d9c9']); res.smashed = true; continue; }
       // forgiving auto step-up: small ledges (~one block) don't stop a rolling wheel
       const depth = (e.y + e.h) - s.y;
       if (e.isPlayer && !s.bouncy && e.vy >= 0 && depth > 0 && depth <= 52) {
@@ -35,6 +36,7 @@ function moveEntity(e, lv, dt) {
       continue;
     }
     if (s.breakable && e.isPlayer && e.superT > 0) { game.smashWall(s); res.smashed = true; continue; }
+    if (s.bigBrick && e.isPlayer && e.big) { game.smashWall(s, ['#c94f3d', '#a83a2e', '#e8d9c9']); res.smashed = true; continue; }
     if (e.vy > 0) {
       e.y = s.y - e.h;
       if (s.bouncy) { e.vy = s.bounceVy || -980; if (s.bounceVx) { e.vx = s.bounceVx; e.launchT = 1.3; } res.bounced = true; }
@@ -343,6 +345,8 @@ class Player {
         Particles.burst(this.cx, this.y + this.h, 5, { colors: ['#fff'], sp1: 110, l1: 0.3, grav: 300, up: 10, s1: 6 });
       }
       if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus)) game.bumpBlock(res.headS);
+      // pushing a big-brick wall while small: a mushroom thought bubble hints the answer
+      if (res.wall && res.wallS && res.wallS.bigBrick) res.wallS.hintT = 1;
       this.spin += this.vx * dt / 30;
       this.x = clamp(this.x, 0, lv.w - this.w);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };

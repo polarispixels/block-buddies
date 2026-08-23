@@ -1619,9 +1619,12 @@ function drawSolids(ctx, lv, cam, t) {
         ctx.beginPath(); ctx.arc(mx, by + s.h / 2, 46, 0, TAU); ctx.fill();
         ctx.restore();
       }
-      ctx.fillStyle = s.used ? '#9a94a8' : '#3ec6b8';
+      // spent one-shot blocks go gray; spent REFILL blocks stay dimly teal with a
+      // slow pulsing outline — "I'll wake back up if you need me"
+      ctx.fillStyle = s.used ? (s.refill ? '#2f8f86' : '#9a94a8') : '#3ec6b8';
       rr(ctx, s.x, by, s.w, s.h, 10); ctx.fill();
-      ctx.strokeStyle = s.used ? '#6a6478' : '#1e8a80'; ctx.lineWidth = 3;
+      ctx.strokeStyle = s.used ? (s.refill ? 'rgba(62,198,184,' + (0.45 + 0.35 * Math.sin(t * 2)) + ')' : '#6a6478') : '#1e8a80';
+      ctx.lineWidth = 3;
       rr(ctx, s.x, by, s.w, s.h, 10); ctx.stroke();
       // golden mushroom emblem up top (gray once spent)
       ctx.fillStyle = s.used ? '#c9c1d6' : '#ffd24a';
@@ -1717,6 +1720,46 @@ function drawSolids(ctx, lv, cam, t) {
         }
         ctx.fillStyle = '#ffe156';
         ctx.beginPath(); ctx.arc(s.x + s.w - 18, s.y - 4, 3.5, 0, TAU); ctx.fill();
+      }
+      continue;
+    }
+    if (s.bigBrick) { // BIG-brick wall: only a BIG buddy plows through
+      for (let by = s.y, row = 0; by < s.y + s.h - 1; by += 24, row++) {
+        const off = (row % 2) * 24; // offset courses like real brickwork
+        for (let bx = s.x - 24 + off; bx < s.x + s.w; bx += 48) {
+          const x0 = Math.max(bx, s.x), x1 = Math.min(bx + 46, s.x + s.w);
+          if (x1 - x0 < 6) continue;
+          ctx.fillStyle = ((row + Math.floor(bx / 48)) % 2) ? '#c94f3d' : '#b8432f';
+          rr(ctx, x0 + 1, by + 1, x1 - x0 - 2, 22, 4); ctx.fill();
+          ctx.strokeStyle = '#8a2e24'; ctx.lineWidth = 2;
+          rr(ctx, x0 + 1, by + 1, x1 - x0 - 2, 22, 4); ctx.stroke();
+        }
+      }
+      // one sturdy face per wall, low enough for the hero to meet its eyes
+      drawFace(ctx, s.x + s.w / 2, s.y + s.h - 46, 26, s.hintT ? 'surprised' : 'grin', t, s.x);
+      if (s.hintT > 0) { // wordless hint: think MUSHROOM
+        const a = Math.min(1, s.hintT * 2);
+        const hx = s.x + s.w / 2, hy = s.y - 44;
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(hx, hy, 30, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx - 20, hy + 32, 7, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(hx - 28, hy + 44, 4, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(40,25,50,0.4)'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(hx, hy, 30, 0, TAU); ctx.stroke();
+        // mini growth mushroom: gold cap, turquoise spots, little stalk
+        ctx.fillStyle = '#fff7e8';
+        rr(ctx, hx - 7, hy - 2, 14, 14, 5); ctx.fill();
+        ctx.fillStyle = '#ffd24a';
+        ctx.beginPath(); ctx.ellipse(hx, hy - 2, 15, 11, 0, Math.PI, TAU); ctx.fill();
+        ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(hx, hy - 2, 15, 11, 0, Math.PI, TAU); ctx.stroke();
+        ctx.fillStyle = '#3ec6b8';
+        for (const [ox, oy, r2] of [[-8, -5, 2.8], [1, -8, 3.4], [9, -4, 2.6]]) {
+          ctx.beginPath(); ctx.arc(hx + ox, hy - 2 + oy, r2, 0, TAU); ctx.fill();
+        }
+        ctx.restore();
       }
       continue;
     }

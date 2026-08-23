@@ -244,18 +244,22 @@ game.levelComplete = function () {
   try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
   Particles.burst(game.player.cx, game.player.y, 26, { colors: ['#ffe156', '#57d357', '#4aa3ff', '#ff8fb0'], type: 'star', sp1: 430, l1: 1.2, s1: 13 });
 };
-game.smashWall = function (s) {
+game.smashWall = function (s, cols) {
   if (s.broken) return;
   s.broken = true;
   AudioSys.sfx('smash');
+  if (cols) AudioSys.sfx('boom'); // big-brick ram: extra drama
   game.shake = Math.max(game.shake, 0.4);
   for (let by = s.y; by < s.y + s.h; by += 48)
     for (let bx = s.x; bx < s.x + s.w; bx += 48)
-      Particles.burst(bx + 24, by + 24, 3, { colors: ['#d9b98a', '#a8895a'], type: 'block', sp1: 380, l1: 1, s1: 12, grav: 900 });
+      Particles.burst(bx + 24, by + 24, 3, { colors: cols || ['#d9b98a', '#a8895a'], type: 'block', sp1: 380, l1: 1, s1: 12, grav: 900 });
 };
 game.bumpBlock = function (s) { // head-bonk on a Buddy Block or a candy crate
   const pl = game.player;
   if (s.buddy) {
+    // refill blocks guard MANDATORY brick walls: once the mushroom is spent and
+    // Jack is small again, a fresh bonk re-arms the block — never a soft-lock
+    if (s.used && s.refill && !pl.big && !game.pickups.some(p => p instanceof GrowthShroom && !p.dead)) s.used = false;
     if (s.used) { s.bumpT = 0.2; AudioSys.sfx('thud'); return; } // sleepy now
     s.used = true; s.bumpT = 0.35;
     AudioSys.sfx('boing');
@@ -635,7 +639,10 @@ function updatePlay(dt) {
     if (z && game.bossStage > 0 && overlaps(pr, z)) { z.hitBy(pr.kind); pr.impact(true); }
   }
 
-  for (const s of lv.solids) if (s.bumpT) s.bumpT = Math.max(0, s.bumpT - dt); // block bonk hop
+  for (const s of lv.solids) { // block bonk hop + brick-wall hint bubble timers
+    if (s.bumpT) s.bumpT = Math.max(0, s.bumpT - dt);
+    if (s.hintT) s.hintT = Math.max(0, s.hintT - dt);
+  }
   for (const p of game.pickups) p.update(dt);
   for (const c of lv.checks) c.update(dt);
   if (lv.gate) lv.gate.update(dt);

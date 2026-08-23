@@ -1743,6 +1743,57 @@ check('escape: a synthetic touch press cannot quit the level', G().state === 'pl
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- Meadow 0-2: big-brick walls + refill buddy blocks (v1.15.0) ----------------
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+// synthetic arena in level 1: a brick wall and a refilling buddy block
+vm.runInContext(`
+  game.testWall = { x: 1100, y: 380, w: 52, h: 240, bigBrick: true };
+  game.testRefill = { x: 620, y: 378, w: 52, h: 52, buddy: true, refill: true }; // clear of the x=780 block pile
+  game.level.solids.push(game.testWall, game.testRefill);
+  game.player.x = 900; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;
+`, sandbox);
+frames(90, { ArrowRight: 1 });
+check('bricks: small Jack cannot walk through the wall', G().player.x + G().player.w <= 1102 && !vm.runInContext('game.testWall.broken', sandbox));
+check('bricks: pushing the wall shows the mushroom hint bubble', vm.runInContext('game.testWall.hintT', sandbox) > 0);
+tap('ArrowUp');
+frames(70, { ArrowRight: 1 }); // ride a real jump AT the wall — 240px is unjumpable
+check('bricks: the wall is too tall to jump over', G().player.x + G().player.w <= 1102 && Math.abs(G().player.y + G().player.h - 620) < 3);
+vm.runInContext('game.player.x = 620 + 26 - game.player.w / 2; game.player.vx = 0; game.player.vy = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('bricks: refill buddy block spawns a shroom on a real bonk', vm.runInContext('game.testRefill.used === true && game.pickups.filter(p => p instanceof GrowthShroom).length === 1', sandbox));
+vm.runInContext(`
+  (function(){
+    const sh = game.pickups.find(p => p instanceof GrowthShroom);
+    game.player.x = sh.x; game.player.y = sh.y - 30;
+  })()
+`, sandbox);
+frames(5);
+check('bricks: Jack is big and ready to ram', G().player.big === true);
+frames(110, { ArrowRight: 1 });
+check('bricks: BIG Jack rams straight through the wall', vm.runInContext('game.testWall.broken', sandbox) === true && G().player.x > 1160);
+vm.runInContext('game.player.inv = 0; game.player.hearts = 3; game.player.damage(1)', sandbox);
+check('bricks: the hit shrank him without a heart', G().player.big === false && G().player.hearts === 3);
+vm.runInContext('game.player.x = 620 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('bricks: the refill block re-armed and gave a fresh shroom', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom && !p.dead).length', sandbox) === 1);
+vm.runInContext(`
+  (function(){
+    const sh = game.pickups.find(p => p instanceof GrowthShroom && !p.dead);
+    game.player.x = sh.x; game.player.y = sh.y - 30;
+  })()
+`, sandbox);
+frames(5);
+check('bricks: big again off the refilled block', G().player.big === true);
+vm.runInContext('game.player.x = 620 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('bricks: while big, the used block stays quiet (no wasted shrooms)', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom && !p.dead).length', sandbox) === 0);
+vm.runInContext('game.player.shrinkDown(); game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {
