@@ -158,6 +158,8 @@ const AudioSys = {
       case 'bells': this.arp([784, 988, 1175, 1568, 1976], 0.13, 0.55, 'triangle', 0.1); break;
       case 'inhale': this.tone(160, 640, 0.7, 'triangle', 0.09); this.noise(0.5, 0.04, 0.1, 2200); break;
       case 'grind': this.noise(0.55, 0.13, 0, 320); this.tone(85, 60, 0.55, 'sawtooth', 0.08); break;
+      case 'grow': this.arp([330, 415, 523, 659, 830, 1047], 0.05, 0.18, 'triangle', 0.13); this.tone(200, 800, 0.4, 'sine', 0.08); break;
+      case 'shrinkpop': this.tone(700, 160, 0.28, 'square', 0.12); this.noise(0.12, 0.08, 0, 1600); break;
       case 'snore': this.tone(180, 90, 0.5, 'sine', 0.12); this.tone(120, 200, 0.35, 'sine', 0.08, 0.55); break;
       case 'monkey': // happy oo-oo-AH-AH whoop
         this.tone(520, 780, 0.12, 'square', 0.11);

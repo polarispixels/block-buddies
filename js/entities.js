@@ -71,9 +71,11 @@ class Player {
     this.turboT = 0; this.airT = 0; this.rot = 0;
     this.rampCd = 0; this.dustT = 0;
     this.flapCd = 0; this.flapT = 0; this.launchT = 0;
+    this.big = false; this.drawK = 1; // Big Buddy: one free hit + 1.4x size
   }
   boardUnicorn() {
     if (this.vehicle === 'unicorn') return;
+    this.big = false; this.drawK = 1; // vehicles have their own shapes
     this.vehicle = 'unicorn';
     const grow = 112 - this.w;
     this.x -= grow / 2; this.w = 112;
@@ -85,6 +87,7 @@ class Player {
   }
   boardTruck() {
     if (this.vehicle === 'truck') return;
+    this.big = false; this.drawK = 1; // vehicles have their own shapes
     this.vehicle = 'truck';
     const grow = 104 - this.w;
     this.x -= grow / 2; this.w = 104;
@@ -133,6 +136,7 @@ class Player {
     this.inv = Math.max(0, this.inv - dt);
     this.cool = Math.max(0, this.cool - dt);
     this.squash = lerp(this.squash, 1, 1 - Math.exp(-9 * dt));
+    this.drawK = lerp(this.drawK, this.big ? 130 / 94 : 1, 1 - Math.exp(-10 * dt));
     if (this.superT > 0) {
       this.superT -= dt;
       if (this.superT <= 0) { this.superT = 0; AudioSys.sfx('switch'); }
@@ -374,6 +378,14 @@ class Player {
   }
   damage(n) {
     if (this.inv > 0 || this.hearts <= 0) return;
+    if (this.big) { // Big Buddy soaks the hit: shrink with a pop, keep every heart
+      this.shrinkDown();
+      this.inv = 2;
+      this.setMood('surprised', 1.2);
+      game.shake = Math.max(game.shake, 0.3);
+      this.vy = Math.min(this.vy, -320);
+      return;
+    }
     this.hearts -= n;
     this.inv = 2;
     this.setMood('surprised', 1.2);
@@ -384,6 +396,37 @@ class Player {
     this.vy = Math.min(this.vy, -320);
     Particles.burst(this.cx, this.cy, 8, { colors: ['#fff', '#ffd24a'], type: 'star', sp1: 240, l1: 0.5, s1: 9 });
     if (this.hearts <= 0) game.die();
+  }
+  grow() { // Big Buddy! An extra layer of squish before hearts are ever touched
+    const cheer = () => {
+      AudioSys.sfx('powerup');
+      this.setMood('grin', 1.5);
+      Particles.burst(this.cx, this.cy, 14, { colors: ['#ffd24a', '#3ec6b8', '#fff'], type: 'sparkle', sp1: 260, l1: 0.8, s1: 10 });
+    };
+    // vehicles / swimming / space keep their own shapes — the mushroom just cheers you on
+    if (this.vehicle !== 'wheel' || game.level.water || game.level.space) { cheer(); return; }
+    if (this.big) { cheer(); return; }
+    this.big = true;
+    this.x -= (78 - this.w) / 2;
+    this.y -= 130 - this.h; // feet stay planted, head grows UP
+    this.w = 78; this.h = 130;
+    this.squash = 1.5; // exaggerated vertical stretch as he shoots up
+    this.inv = Math.max(this.inv, 0.6); // a beat of safety while everyone giggles
+    this.setMood('grin', 2);
+    AudioSys.sfx('grow');
+    game.shake = Math.max(game.shake, 0.15);
+    game.hudPulse = 1;
+    Particles.burst(this.cx, this.cy, 22, { colors: ['#ffd24a', '#3ec6b8', '#fff', '#ffe156'], type: 'star', sp1: 340, l1: 0.9, s1: 12, grav: 200 });
+  }
+  shrinkDown() { // pop back to normal — the hit cost the mushroom, not a heart
+    if (!this.big) return;
+    this.big = false;
+    this.x += (this.w - 56) / 2;
+    this.y += this.h - 94; // feet stay planted
+    this.w = 56; this.h = 94;
+    this.squash = 0.55; // squashed flat, then springs back
+    AudioSys.sfx('shrinkpop');
+    Particles.burst(this.cx, this.cy, 12, { colors: ['#fff', '#ffd24a', '#3ec6b8'], type: 'star', sp1: 280, l1: 0.6, s1: 10 });
   }
   drawWheel(ctx, wx, wy, r) {
     const p = POW[this.power], n = 7, t = this.t;
@@ -506,12 +549,13 @@ class Player {
     }
     const sq = clamp(this.squash, 0.6, 1.5);
     const baseY = this.y + this.h;
+    const k = this.drawK; // Big Buddy: art stays normal-sized, scaled around the feet
     ctx.translate(this.cx, baseY);
-    ctx.scale(2 - sq, sq);
+    ctx.scale((2 - sq) * k, sq * k);
     ctx.translate(-this.cx, -baseY);
-    const wx = this.cx, wy = this.y + this.h - 30;
+    const wx = this.cx, wy = baseY - 30;
     this.drawWheel(ctx, wx, wy, 30);
-    this.drawBoy(ctx, wx, this.y + (this.duck ? 24 : 6), this.mood);
+    this.drawBoy(ctx, wx, baseY - 94 + (this.duck ? 24 : 6), this.mood);
     // space helmet bubble
     if (game.level && game.level.space) {
       ctx.save();

@@ -1565,6 +1565,29 @@ check('replay exits back to the cave cleanly', G().level.n === 5 && G().state ==
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- Big Buddy: grow / shrink / damage soak (v1.14.0) ----------------
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170); // intro auto-advances
+check('bigbuddy: fresh player starts normal', G().player.big === false && G().player.h === 94);
+vm.runInContext('game.player.grow()', sandbox);
+check('bigbuddy: grow() sets big and enlarges hitbox', G().player.big === true && G().player.h === 130 && G().player.w === 78);
+frames(30);
+check('bigbuddy: big player stands stably on ground', Math.abs(G().player.y + G().player.h - 620) < 3);
+vm.runInContext('game.player.inv = 0; game.player.hearts = 3; game.player.damage(1)', sandbox);
+check('bigbuddy: first hit while big shrinks, costs NO heart', G().player.big === false && G().player.hearts === 3 && G().player.h === 94);
+check('bigbuddy: shrink grants invulnerability', G().player.inv > 1.5);
+vm.runInContext('game.player.inv = 0; game.player.damage(1)', sandbox);
+check('bigbuddy: next hit uses the normal heart system', G().player.hearts === 2);
+vm.runInContext('game.player.grow(); game.player.grow()', sandbox);
+check('bigbuddy: double grow stays one size', G().player.h === 130);
+vm.runInContext('game.player.boardTruck()', sandbox);
+check('bigbuddy: boarding a vehicle resets big', G().player.big === false && G().player.w === 104);
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+check('bigbuddy: new level resets to normal size', G().player.big === false && G().player.h === 94);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {
