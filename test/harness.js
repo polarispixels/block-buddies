@@ -1902,12 +1902,85 @@ check('temple: freed, pearl C whooshes into the last socket', vm.runInContext('g
 frames(120);
 check('temple: three wings wake the door — it crumbles open', vm.runInContext('game.level.solids.find(s => s.templeDoor).broken', sandbox) === true);
 check('temple: the golden star appears in the treasure chamber', !!G().level.goalStar);
-vm.runInContext('game.player.x = 3020; game.player.y = 1280;', sandbox);
+vm.runInContext('game.player.x = 3220; game.player.y = 1270;', sandbox);
 frames(30);
 check('temple: the star throws the party and remembers the win', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.water2', sandbox));
 vm.runInContext('game.exitSub()', sandbox);
 frames(3);
 check('temple: exit lands back in Underwater World', G().level.n === 2 && G().state === 'play');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
+// ---------------- WEATHER FACTORY 2-2 (v1.17.0) — recipes ridden for real ----------------
+vm.runInContext('game.startLevel(3)', sandbox);
+frames(170);
+check('factory: Cloud World grew a roomy archway island', G().level.w === 5000 && vm.runInContext('game.level.gate.cx', sandbox) === 4930 &&
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'cloud2' && d.style === 'stagegate')", sandbox));
+vm.runInContext('game.player.x = 4672; game.player.y = 476; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(6);
+check('factory: the archway enters THE WEATHER FACTORY', G().level.n === 'cloud2' && G().state === 'intro');
+frames(170);
+check('factory: machine + six levers + cloud-catch + no star yet', vm.runInContext(
+  'game.level.puzzle instanceof WeatherFactory && game.level.puzzle.levers.length === 6', sandbox) &&
+  G().level.fallCatch === true && G().level.w === 7600 && G().level.goalStar === null);
+// station 1: water lever -> rain -> bloom (and the lever is reversible until it latches)
+vm.runInContext('game.player.x = 1730; game.player.y = 1056; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(3);
+check('factory: the water lever pulls ON', vm.runInContext("game.level.puzzle.L('w1').on", sandbox) === true);
+frames(20);
+tap('Space');
+frames(3);
+check('factory: and pulls right back OFF', vm.runInContext("game.level.puzzle.L('w1').on", sandbox) === false);
+frames(20);
+tap('Space');
+frames(140);
+check('factory: rain blooms the flower garden', vm.runInContext('game.level.puzzle.st.bloom', sandbox) === true);
+check('factory: the giant stalk grew the stairway leaves', vm.runInContext('game.level.solids.filter(s => s.stalkLeaf).length', sandbox) === 3);
+tap('Space');
+frames(10);
+check('factory: a finished station stays finished (latched)', vm.runInContext('game.level.puzzle.st.bloom', sandbox) === true);
+frames(25); // let the lever cooldown clear
+// station 3 BEFORE power: rain + cold alone cannot make snow — the cable matters
+vm.runInContext('game.player.x = 4530; game.player.y = 1056; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(25);
+vm.runInContext('game.player.x = 4700; game.player.y = 1056;', sandbox);
+frames(3);
+tap('Space');
+frames(160);
+check('factory: no power, no snow — the freezer just sputters', vm.runInContext('game.level.puzzle.st.snow', sandbox) === false);
+// station 2: the fan spins the windmill -> POWER latches
+vm.runInContext('game.player.x = 3060; game.player.y = 956; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(100);
+check('factory: wind latches the power (flywheel forever)', vm.runInContext('game.level.puzzle.st.power', sandbox) === true);
+// station 3 levers were left on: snow now falls and the snowman builds himself
+frames(160);
+check('factory: rain + cold + power = SNOWMAN', vm.runInContext('game.level.puzzle.st.snow', sandbox) === true);
+// station 4 on the high deck: rain + sun + power = the rainbow bridge
+vm.runInContext('game.player.x = 5880; game.player.y = 606; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(25);
+vm.runInContext('game.player.x = 6030; game.player.y = 606;', sandbox);
+frames(3);
+tap('Space');
+frames(160);
+check('factory: rain + sun + power = RAINBOW road', vm.runInContext('game.level.puzzle.st.rainbow', sandbox) === true &&
+  vm.runInContext('game.level.solids.some(s => s.rainbowRoad)', sandbox));
+check('factory: four stations done — the star ignites far away', !!G().level.goalStar);
+// ride the rainbow across the great gap for real
+vm.runInContext('game.player.x = 6360; game.player.y = 606; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(240, { ArrowRight: 1 });
+check('factory: the rainbow carries the hero to the far island', G().player.x > 7000);
+check('factory: the lonely star throws the party', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.cloud2', sandbox));
+vm.runInContext('game.exitSub()', sandbox);
+frames(3);
+check('factory: exit lands back in Cloud World', G().level.n === 3 && G().state === 'play');
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

@@ -24,7 +24,8 @@ const LEVEL_META = {
   beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' }, // the BAND is the music
   zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' },
   meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' }, // stage two: the meadow keeps going
-  water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' } // stage two: cause-and-effect temple
+  water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' }, // stage two: cause-and-effect temple
+  cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' } // stage two: weather recipes
 };
 
 function newLevel(n) {
@@ -169,7 +170,7 @@ function buildLevel(n) {
   }
 
   else if (n === 3) { // ---------------- CLOUD WORLD
-    lv.w = 4600; lv.fallCatch = true;
+    lv.w = 5000; lv.fallCatch = true; // grew in v1.17.0 for the stage 2-2 archway
     lv.playerStart = { x: 90, y: 380 };
     addPlat(lv, 0, 600, 520, { h: 90 });
     addPlat(lv, 620, 540, 170, { oneWay: true });
@@ -200,7 +201,10 @@ function buildLevel(n) {
     lv.subDoors.push(new SubDoor(2480, 560, 'cloudclimb', 'cloud')); // CLOUD CLIMB entrance
     lv.checks.push(new Checkpoint(2350, 560));
     lv.checks.push(new Checkpoint(3750, 570));
-    lv.gate = new Gate(4520, 570);
+    // STAGE 2-2: a roomy island carries the archway — beyond it, the WEATHER FACTORY
+    addPlat(lv, 4600, 570, 400, { h: 80 });
+    lv.subDoors.push(new SubDoor(4700, 570, 'cloud2', 'stagegate'));
+    lv.gate = new Gate(4930, 570);
     lv.decor.clouds = []; lv.decor.birds = [];
     for (let i = 0; i < 16; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 600), s: rand(0.6, 1.6) });
     for (let i = 0; i < 5; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(80, 300), sp: rand(40, 90) });
@@ -740,6 +744,50 @@ function buildLevel(n) {
     for (let x = 40; x < lv.w; x += rand(120, 260)) lv.decor.weeds.push({ x, h: rand(60, 150), seed: rand(9) });
     for (let x = 150; x < lv.w; x += rand(320, 640)) lv.decor.corals.push({ x, s: rand(0.7, 1.4), c: randi(0, 2) });
     for (let i = 0; i < 16; i++) lv.decor.fish.push({ x: rand(0, lv.w), y: rand(150, 1400), s: rand(0.7, 1.3), sp: rand(30, 80) * (chance(0.5) ? 1 : -1), c: randi(0, 3) });
+  }
+
+  if (n === 'cloud2') { // ---------------- THE WEATHER FACTORY 2-2 (stage two, v1.17.0)
+    // A weather-making factory in the open sky: four stations on their own
+    // islands, WIDE stretches of air between them (big levels breathe), all
+    // run by the WeatherFactory machine (lv.puzzle). Recipes, not reflexes:
+    // water -> rain; fan -> wind -> POWER; water+cold(+power) -> snow;
+    // water+sun(+power) -> the rainbow bridge. No enemies, no hazards —
+    // falling just means the cloud-catch. The star waits alone, far out on
+    // its own island past the rainbow.
+    lv.w = 7600; lv.h = 1440; lv.fallCatch = true;
+    lv.playerStart = { x: 90, y: 1060 };
+    lv.hints.push({ x: 250, y: 1050, icon: 'arrows' });
+    addPlat(lv, 0, 1200, 700, { h: 90 });                 // entry island
+    addPlat(lv, 800, 1140, 170, { oneWay: true });
+    addPlat(lv, 1080, 1060, 170, { oneWay: true });
+    addPlat(lv, 1360, 1140, 170, { oneWay: true });
+    candyArc(lv, 820, 1500, 950, 1090, 5);
+    addPlat(lv, 1600, 1150, 900, { h: 90 });              // station 1: flower garden
+    lv.checks.push(new Checkpoint(1700, 1150));
+    candyRow(lv, 2100, 2400, 1090, 3);
+    addPlat(lv, 2620, 1080, 170, { oneWay: true });
+    addPlat(lv, 2820, 1000, 170, { oneWay: true });
+    candyArc(lv, 2600, 2960, 880, 1020, 4);
+    addPlat(lv, 3000, 1050, 900, { h: 90 });              // station 2: windmill power
+    lv.checks.push(new Checkpoint(3300, 1050));
+    addPlat(lv, 4020, 1000, 170, { oneWay: true });
+    addPlat(lv, 4220, 1080, 170, { oneWay: true });
+    pick(lv, 4110, 900, 'heart');
+    addPlat(lv, 4400, 1150, 900, { h: 90 });              // station 3: snow yard
+    lv.checks.push(new Checkpoint(4480, 1150));
+    candyRow(lv, 4850, 5150, 1090, 3);
+    addPlat(lv, 5450, 1200, 300, { h: 90 });              // the stalk island (stairs grow here)
+    addPlat(lv, 5820, 700, 520, { h: 80 });               // station 4: the high rainbow deck
+    candyArc(lv, 5860, 6280, 560, 640, 4);
+    pick(lv, 6600, 600, 'heart');                          // floating over the great gap
+    addPlat(lv, 7000, 900, 600, { h: 90 });               // the star's own island, far away
+    lv.checks.push(new Checkpoint(7100, 900));
+    candyRow(lv, 7060, 7280, 840, 3);
+    lv.puzzle = new WeatherFactory(lv);
+    // goalStar appears only when all four stations are done (machine sets it)
+    lv.decor.clouds = []; lv.decor.birds = [];
+    for (let i = 0; i < 26; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 1300), s: rand(0.6, 1.6) });
+    for (let i = 0; i < 7; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(100, 500), sp: rand(40, 90) });
   }
 
   if (n === 'cloudclimb') { // ---------------- CLOUD CLIMB (vertical mini-game)

@@ -1853,8 +1853,8 @@ class SunkenTemple {
         AudioSys.sfx('boom'); AudioSys.sfx('fanfare');
         game.shake = Math.max(game.shake, 0.5);
         Particles.burst(2740, 1350, 26, { colors: ['#8d8fa0', '#c9a96a', '#3ec6b8'], type: 'block', sp1: 420, l1: 1.2, s1: 13, grav: 500 });
-        this.lv.goalStar = { x: 3050, y: 1330 };
-        Particles.candyBurst(3050, 1300, 14);
+        this.lv.goalStar = { x: 3240, y: 1320 }; // deep in the chamber — the reward gets its own space
+        Particles.candyBurst(3240, 1290, 14);
       }
     }
   }
@@ -1994,6 +1994,415 @@ class SunkenTemple {
       ctx.strokeStyle = '#3a3a4a'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(v.x, v.y, 8, 0, TAU); ctx.stroke();
       if (this.nearValve === v && game.state === 'play') drawSpacebar(ctx, v.x, v.y - 74, 110, t);
+    }
+  }
+}
+
+// ================================================================ weather factory
+// The machine for THE WEATHER FACTORY 2-2 (lv.puzzle on 'cloud2'): systems
+// thinking and sequencing, taught wordlessly. Levers (Space nearby, always
+// reversible until a station LATCHES done) combine into weather recipes:
+// water -> RAIN blooms the flower garden (its giant stalk becomes the stairs
+// to the high deck); the fan -> WIND spins the windmill, which latches POWER
+// (a visible cable feeds the freezer and the sun lamp — nothing cold or
+// bright works without it); water + cold + power -> SNOW builds the snowman;
+// water + sun + power -> a RAINBOW bridges the great gap. Four lit orbs set
+// the golden star on the far island. Wrong combos are weather comedy, never
+// damage; latched progress can't be lost.
+class WeatherFactory {
+  constructor(lv) {
+    this.lv = lv;
+    this.levers = [
+      { id: 'w1', x: 1750, y: 1100, icon: 'water', on: false, rockT: 0 },
+      { id: 'fan', x: 3080, y: 1000, icon: 'wind', on: false, rockT: 0 },
+      { id: 'w3', x: 4550, y: 1100, icon: 'water', on: false, rockT: 0 },
+      { id: 'c3', x: 4720, y: 1100, icon: 'cold', on: false, rockT: 0 },
+      { id: 'w4', x: 5900, y: 650, icon: 'water', on: false, rockT: 0 },
+      { id: 's4', x: 6050, y: 650, icon: 'sun', on: false, rockT: 0 }
+    ];
+    this.st = { bloom: false, bloomT: 0, power: false, powerT: 0, snow: false, snowT: 0, rainbow: false, rbT: 0 };
+    this.bloomA = 0; this.snowA = 0; this.spin = 0; this.starSet = false;
+    this.orbs = [ // one per station, in station order
+      { x: 2430, y: 1096 }, { x: 3850, y: 996 }, { x: 5240, y: 1096 }, { x: 6290, y: 646 }
+    ];
+    this.near = null; this.cool = 0; this.t = rand(9);
+  }
+  L(id) { return this.levers.find(l => l.id === id); }
+  doneCount() { const s = this.st; return (s.bloom ? 1 : 0) + (s.power ? 1 : 0) + (s.snow ? 1 : 0) + (s.rainbow ? 1 : 0); }
+  latch(orb, sfx) {
+    AudioSys.sfx(sfx); AudioSys.sfx('fanfare');
+    game.shake = Math.max(game.shake, 0.3);
+    const o = this.orbs[orb];
+    Particles.burst(o.x, o.y, 16, { colors: ['#ffd24a', '#fff', '#7fd8ff'], type: 'star', sp1: 300, l1: 1, s1: 11 });
+  }
+  update(dt, pl) {
+    this.t += dt; this.cool = Math.max(0, this.cool - dt);
+    // ---- levers ----
+    this.near = null;
+    for (const l of this.levers) {
+      l.rockT = Math.max(0, l.rockT - dt);
+      if (!this.near && Math.hypot(pl.cx - l.x, pl.cy - l.y) < 95) this.near = l;
+    }
+    if (this.near && justP.Space && this.cool <= 0 && game.state === 'play') {
+      const l = this.near;
+      this.cool = 0.3; l.on = !l.on; l.rockT = 0.4;
+      AudioSys.sfx('switch'); AudioSys.sfx(l.on ? 'blorp' : 'thud');
+      Particles.burst(l.x, l.y - 20, 8, { colors: ['#fff', '#bfe8ff'], type: 'sparkle', sp1: 140, l1: 0.6, s1: 8 });
+    }
+    const st = this.st;
+    // ---- station 1: RAIN -> the flower garden blooms ----
+    if (this.L('w1').on) {
+      if (chance(0.7)) Particles.add({ x: rand(2000, 2320), y: 880, vx: 0, vy: 520, life: rand(0.4, 0.6), size: 4, color: 'rgba(120,180,255,0.8)', type: 'circle', grav: 300, spin: 0 });
+      if (!st.bloom) {
+        st.bloomT += dt;
+        if (st.bloomT > 1.6) {
+          st.bloom = true;
+          this.latch(0, 'collect');
+          // the giant flower stalk grows into the stairway to the high deck
+          this.lv.solids.push(
+            { x: 5490, y: 1070, w: 150, h: 30, oneWay: true, stalkLeaf: true, skipDraw: true },
+            { x: 5610, y: 930, w: 150, h: 30, oneWay: true, stalkLeaf: true, skipDraw: true },
+            { x: 5710, y: 790, w: 150, h: 30, oneWay: true, stalkLeaf: true, skipDraw: true }
+          );
+          Particles.burst(5570, 1100, 22, { colors: ['#57d357', '#ff8fb0', '#ffe156'], type: 'confetti', sp1: 320, l1: 1.4, s1: 11, grav: 250, up: 250 });
+        }
+      }
+    }
+    if (st.bloom) this.bloomA = Math.min(1, this.bloomA + dt / 1.2);
+    // ---- station 2: WIND -> the windmill latches POWER (flywheel: forever) ----
+    const wind = this.L('fan').on;
+    if (wind) {
+      if (chance(0.6)) Particles.add({ x: rand(3160, 3280), y: rand(880, 1020), vx: 620, vy: rand(-20, 20), life: rand(0.4, 0.7), size: rand(4, 7), color: 'rgba(255,255,255,0.6)', type: 'sparkle', grav: 0, spin: 0 });
+      if (pl.cx > 3160 && pl.cx < 3700 && pl.cy > 840 && pl.cy < 1060) pl.vx += 520 * dt; // whee
+      if (!st.power) {
+        st.powerT += dt;
+        if (st.powerT > 1.3) { st.power = true; this.latch(1, 'switch'); }
+      }
+    }
+    this.spin += (st.power ? 5 : wind ? 2.5 : 0) * dt;
+    // ---- station 3: RAIN + COLD (+ POWER) -> SNOW builds the snowman ----
+    const r3 = this.L('w3').on, c3 = this.L('c3').on;
+    if (r3 && !(c3 && st.power)) { // just rain: the puddle gets splashier (funny, harmless)
+      if (chance(0.7)) Particles.add({ x: rand(4880, 5120), y: 890, vx: 0, vy: 520, life: rand(0.4, 0.6), size: 4, color: 'rgba(120,180,255,0.8)', type: 'circle', grav: 300, spin: 0 });
+    }
+    if (c3 && !st.power && chance(0.15)) { // freezer without power: sad gray sputter
+      Particles.burst(4790, 1080, 1, { color: 'rgba(160,160,170,0.7)', type: 'bubble', sp1: 40, grav: -60, l1: 0.7, s1: 8, up: 10 });
+    }
+    if (r3 && c3 && st.power) {
+      if (chance(0.8)) Particles.add({ x: rand(4880, 5120), y: 890, vx: rand(-15, 15), vy: 110, life: rand(1.2, 2), size: rand(4, 6), color: 'rgba(255,255,255,0.9)', type: 'sparkle', grav: 20, spin: 2 });
+      if (!st.snow) {
+        st.snowT += dt;
+        if (st.snowT > 1.8) { st.snow = true; this.latch(2, 'bells'); }
+      }
+    }
+    if (st.snow) this.snowA = Math.min(1, this.snowA + dt / 1.6);
+    // ---- station 4: RAIN + SUN (+ POWER) -> the RAINBOW bridge ----
+    const r4 = this.L('w4').on, s4 = this.L('s4').on;
+    if (r4 && chance(0.7)) Particles.add({ x: rand(6400, 6640), y: 510, vx: 0, vy: 520, life: rand(0.5, 0.8), size: 4, color: 'rgba(120,180,255,0.8)', type: 'circle', grav: 300, spin: 0 });
+    if (r4 && s4 && st.power && !st.rainbow) {
+      this.st.rbT += dt;
+      if (chance(0.5)) Particles.burst(rand(6360, 6700), rand(500, 660), 1, { colors: RAINBOW, type: 'sparkle', sp1: 40, grav: -30, l1: 0.7, s1: 8, up: 0 });
+      if (this.st.rbT > 1.8) {
+        st.rainbow = true;
+        this.latch(3, 'rainbow');
+        this.lv.solids.push({ x: 6340, y: 700, w: 760, h: 26, oneWay: true, rainbowRoad: true, skipDraw: true });
+        Particles.burst(6700, 640, 30, { colors: RAINBOW.concat(['#fff']), type: 'star', sp1: 420, l1: 1.4, s1: 12, grav: 150 });
+      }
+    }
+    // ---- all four -> the golden star, out on its own island ----
+    if (!this.starSet && this.doneCount() === 4) {
+      this.starSet = true;
+      this.lv.goalStar = { x: 7380, y: 760 };
+      AudioSys.sfx('chest');
+      game.shake = Math.max(game.shake, 0.3);
+      Particles.candyBurst(7380, 800, 12);
+    }
+  }
+  drawBack(ctx, t) {
+    // the power cable: windmill -> pylons -> freezer + sun lamp, sparks when live
+    const pts = [[3660, 820], [4420, 1090], [4790, 1050], [5460, 1140], [5830, 660], [6200, 600]];
+    ctx.save();
+    ctx.strokeStyle = this.st.power ? 'rgba(255,225,86,0.75)' : 'rgba(90,90,110,0.6)';
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.quadraticCurveTo((pts[i - 1][0] + pts[i][0]) / 2, Math.max(pts[i - 1][1], pts[i][1]) + 46, pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#8a7fae';
+    for (let i = 1; i < 4; i++) rr(ctx, pts[i][0] - 6, pts[i][1], 12, 60, 4); ctx.fill();
+    if (this.st.power) { // traveling sparks
+      for (let i = 0; i < 3; i++) {
+        const k = ((t * 0.35 + i / 3) % 1) * (pts.length - 1);
+        const a = pts[Math.floor(k)], b = pts[Math.min(pts.length - 1, Math.floor(k) + 1)], f = k % 1;
+        ctx.fillStyle = '#ffe156';
+        ctx.beginPath(); ctx.arc(lerp(a[0], b[0], f), lerp(a[1], b[1], f) + 30 * Math.sin(f * Math.PI), 5, 0, TAU); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  drawCloud(ctx, x, y, raining, t, seed) {
+    ctx.fillStyle = raining ? '#9aa6c0' : '#ffffff';
+    for (const [ox, oy, r] of [[-38, 4, 24], [0, -8, 32], [38, 4, 24], [-14, 12, 24], [18, 12, 24]]) {
+      ctx.beginPath(); ctx.arc(x + ox, y + oy + Math.sin(t * 1.6 + seed) * 4, r, 0, TAU); ctx.fill();
+    }
+    drawFace(ctx, x, y + 6 + Math.sin(t * 1.6 + seed) * 4, 26, raining ? 'surprised' : 'sleepy', t, seed);
+  }
+  drawLeverIcon(ctx, l, x, y) {
+    if (l.icon === 'water') {
+      ctx.fillStyle = '#4aa3ff';
+      ctx.beginPath(); ctx.arc(x, y + 2, 8, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x - 7, y - 1); ctx.lineTo(x + 7, y - 1); ctx.closePath(); ctx.fill();
+    } else if (l.icon === 'cold') {
+      ctx.strokeStyle = '#7fd8ff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const a = i * Math.PI / 3;
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(a) * 10, y - Math.sin(a) * 10);
+        ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10);
+        ctx.stroke();
+      }
+    } else if (l.icon === 'sun') {
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath(); ctx.arc(x, y, 8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 2.5;
+      for (let i = 0; i < 8; i++) {
+        const a = i * TAU / 8;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * 11, y + Math.sin(a) * 11);
+        ctx.lineTo(x + Math.cos(a) * 15, y + Math.sin(a) * 15);
+        ctx.stroke();
+      }
+    } else { // wind
+      ctx.strokeStyle = '#ff8a65'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x - 9, y + i * 6);
+        ctx.quadraticCurveTo(x + 4, y + i * 6 - 4, x + 10, y + i * 6);
+        ctx.stroke();
+      }
+    }
+  }
+  drawThought(ctx, x, y, t, kind) { // wordless want-bubble
+    ctx.save();
+    ctx.globalAlpha = 0.85 + 0.1 * Math.sin(t * 3);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x, y, 30, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 20, y + 32, 7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 28, y + 44, 4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,50,0.35)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 30, 0, TAU); ctx.stroke();
+    if (kind === 'snowman') {
+      ctx.fillStyle = '#eef4ff';
+      ctx.beginPath(); ctx.arc(x, y + 8, 9, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y - 5, 6.5, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#8a9ab0'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y + 8, 9, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y - 5, 6.5, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#2e2430';
+      rr(ctx, x - 6, y - 14, 12, 4, 2); ctx.fill();
+    } else { // rainbow
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = RAINBOW[i]; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(x, y + 10, 16 - i * 3.5, Math.PI, TAU); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  draw(ctx, t) {
+    const st = this.st;
+    // ---- station 1: the flower garden ----
+    this.drawCloud(ctx, 2150, 820, this.L('w1').on, t, 1);
+    for (let i = 0; i < 6; i++) { // wilted brown stems -> huge happy blooms
+      const fx = 1980 + i * 64, a = this.bloomA;
+      ctx.strokeStyle = a > 0.3 ? '#3f9c3a' : '#8a6a4a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      const h = 24 + a * 56;
+      ctx.beginPath();
+      ctx.moveTo(fx, 1150);
+      if (a > 0.3) ctx.lineTo(fx, 1150 - h);
+      else ctx.quadraticCurveTo(fx + 12, 1140, fx + 16, 1132); // drooping
+      ctx.stroke();
+      if (a > 0.3) {
+        const s = 8 + a * 10;
+        ctx.fillStyle = ['#ff5a8a', '#ffb62b', '#b06cf0', '#ff8fb0', '#4aa3ff', '#ffe156'][i];
+        for (let p = 0; p < 6; p++) {
+          const an = p * TAU / 6 + t * 0.3;
+          ctx.beginPath(); ctx.arc(fx + Math.cos(an) * s, 1150 - h + Math.sin(an) * s, s * 0.62, 0, TAU); ctx.fill();
+        }
+        ctx.fillStyle = '#fff7c9';
+        ctx.beginPath(); ctx.arc(fx, 1150 - h, s * 0.6, 0, TAU); ctx.fill();
+        if (i === 2) drawFace(ctx, fx, 1150 - h, s, 'grin', t, i);
+      }
+    }
+    // ---- station 2: fan + windmill ----
+    ctx.fillStyle = '#8a7fae'; // the big fan
+    rr(ctx, 3160, 940, 18, 110, 6); ctx.fill();
+    ctx.save();
+    ctx.translate(3169, 930);
+    ctx.rotate(this.L('fan').on ? t * 14 : 0);
+    ctx.fillStyle = '#c9c1d6';
+    for (let i = 0; i < 3; i++) {
+      ctx.rotate(TAU / 3);
+      ctx.beginPath(); ctx.ellipse(0, -20, 10, 22, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    // windmill tower
+    ctx.fillStyle = '#e8e4f4';
+    ctx.beginPath();
+    ctx.moveTo(3620, 1050); ctx.lineTo(3636, 830); ctx.lineTo(3684, 830); ctx.lineTo(3700, 1050);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 3; ctx.stroke();
+    drawFace(ctx, 3660, 960, 26, st.power ? 'grin' : 'sleepy', t, 5);
+    ctx.save();
+    ctx.translate(3660, 820);
+    ctx.rotate(this.spin);
+    ctx.fillStyle = '#ffd24a';
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(TAU / 4);
+      rr(ctx, -8, -86, 16, 86, 7); ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#8a7fae';
+    ctx.beginPath(); ctx.arc(3660, 820, 10, 0, TAU); ctx.fill();
+    // ---- station 3: freezer + puddle -> snowman ----
+    ctx.fillStyle = '#bfe8ff'; // freezer box
+    rr(ctx, 4760, 1060, 60, 90, 8); ctx.fill();
+    ctx.strokeStyle = '#3a8ac2'; ctx.lineWidth = 3;
+    rr(ctx, 4760, 1060, 60, 90, 8); ctx.stroke();
+    this.drawLeverIcon(ctx, { icon: 'cold' }, 4790, 1095);
+    ctx.fillStyle = st.power ? '#57d357' : '#5a5a6a'; // its power lamp
+    ctx.beginPath(); ctx.arc(4790, 1136, 6, 0, TAU); ctx.fill();
+    this.drawCloud(ctx, 5000, 830, this.L('w3').on, t, 3);
+    const sa = this.snowA;
+    if (sa < 1) { // the hopeful puddle with a carrot
+      ctx.fillStyle = 'rgba(120,180,255,0.5)';
+      ctx.beginPath(); ctx.ellipse(5000, 1146, 60 - sa * 30, 9, 0, 0, TAU); ctx.fill();
+    }
+    if (sa <= 0.05) {
+      ctx.fillStyle = '#ffa62b';
+      ctx.beginPath(); ctx.moveTo(4994, 1136); ctx.lineTo(5006, 1136); ctx.lineTo(5000, 1112); ctx.closePath(); ctx.fill();
+      this.drawThought(ctx, 5060, 1030, t, 'snowman');
+    } else { // the snowman assembles, bottom-up
+      ctx.fillStyle = '#f4f8ff'; ctx.strokeStyle = '#a8b8d0'; ctx.lineWidth = 2.5;
+      const balls = [[5000, 1122, 28], [5000, 1078, 21], [5000, 1044, 15]];
+      for (let i = 0; i < 3; i++) {
+        if (sa < (i + 1) / 3.2) break;
+        ctx.beginPath(); ctx.arc(balls[i][0], balls[i][1], balls[i][2], 0, TAU); ctx.fill(); ctx.stroke();
+      }
+      if (sa >= 0.94) {
+        ctx.fillStyle = '#ffa62b'; // carrot nose, at last
+        ctx.beginPath(); ctx.moveTo(5008, 1044); ctx.lineTo(5024, 1048); ctx.lineTo(5008, 1052); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#2e2430';
+        rr(ctx, 4988, 1022, 24, 7, 3); ctx.fill();
+        rr(ctx, 4993, 1006, 14, 18, 3); ctx.fill();
+        drawFace(ctx, 4998, 1044, 13, 'grin', t, 9);
+        const wave = Math.sin(t * 5) * 0.4; // he waves forever
+        ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(5018, 1078); ctx.lineTo(5040, 1058 + wave * 14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(4982, 1078); ctx.lineTo(4962, 1086); ctx.stroke();
+      }
+    }
+    // ---- station 4: sun lamp + the gap cloud + rainbow ----
+    ctx.fillStyle = '#8a7fae';
+    rr(ctx, 6194, 560, 12, 140, 5); ctx.fill();
+    ctx.fillStyle = this.L('s4').on && st.power ? '#ffe156' : '#5a5a6a';
+    ctx.beginPath(); ctx.arc(6200, 550, 16, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#3a3a4a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(6200, 550, 16, 0, TAU); ctx.stroke();
+    if (this.L('s4').on && st.power) { // the beam angles out over the gap
+      ctx.save();
+      ctx.globalAlpha = 0.3 + 0.1 * Math.sin(t * 5);
+      ctx.fillStyle = '#ffe156';
+      ctx.beginPath();
+      ctx.moveTo(6212, 540); ctx.lineTo(6640, 400); ctx.lineTo(6560, 560);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    this.drawCloud(ctx, 6520, 440, this.L('w4').on, t, 4);
+    if (!st.rainbow) this.drawThought(ctx, 6390, 590, t, 'rainbow');
+    else { // the rainbow road itself
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      for (let i = 0; i < RAINBOW.length; i++) {
+        ctx.strokeStyle = RAINBOW[i]; ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(6340, 706 + i * 6);
+        ctx.quadraticCurveTo(6720, 620 + i * 6, 7100, 706 + i * 6);
+        ctx.stroke();
+      }
+      ctx.restore();
+      if (chance(0.15)) Particles.burst(rand(6360, 7080), rand(650, 700), 1, { colors: RAINBOW, type: 'sparkle', sp1: 25, grav: -30, l1: 0.7, s1: 7, up: 0 });
+    }
+    // ---- the stalk stairway (once bloomed) ----
+    if (st.bloom) {
+      ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(5570, 1200);
+      ctx.quadraticCurveTo(5520, 1000, 5620, 880);
+      ctx.quadraticCurveTo(5720, 780, 5770, 720);
+      ctx.stroke();
+      ctx.fillStyle = '#57b84a';
+      for (const s of this.lv.solids) {
+        if (!s.stalkLeaf) continue;
+        ctx.beginPath(); ctx.ellipse(s.x + s.w / 2, s.y + 12, s.w / 2 + 8, 16, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#2f8a3c'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(s.x + s.w / 2, s.y + 12, s.w / 2 + 8, 16, 0, 0, TAU); ctx.stroke();
+      }
+      ctx.fillStyle = '#ff8fb0'; // the giant bloom at the top
+      for (let p = 0; p < 7; p++) {
+        const an = p * TAU / 7 + t * 0.2;
+        ctx.beginPath(); ctx.arc(5770 + Math.cos(an) * 26, 700 + Math.sin(an) * 26, 17, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = '#fff7c9';
+      ctx.beginPath(); ctx.arc(5770, 700, 17, 0, TAU); ctx.fill();
+      drawFace(ctx, 5770, 700, 15, 'grin', t, 11);
+    }
+    // ---- orbs ----
+    const lit = [st.bloom, st.power, st.snow, st.rainbow];
+    for (let i = 0; i < 4; i++) {
+      const o = this.orbs[i];
+      ctx.fillStyle = '#8a7fae';
+      rr(ctx, o.x - 12, o.y + 10, 24, 22, 6); ctx.fill();
+      if (lit[i]) {
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(t * 4 + i);
+        ctx.fillStyle = '#ffd24a';
+        ctx.beginPath(); ctx.arc(o.x, o.y, 30, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = lit[i] ? '#ffe156' : '#5a6a7a';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 13, 0, TAU); ctx.fill();
+      ctx.strokeStyle = lit[i] ? '#c8861b' : '#3a4a5a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(o.x, o.y, 13, 0, TAU); ctx.stroke();
+    }
+    // ---- the star pedestal, alone on its island ----
+    ctx.fillStyle = '#c9c1d6';
+    rr(ctx, 7350, 830, 60, 70, 8); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 3;
+    rr(ctx, 7350, 830, 60, 70, 8); ctx.stroke();
+    for (let i = 0; i < 4; i++) { // four little weather slots fill in — wordless progress
+      const sx = 7380 + (i % 2 ? 14 : -14), sy = 848 + (i > 1 ? 30 : 0);
+      ctx.fillStyle = lit[i] ? ['#4aa3ff', '#ff8a65', '#eef4ff', '#b06cf0'][i] : 'rgba(90,90,110,0.5)';
+      ctx.beginPath(); ctx.arc(sx, sy, 9, 0, TAU); ctx.fill();
+    }
+    // ---- levers last, on top ----
+    for (const l of this.levers) {
+      ctx.fillStyle = '#5a5a6a';
+      rr(ctx, l.x - 20, l.y + 26, 40, 14, 5); ctx.fill();
+      const ang = (l.on ? 0.55 : -0.55) + Math.sin(Math.max(0, l.rockT) * 22) * 0.12;
+      ctx.save();
+      ctx.translate(l.x, l.y + 28);
+      ctx.rotate(ang);
+      ctx.strokeStyle = '#8a8a9a'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -46); ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(0, -52, 15, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#4a3a66'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, -52, 15, 0, TAU); ctx.stroke();
+      this.drawLeverIcon(ctx, l, 0, -52);
+      ctx.restore();
+      if (this.near === l && game.state === 'play') drawSpacebar(ctx, l.x, l.y - 64, 110, t);
     }
   }
 }
