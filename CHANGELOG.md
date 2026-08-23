@@ -8,6 +8,35 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.16.0] - 2026-08-23
+
+### Added — SUNKEN TEMPLE 1-2: the first puzzle stage
+
+The first release of the *Puzzle & Long-Level* direction (BACKLOG item 1):
+a big drowned temple (5200 × 1600, entered through a stage archway on
+Underwater World's seabed) built entirely from visible cause-and-effect.
+
+- **Valves & currents**: bronze valve wheels (Space nearby turns them; a green
+  lamp shows ON; always reversible) toggle water-current streams — the same
+  generic currents that push the hero, with marching chevrons and bubble
+  trails showing exactly which way each one flows.
+- **Pearls & sockets**: currents carry shimmering googly pearls; each seeks
+  its clam socket (a ghost-pearl silhouette shows what it wants) with a
+  forgiving magnet for near-misses. A pearl knocked out of its wing pops back
+  to its home bowl — it can never be lost.
+- **Three puzzle wings, any order**: the valve lesson (one valve → one
+  stream → click); the up-shaft (two valves — one alone strands the pearl
+  below the shaft, visibly waiting); and the cage (a shell switch pops a
+  membrane — flip the current first and the pearl strains against the cage
+  until you free it: wrong order is funny, then it whooshes).
+- **The waking door**: each finished wing lights an orb, a glowing stream
+  arcs to the great door, and its three pearl slots fill in (wordless
+  progress). All three → the sleeping stone face wakes GRINNING, the slab
+  crumbles, and the golden star appears in the treasure chamber you could
+  see through the walls the whole time.
+- No enemies or hazards inside the temple (two swim spiders in the open-sea
+  approach only) — thinking is the whole game here.
+
 ## [1.15.0] - 2026-08-23
 
 ### Added — BLOCK MEADOW 0-2: the first stage-two level

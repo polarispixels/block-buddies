@@ -17,8 +17,8 @@ release spec. Maintenance rules:
 
 | # | Item | Type | Status |
 |---|------|------|--------|
-| 1 | Underwater 1-2: The Sunken Temple | Stage 2 | 🎯 next up |
-| 2 | Cloud 2-2: The Weather Factory | Stage 2 | queued |
+| 1 | Underwater 1-2: The Sunken Temple | Stage 2 | ✅ shipped v1.16.0 — valve→current→pearl→socket chains across three any-order wings (one-valve lesson, two-valve up-shaft, shell-switch cage), waking stone door, treasure chamber; pearls unlosable, everything reversible (see CHANGELOG 1.16.0) |
+| 2 | Cloud 2-2: The Weather Factory | Stage 2 | 🎯 next up |
 | 3 | Mountain 3-2: The Frozen Observatory | Stage 2 | queued |
 | 4 | Space 8-2: The Alien Space Station | Stage 2 | idea |
 | 5 | Dino Jungle 9-2: The Great Dinosaur Rescue | Stage 2 | idea |
