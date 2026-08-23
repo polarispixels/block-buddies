@@ -3607,6 +3607,7 @@ class SubDoor {
         if (this.style === 'ladder') AudioSys.sfx('monkey'); // welcomed up the tree
         if (this.style === 'garage') AudioSys.sfx('hornhit'); // the band waves you in
         if (this.style === 'moonwell') { AudioSys.sfx('whoosh'); AudioSys.sfx('bells'); } // up into the night
+        if (this.style === 'stagegate') AudioSys.sfx('fanfare'); // onward to stage two!
         game.enterSub(this.sub);
         return;
       }
@@ -3622,6 +3623,7 @@ class SubDoor {
         : this.style === 'ladder' ? ['#7be07b', '#ffe156']
         : this.style === 'garage' ? ['#ffe156', '#ff8fb0', '#7fd8ff']
         : this.style === 'moonwell' ? ['#e8ecff', '#bfd0ff', '#ffe156']
+        : this.style === 'stagegate' ? ['#ffe156', '#7be07b', '#fff']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -4072,6 +4074,61 @@ class SubDoor {
         drawFace(ctx, cx, g - lift / 2 + 3, Math.min(16, lift * 0.62), 'surprised', t, 73);
       }
       ctx.restore();
+    } else if (this.style === 'stagegate') {
+      // STAGE archway: wooden posts, an arched beam, a golden star on top and a
+      // big "2" badge — not a secret, an invitation: the meadow keeps going!
+      const postW = 16;
+      // the sunny path leading "onward" through the doorway
+      ctx.fillStyle = 'rgba(255,244,180,0.5)';
+      rr(ctx, this.x + postW, this.y + 26, this.w - postW * 2, this.h - 26, 8); ctx.fill();
+      // posts
+      ctx.fillStyle = '#b0743e';
+      for (const px of [this.x, this.x + this.w - postW]) {
+        rr(ctx, px, this.y + 14, postW, this.h - 14, 6); ctx.fill();
+      }
+      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 3;
+      for (const px of [this.x, this.x + this.w - postW]) {
+        rr(ctx, px, this.y + 14, postW, this.h - 14, 6); ctx.stroke();
+      }
+      // arched beam
+      ctx.fillStyle = '#c98f4e';
+      ctx.beginPath();
+      ctx.moveTo(this.x - 8, this.y + 30);
+      ctx.quadraticCurveTo(cx, this.y - 18, this.x + this.w + 8, this.y + 30);
+      ctx.lineTo(this.x + this.w - 4, this.y + 42);
+      ctx.quadraticCurveTo(cx, this.y - 2, this.x + 4, this.y + 42);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6a4020'; ctx.lineWidth = 3; ctx.stroke();
+      // golden star perched on the arch
+      ctx.save();
+      ctx.translate(cx, this.y - 14);
+      ctx.rotate(Math.sin(t * 2) * 0.12);
+      ctx.fillStyle = '#ffd24a';
+      starPath(ctx, 0, 0, 15, 7);
+      ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.restore();
+      // the big friendly "2" badge in the doorway
+      const bob = Math.sin(t * 2.4) * 3;
+      ctx.fillStyle = '#fff7e8';
+      ctx.beginPath(); ctx.arc(cx, this.y + 62 + bob, 26, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(cx, this.y + 62 + bob, 26, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#e8482b';
+      ctx.font = 'bold 34px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('2', cx, this.y + 63 + bob);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      drawFace(ctx, cx, g - 16, 18, 'happy', t, this.x);
+      // grass tufts at the feet
+      ctx.fillStyle = '#5ecb4a';
+      for (const gx of [this.x - 6, this.x + this.w - 10]) {
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.ellipse(gx + 8 + (i - 1) * 7, g - 3, 4, 9 + (i % 2) * 3, (i - 1) * 0.3, 0, TAU);
+          ctx.fill();
+        }
+      }
     } else { // cloud swirl archway
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       for (let i = 0; i < 7; i++) {

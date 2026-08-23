@@ -1773,7 +1773,7 @@ frames(5);
 check('bricks: Jack is big and ready to ram', G().player.big === true);
 frames(110, { ArrowRight: 1 });
 check('bricks: BIG Jack rams straight through the wall', vm.runInContext('game.testWall.broken', sandbox) === true && G().player.x > 1160);
-vm.runInContext('game.player.inv = 0; game.player.hearts = 3; game.player.damage(1)', sandbox);
+vm.runInContext('if (!game.player.big) game.player.grow(); game.player.inv = 0; game.player.hearts = 3; game.player.damage(1)', sandbox);
 check('bricks: the hit shrank him without a heart', G().player.big === false && G().player.hearts === 3);
 vm.runInContext('game.player.x = 620 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;', sandbox);
 tap('ArrowUp');
@@ -1792,6 +1792,57 @@ tap('ArrowUp');
 frames(40);
 check('bricks: while big, the used block stays quiet (no wasted shrooms)', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom && !p.dead).length', sandbox) === 0);
 vm.runInContext('game.player.shrinkDown(); game.goTitle()', sandbox);
+frames(3);
+
+// ---- the stage door in the meadow + the full 0-2 gauntlet, ridden for real ----
+vm.runInContext('game.startLevel(1)', sandbox);
+frames(170);
+check('stage2: the meadow grew to make room for the archway', G().level.w === 4650 && vm.runInContext('game.level.gate.cx', sandbox) === 4530);
+check('stage2: a stagegate door to meadow2 stands on the path', vm.runInContext("game.level.subDoors.some(d => d.sub === 'meadow2' && d.style === 'stagegate')", sandbox));
+vm.runInContext("(function(){ const d = game.level.subDoors.find(d => d.sub === 'meadow2'); game.player.x = d.cx - game.player.w / 2; game.player.y = 620 - game.player.h; })()", sandbox);
+frames(6);
+check('stage2: walking into the archway enters BLOCK MEADOW 0-2', G().level.n === 'meadow2' && G().state === 'intro');
+frames(170);
+check('stage2: 0-2 is longer than every world so far', G().level.w === 6800);
+const w1 = vm.runInContext('game.level.solids.filter(s => s.bigBrick).length', sandbox);
+check('stage2: two big-brick walls bar the way', w1 === 2);
+// gauntlet leg 1: run right from the start — wall 1 must stop a small hero
+vm.runInContext('game.player.x = 1850; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(90, { ArrowRight: 1 });
+check('stage2: wall 1 stops small Jack cold', G().player.x + G().player.w <= 2052);
+// bonk buddy block 1 for real, chase the shroom, grow
+vm.runInContext("(function(){ const b = game.level.solids.filter(s => s.buddy)[0]; game.player.x = b.x + 26 - game.player.w / 2; game.player.vx = 0; game.player.vy = 0; })()", sandbox);
+tap('ArrowUp');
+frames(40);
+check('stage2: buddy block 1 gives up its shroom', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom && !p.dead).length', sandbox) === 1);
+frames(100); // let it land and waddle
+vm.runInContext("(function(){ const sh = game.pickups.find(p => p instanceof GrowthShroom && !p.dead); game.player.x = sh.x; game.player.y = sh.y - 30; })()", sandbox);
+frames(5);
+check('stage2: Big Jack, ready to demolish', G().player.big === true);
+vm.runInContext('game.player.x = 1900; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+frames(70, { ArrowRight: 1 });
+check('stage2: wall 1 comes down and Big Jack rolls on through', vm.runInContext('game.level.solids.filter(s => s.bigBrick)[0].broken', sandbox) === true && G().player.x > 2110);
+// leg 2: shrink on a hit, refill at block 2, smash the double wall
+vm.runInContext('if (!game.player.big) game.player.grow(); game.player.inv = 0; game.player.hearts = 3; game.player.damage(1)', sandbox);
+check('stage2: mid-stage hit shrinks, hearts untouched', G().player.big === false && G().player.hearts === 3);
+vm.runInContext("(function(){ const b = game.level.solids.filter(s => s.buddy)[1]; game.player.x = b.x + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0; })()", sandbox);
+tap('ArrowUp');
+frames(40);
+frames(100);
+vm.runInContext("(function(){ const sh = game.pickups.find(p => p instanceof GrowthShroom && !p.dead); if (sh) { game.player.x = sh.x; game.player.y = sh.y - 30; } })()", sandbox);
+frames(5);
+check('stage2: buddy block 2 grows him again', G().player.big === true);
+vm.runInContext('game.player.x = 4800; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+frames(110, { ArrowRight: 1 });
+check('stage2: the double wall falls to the candy vault', vm.runInContext('game.level.solids.filter(s => s.bigBrick)[1].broken', sandbox) === true && G().player.x > 5070);
+// finale: the golden star
+vm.runInContext('game.player.x = 6480; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+frames(60, { ArrowRight: 1 });
+check('stage2: the golden star throws the party', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.meadow2', sandbox));
+vm.runInContext('game.exitSub()', sandbox);
+frames(3);
+check('stage2: exit lands back in Block Meadow', G().level.n === 1 && G().state === 'play');
+vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
 // ---------------- versioning ----------------

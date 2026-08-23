@@ -22,7 +22,8 @@ const LEVEL_META = {
   zerog: { name: 'ZERO-G STAR CHAMBER', theme: 'space', music: 'space' },
   treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' },
   beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' }, // the BAND is the music
-  zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' }
+  zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' },
+  meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' } // stage two: the meadow keeps going
 };
 
 function newLevel(n) {
@@ -80,7 +81,7 @@ function buildLevel(n) {
   const G = 620; // standard ground top
 
   if (n === 1) { // ---------------- BLOCK MEADOW
-    lv.w = 4200;
+    lv.w = 4650; // grew in v1.15.0 to make room for the stage 0-2 archway
     addGround(lv, 0, lv.w, G);
     addBlockPile(lv, 780, G, 2, 1);
     addPlat(lv, 1500, 480, 220);
@@ -115,7 +116,10 @@ function buildLevel(n) {
     lv.solids.push({ x: 3920, y: G - 242, w: 52, h: 52, bigBonus: true });
     lv.checks.push(new Checkpoint(1800, G));
     lv.checks.push(new Checkpoint(3100, G));
-    lv.gate = new Gate(4080, G);
+    // STAGE 0-2: a wooden archway with a golden star and a big "2" badge stands
+    // right on the walk to the gate — the meadow keeps going in there!
+    lv.subDoors.push(new SubDoor(4230, G, 'meadow2', 'stagegate'));
+    lv.gate = new Gate(4530, G);
     lv.decor.flowers = []; lv.decor.trees = []; lv.decor.clouds = [];
     for (let x = 60; x < lv.w; x += rand(90, 200)) lv.decor.flowers.push({ x, c: randi(0, 4), s: rand(0.8, 1.3) });
     for (let x = 200; x < lv.w; x += rand(400, 800)) lv.decor.trees.push({ x, s: rand(0.85, 1.25) });
@@ -629,6 +633,54 @@ function buildLevel(n) {
     lv.decor.eggsDecor = [{ x: 3290, s: 0.8 }, { x: 3335, s: 0.6 }];
     lv.decor.butterflies = [];
     for (let i = 0; i < 8; i++) lv.decor.butterflies.push({ x: rand(200, 5600), y: rand(250, 560), c: randi(0, 3), sp: rand(20, 50) * (chance(0.5) ? 1 : -1) });
+  }
+
+  if (n === 'meadow2') { // ---------------- BLOCK MEADOW 0-2 (stage two, v1.15.0)
+    // The meadow keeps going — longer than any world (6800px), still gentle,
+    // but the route is BARRED twice by big-brick walls only BIG Jack can ram
+    // through. Refill buddy blocks guard each wall so a shrink is never a
+    // soft-lock: bonk again, chase again, grow again, SMASH again.
+    lv.w = 6800;
+    addGround(lv, 0, lv.w, G);
+    // ---- warm-up: pure meadow comfort ----
+    lv.hints.push({ x: 300, y: G - 190, icon: 'arrows' });
+    candyRow(lv, 350, 750, G - 50, 4);
+    spider(lv, 950, G, 'walk', { range: 160 });
+    addBlockPile(lv, 1150, G, 2, 1);
+    addPlat(lv, 1380, 480, 200);
+    candyArc(lv, 1300, 1660, 390, G - 60, 5);
+    lv.checks.push(new Checkpoint(1550, G));
+    // ---- wall 1: the lesson (buddy block refills — never a dead end) ----
+    lv.solids.push({ x: 1754, y: G - 242, w: 52, h: 52, buddy: true, refill: true });
+    lv.solids.push({ x: 2050, y: G - 240, w: 52, h: 240, bigBrick: true });
+    candyArc(lv, 2150, 2450, 400, G - 60, 5); // celebration on the far side
+    // ---- friendly middle ----
+    spider(lv, 2500, G, 'walk', { range: 170 });
+    addPlat(lv, 2650, 500, 200);
+    candyRow(lv, 2680, 2820, 450, 3);
+    addPlat(lv, 3050, 580, 100, { bouncy: true, h: 40 }); // spring up to the sky path
+    addPlat(lv, 3180, 300, 320, { oneWay: true });
+    candyRow(lv, 3220, 3460, 250, 4);
+    lv.solids.push({ x: 3600, y: G - 242, w: 52, h: 52, bigBonus: true }); // optional candy crate
+    spider(lv, 3950, G, 'jump');
+    pick(lv, 4150, G - 60, 'heart');
+    lv.checks.push(new Checkpoint(4400, G));
+    // ---- wall 2: DOUBLE bricks guarding the candy vault ----
+    lv.solids.push({ x: 4624, y: G - 242, w: 52, h: 52, buddy: true, refill: true });
+    lv.solids.push({ x: 4950, y: G - 288, w: 104, h: 288, bigBrick: true });
+    candyRow(lv, 5150, 5500, G - 50, 5);
+    candyArc(lv, 5250, 5450, 380, G - 70, 5);
+    addBlockPile(lv, 5350, G, 2, 2);
+    candyRow(lv, 5360, 5430, G - 120, 2);
+    pick(lv, 5550, G - 60, 'heart');
+    // ---- victory run to the golden star ----
+    spider(lv, 5850, G, 'walk', { range: 150 });
+    candyArc(lv, 6000, 6350, 380, G - 60, 6);
+    lv.goalStar = { x: 6600, y: 470 };
+    lv.decor.flowers = []; lv.decor.trees = []; lv.decor.clouds = [];
+    for (let x = 60; x < lv.w; x += rand(90, 200)) lv.decor.flowers.push({ x, c: randi(0, 4), s: rand(0.8, 1.3) });
+    for (let x = 200; x < lv.w; x += rand(400, 800)) lv.decor.trees.push({ x, s: rand(0.85, 1.25) });
+    for (let i = 0; i < 16; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(50, 240), s: rand(0.7, 1.5) });
   }
 
   if (n === 'cloudclimb') { // ---------------- CLOUD CLIMB (vertical mini-game)
