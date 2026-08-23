@@ -1595,6 +1595,49 @@ function drawSolids(ctx, lv, cam, t) {
       }
       continue;
     }
+    if (s.buddy) { // Buddy Block: turquoise block wearing a golden mushroom emblem
+      const hop = s.bumpT ? Math.sin((s.bumpT / 0.35) * Math.PI) * 12 : 0;
+      const by = s.y - hop;
+      const mx = s.x + s.w / 2;
+      if (!s.used) { // pulsing glow, like a pickup: "come bonk me!"
+        ctx.save();
+        ctx.globalAlpha = 0.25 + 0.12 * Math.sin(t * 4);
+        ctx.fillStyle = '#ffd24a';
+        ctx.beginPath(); ctx.arc(mx, by + s.h / 2, 46, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = s.used ? '#9a94a8' : '#3ec6b8';
+      rr(ctx, s.x, by, s.w, s.h, 10); ctx.fill();
+      ctx.strokeStyle = s.used ? '#6a6478' : '#1e8a80'; ctx.lineWidth = 3;
+      rr(ctx, s.x, by, s.w, s.h, 10); ctx.stroke();
+      // golden mushroom emblem up top (gray once spent)
+      ctx.fillStyle = s.used ? '#c9c1d6' : '#ffd24a';
+      ctx.beginPath(); ctx.ellipse(mx, by + 15, 13, 9, 0, Math.PI, TAU); ctx.fill();
+      ctx.fillStyle = '#fff';
+      rr(ctx, mx - 4, by + 15, 8, 7, 3); ctx.fill();
+      drawFace(ctx, mx, by + 36, 20, s.used ? 'sleepy' : 'happy', t, s.x);
+      continue;
+    }
+    if (s.bigBonus) { // candy crate: pink stripes — only a BIG buddy can crack it
+      const hop = s.bumpT ? Math.sin((s.bumpT / 0.25) * Math.PI) * 8 : 0;
+      const by = s.y - hop;
+      ctx.fillStyle = '#fff';
+      rr(ctx, s.x, by, s.w, s.h, 10); ctx.fill();
+      ctx.save();
+      ctx.beginPath(); rr(ctx, s.x, by, s.w, s.h, 10); ctx.clip();
+      ctx.fillStyle = '#ff8fb0';
+      for (let d = -s.h; d < s.w; d += 24) { // diagonal candy stripes
+        ctx.beginPath();
+        ctx.moveTo(s.x + d, by + s.h); ctx.lineTo(s.x + d + s.h, by);
+        ctx.lineTo(s.x + d + s.h + 12, by); ctx.lineTo(s.x + d + 12, by + s.h);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      ctx.strokeStyle = '#d6559a'; ctx.lineWidth = 3.5;
+      rr(ctx, s.x, by, s.w, s.h, 10); ctx.stroke();
+      drawFace(ctx, s.x + s.w / 2, by + s.h / 2 + 4, 22, s.bumpT ? 'surprised' : 'grin', t, s.x);
+      continue;
+    }
     if (s.bouncy) {
       const sq = 1 + Math.sin(t * 6) * 0.05;
       if (th === 'forest' || th === 'jungle') { // pink booster mushroom
