@@ -23,7 +23,8 @@ const LEVEL_META = {
   treehouse: { name: 'JUNGLE TREEHOUSE TRAIL', theme: 'jungle', music: 'treetop' },
   beatbash: { name: 'PIT STOP BEAT BASH', theme: 'dirt', music: '' }, // the BAND is the music
   zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' },
-  meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' } // stage two: the meadow keeps going
+  meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' }, // stage two: the meadow keeps going
+  water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' } // stage two: cause-and-effect temple
 };
 
 function newLevel(n) {
@@ -157,6 +158,9 @@ function buildLevel(n) {
     // the SECRET BUBBLE MAZE: a seaweed-framed cave on the seafloor breathing
     // a strange stream of bubbles — "where do those bubbles come from?"
     lv.subDoors.push(new SubDoor(3130, 1130, 'bubblemaze', 'bubble'));
+    // STAGE 1-2: the stage archway stands on the seabed before the gate —
+    // beyond it, the SUNKEN TEMPLE
+    lv.subDoors.push(new SubDoor(3880, 1130, 'water2', 'stagegate'));
     lv.gate = new Gate(4060, 1060);
     lv.decor.weeds = []; lv.decor.corals = []; lv.decor.fish = [];
     for (let x = 40; x < lv.w; x += rand(120, 260)) lv.decor.weeds.push({ x, h: rand(60, 150), seed: rand(9) });
@@ -681,6 +685,61 @@ function buildLevel(n) {
     for (let x = 60; x < lv.w; x += rand(90, 200)) lv.decor.flowers.push({ x, c: randi(0, 4), s: rand(0.8, 1.3) });
     for (let x = 200; x < lv.w; x += rand(400, 800)) lv.decor.trees.push({ x, s: rand(0.85, 1.25) });
     for (let i = 0; i < 16; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(50, 240), s: rand(0.7, 1.5) });
+  }
+
+  if (n === 'water2') { // ---------------- SUNKEN TEMPLE 1-2 (stage two, v1.16.0)
+    // A big drowned temple of pure cause-and-effect: valves toggle current
+    // streams (generic lv.currents, built off), streams carry pearls, pearls
+    // fill clam sockets, three lit wings wake the great door. All puzzle state
+    // lives on the SunkenTemple machine (lv.puzzle). No enemies or hazards
+    // inside the temple — thinking is the whole game here.
+    lv.w = 5200; lv.h = 1600; lv.water = true;
+    lv.playerStart = { x: 90, y: 1300 };
+    addGround(lv, 0, lv.w, 1530);
+    lv.hints.push({ x: 300, y: 1100, icon: 'updown' });
+    // ---- open-sea approach (the only two spiders live out here) ----
+    candyArc(lv, 300, 700, 1100, 1350, 5);
+    spider(lv, 800, 1200, 'swim', { range: 160 });
+    spider(lv, 1150, 900, 'swim', { range: 150 });
+    lv.checks.push(new Checkpoint(1100, 1530));
+    // ---- wing A: the valve lesson (roofed room, open on the right) ----
+    lv.solids.push({ x: 1350, y: 1000, w: 1000, h: 60, pile: true });
+    lv.solids.push({ x: 1350, y: 1060, w: 60, h: 470, pile: true });
+    candyRow(lv, 1700, 2100, 1450, 4);
+    // ---- hub + the sealed treasure chamber (visible through the walls!) ----
+    lv.checks.push(new Checkpoint(2550, 1530));
+    lv.solids.push({ x: 2700, y: 640, w: 80, h: 530, pile: true }); // door wall
+    lv.solids.push({ x: 2700, y: 1170, w: 80, h: 360, templeDoor: true, skipDraw: true });
+    lv.solids.push({ x: 2700, y: 580, w: 700, h: 60, pile: true }); // treasure roof
+    lv.solids.push({ x: 3320, y: 640, w: 80, h: 890, pile: true }); // treasure far wall
+    candyRow(lv, 2820, 3220, 1470, 5);
+    candyArc(lv, 2900, 3200, 1250, 1430, 4);
+    pick(lv, 2900, 1350, 'heart');
+    pick(lv, 3150, 1350, 'heart');
+    // ---- wing B: two currents, one pearl, high above the roofs ----
+    addPlat(lv, 2450, 430, 660);            // the pearl ledge (one-way)
+    addPlat(lv, 3130, 190, 120);            // the high socket perch (one-way)
+    candyRow(lv, 2600, 3000, 370, 4);
+    // ---- wing C: shell switch pops the cage, current carries the pearl ----
+    lv.solids.push({ x: 3550, y: 1080, w: 1150, h: 60, pile: true });
+    lv.solids.push({ x: 4640, y: 1140, w: 60, h: 390, pile: true });
+    lv.solids.push({ x: 4000, y: 1330, w: 44, h: 200, valve: true, kind: 'rainbow' }); // the cage membrane
+    lv.shellSwitches = [{ x: 3640, y: 1478, w: 52, h: 52, kind: 'rainbow' }];
+    candyRow(lv, 4100, 4500, 1450, 4);
+    lv.checks.push(new Checkpoint(3480, 1530));
+    // ---- current zones: built OFF; the temple's valves flip them ----
+    lv.currents = [
+      { id: 'ca', x: 1500, y: 1360, w: 700, h: 170, dir: 'right', on: false },
+      { id: 'cb1', x: 2480, y: 320, w: 600, h: 150, dir: 'right', on: false },
+      { id: 'cb2', x: 3100, y: 140, w: 210, h: 920, dir: 'up', on: false },
+      { id: 'cc', x: 3700, y: 1360, w: 760, h: 170, dir: 'left', on: false }
+    ];
+    lv.puzzle = new SunkenTemple(lv);
+    // goalStar appears only when the great door wakes (machine sets it)
+    lv.decor.weeds = []; lv.decor.corals = []; lv.decor.fish = [];
+    for (let x = 40; x < lv.w; x += rand(120, 260)) lv.decor.weeds.push({ x, h: rand(60, 150), seed: rand(9) });
+    for (let x = 150; x < lv.w; x += rand(320, 640)) lv.decor.corals.push({ x, s: rand(0.7, 1.4), c: randi(0, 2) });
+    for (let i = 0; i < 16; i++) lv.decor.fish.push({ x: rand(0, lv.w), y: rand(150, 1400), s: rand(0.7, 1.3), sp: rand(30, 80) * (chance(0.5) ? 1 : -1), c: randi(0, 3) });
   }
 
   if (n === 'cloudclimb') { // ---------------- CLOUD CLIMB (vertical mini-game)

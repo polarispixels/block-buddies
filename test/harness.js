@@ -1845,6 +1845,72 @@ check('stage2: exit lands back in Block Meadow', G().level.n === 1 && G().state 
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- SUNKEN TEMPLE 1-2 (v1.16.0) — every chain ridden for real ----------------
+vm.runInContext('game.startLevel(2)', sandbox);
+frames(170);
+check('temple: a stage archway stands on the Underwater seabed', vm.runInContext("game.level.subDoors.some(d => d.sub === 'water2' && d.style === 'stagegate')", sandbox));
+vm.runInContext('game.player.x = 3860; game.player.y = 1050;', sandbox);
+frames(6);
+check('temple: swimming into the archway enters the SUNKEN TEMPLE', G().level.n === 'water2' && G().state === 'intro');
+frames(170);
+check('temple: machine + three pearls + three sockets + currents all off', vm.runInContext(
+  "game.level.puzzle instanceof SunkenTemple && game.level.puzzle.pearls.length === 3 && game.level.puzzle.sockets.length === 3 && game.level.currents.every(c => c.on === false)", sandbox));
+check('temple: the treasure star does not exist yet', G().level.goalStar === null);
+// a pearl can never be lost
+vm.runInContext('game.level.puzzle.pearls[0].x = 100;', sandbox);
+frames(3);
+check('temple: a stray pearl pops home to its bowl', Math.abs(vm.runInContext('game.level.puzzle.pearls[0].x', sandbox) - 1544) < 40);
+// ---- wing A: valve on -> off -> on (reversible), then the pearl rides the stream ----
+vm.runInContext('game.player.x = 1500; game.player.y = 1260; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(3);
+check('temple: valve A switches its current ON', vm.runInContext("game.level.currents.find(c => c.id === 'ca').on", sandbox) === true);
+frames(20);
+tap('Space');
+frames(3);
+check('temple: valve A is fully reversible (off again)', vm.runInContext("game.level.currents.find(c => c.id === 'ca').on", sandbox) === false);
+frames(20);
+tap('Space');
+frames(300);
+check('temple: the current carries pearl A into its socket', vm.runInContext('game.level.puzzle.sockets[0].filled', sandbox) === true);
+// ---- wing B: one valve alone stalls the pearl (funny, not fatal); both complete it ----
+vm.runInContext('game.player.x = 2400; game.player.y = 480; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(320);
+check('temple: leg 1 alone leaves pearl B stranded below the shaft', vm.runInContext('game.level.puzzle.sockets[1].filled', sandbox) === false &&
+  vm.runInContext('game.level.puzzle.pearls[1].y', sandbox) > 400);
+vm.runInContext('game.player.x = 3260; game.player.y = 360; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(420);
+check('temple: the up-shaft lifts pearl B to the high socket', vm.runInContext('game.level.puzzle.sockets[1].filled', sandbox) === true);
+// ---- wing C, deliberately out of order: current first pins the pearl on the cage ----
+vm.runInContext('game.player.x = 4400; game.player.y = 1210; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(3);
+tap('Space');
+frames(200);
+check('temple: the caged pearl strains against the membrane', vm.runInContext('game.level.puzzle.sockets[2].filled', sandbox) === false &&
+  vm.runInContext('game.level.puzzle.pearls[2].x', sandbox) < 4110);
+vm.runInContext('game.player.x = 3640; game.player.y = 1430;', sandbox);
+frames(10);
+check('temple: the shell switch pops the cage', vm.runInContext("game.level.solids.find(s => s.valve && s.kind === 'rainbow').broken", sandbox) === true);
+frames(260);
+check('temple: freed, pearl C whooshes into the last socket', vm.runInContext('game.level.puzzle.sockets[2].filled', sandbox) === true);
+// ---- the great door wakes ----
+frames(120);
+check('temple: three wings wake the door — it crumbles open', vm.runInContext('game.level.solids.find(s => s.templeDoor).broken', sandbox) === true);
+check('temple: the golden star appears in the treasure chamber', !!G().level.goalStar);
+vm.runInContext('game.player.x = 3020; game.player.y = 1280;', sandbox);
+frames(30);
+check('temple: the star throws the party and remembers the win', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.water2', sandbox));
+vm.runInContext('game.exitSub()', sandbox);
+frames(3);
+check('temple: exit lands back in Underwater World', G().level.n === 2 && G().state === 'play');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- versioning ----------------
 check('GAME_VERSION is valid semver', /^\d+\.\d+\.\d+$/.test(vm.runInContext('GAME_VERSION', sandbox)));
 check('CHANGELOG has an entry for the current version', (function () {

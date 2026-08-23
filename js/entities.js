@@ -1742,6 +1742,262 @@ class GrowthShroom {
   }
 }
 
+// ================================================================ sunken temple
+// The machine for SUNKEN TEMPLE 1-2 (lv.puzzle on 'water2'): pure visible
+// cause-and-effect. Valves (Space nearby, always reversible) toggle current
+// zones (ordinary lv.currents entries — player push, chevrons and bubble
+// streams all come from the existing generic code). Currents carry PEARLS;
+// each pearl seeks its own clam socket (ghost-pearl silhouette = the "what do
+// I want" language) with a gentle magnet inside 90px so near-misses forgive
+// themselves. A pearl knocked out of its wing pops back to its home bowl —
+// never lost. Three filled sockets light three orbs, glowing streams converge
+// on the great door, the sleeping stone face wakes up GRINNING, the door
+// crumbles, and the golden star appears in the treasure chamber.
+class SunkenTemple {
+  constructor(lv) {
+    this.lv = lv;
+    this.door = lv.solids.find(s => s.templeDoor);
+    this.valves = [
+      { x: 1520, y: 1300, ids: ['ca'], on: false, rot: 0, spinT: 0 },
+      { x: 2420, y: 520, ids: ['cb1'], on: false, rot: 0, spinT: 0 },
+      { x: 3280, y: 400, ids: ['cb2'], on: false, rot: 0, spinT: 0 },
+      { x: 4420, y: 1250, ids: ['cc'], on: false, rot: 0, spinT: 0 }
+    ];
+    this.sockets = [ // {x, y}: bowl base center; pearl rests with center at (x, y-18)
+      { x: 2160, y: 1520, filled: false },
+      { x: 3190, y: 186, filled: false },
+      { x: 3800, y: 1520, filled: false }
+    ];
+    this.pearls = [
+      { x: 1544, y: 1466, socket: 0, b: { x0: 1400, x1: 2360, y0: 1300, y1: 1570 } },
+      { x: 2504, y: 366, socket: 1, b: { x0: 2400, x1: 3330, y0: 60, y1: 700 } },
+      { x: 4164, y: 1466, socket: 2, b: { x0: 3560, x1: 4650, y0: 1300, y1: 1570 } }
+    ];
+    for (const p of this.pearls) {
+      p.w = 32; p.h = 32; p.vx = 0; p.vy = 0;
+      p.hx = p.x; p.hy = p.y; p.done = false; p.t = rand(9);
+    }
+    this.orbs = [ // one glowing brazier per wing, streams aim at the door top
+      { x: 1850, y: 960 }, { x: 3190, y: 96 }, { x: 4100, y: 1040 }
+    ];
+    this.nearValve = null; this.cool = 0;
+    this.doorOpen = false; this.doorT = 0; this.t = rand(9);
+  }
+  litCount() { let n = 0; for (const s of this.sockets) if (s.filled) n++; return n; }
+  update(dt, pl) {
+    this.t += dt; this.cool = Math.max(0, this.cool - dt);
+    // ---- valves: Space nearby toggles, spin + lamp show the state ----
+    this.nearValve = null;
+    for (const v of this.valves) {
+      v.spinT = Math.max(0, v.spinT - dt);
+      if (v.spinT > 0) v.rot += dt * 11;
+      if (!this.nearValve && Math.hypot(pl.cx - v.x, pl.cy - v.y) < 95) this.nearValve = v;
+    }
+    if (this.nearValve && justP.Space && this.cool <= 0 && game.state === 'play') {
+      const v = this.nearValve;
+      this.cool = 0.3; v.on = !v.on; v.spinT = 0.5;
+      for (const id of v.ids) {
+        const z = this.lv.currents.find(c => c.id === id);
+        if (z) z.on = v.on;
+      }
+      AudioSys.sfx('switch'); AudioSys.sfx(v.on ? 'blorp' : 'thud');
+      Particles.burst(v.x, v.y, 10, { colors: ['#7fd8ff', '#fff'], type: 'bubble', sp1: 160, grav: -60, l1: 0.8, s1: 9 });
+    }
+    // ---- pearls: sink softly, ride active currents, home to their socket ----
+    for (const p of this.pearls) {
+      if (p.done) continue;
+      p.t += dt;
+      if (p.x < p.b.x0 || p.x > p.b.x1 || p.y < p.b.y0 || p.y > p.b.y1) { // never lost
+        p.x = p.hx; p.y = p.hy; p.vx = 0; p.vy = 0;
+        Particles.burst(p.x + 16, p.y + 16, 8, { colors: ['#ffe9f2', '#fff'], type: 'sparkle', sp1: 140, l1: 0.6, s1: 8 });
+      }
+      p.vy += 260 * dt; // a pearl barely sinks
+      for (const z of this.lv.currents) {
+        if (z.on === false) continue;
+        const cx2 = p.x + 16, cy2 = p.y + 16;
+        if (cx2 < z.x || cx2 > z.x + z.w || cy2 < z.y || cy2 > z.y + z.h) continue;
+        const f = 1500 * dt;
+        if (z.dir === 'right') p.vx += f;
+        else if (z.dir === 'left') p.vx -= f;
+        else if (z.dir === 'up') p.vy -= f;
+        else p.vy += f;
+      }
+      const s = this.sockets[p.socket];
+      const dx = s.x - (p.x + 16), dy = (s.y - 18) - (p.y + 16);
+      const d = Math.hypot(dx, dy);
+      if (d < 90) { p.vx += dx * 6 * dt; p.vy += dy * 6 * dt; } // forgiving magnet
+      const dr = Math.exp(-1.4 * dt);
+      p.vx = clamp(p.vx * dr, -250, 250); p.vy = clamp(p.vy * dr, -250, 250);
+      moveEntity(p, this.lv, dt);
+      if (d < 36) { // CLICK — the socket takes its pearl, forever
+        p.done = true; p.x = s.x - 16; p.y = s.y - 34; p.vx = 0; p.vy = 0;
+        s.filled = true;
+        AudioSys.sfx('powerup'); AudioSys.sfx('bells');
+        game.shake = Math.max(game.shake, 0.2);
+        Particles.burst(s.x, s.y - 20, 16, { colors: ['#3ec6b8', '#ffe9f2', '#fff'], type: 'star', sp1: 280, l1: 0.9, s1: 11 });
+        const o = this.orbs[p.socket];
+        Particles.burst(o.x, o.y, 12, { colors: ['#3ec6b8', '#7fd8ff'], type: 'sparkle', sp1: 200, l1: 1, s1: 10 });
+        if (!this.doorOpen && this.sockets.every(k => k.filled)) {
+          this.doorOpen = true; this.doorT = 0;
+          AudioSys.sfx('rumble');
+          game.shake = Math.max(game.shake, 0.5);
+        }
+      }
+    }
+    // ---- the great door wakes ----
+    if (this.doorOpen && this.door && !this.door.broken) {
+      this.doorT += dt;
+      if (chance(0.4)) Particles.burst(2740 + rand(-40, 40), 1170 + rand(0, 360), 1, { colors: ['#c9a96a', '#8d8fa0'], type: 'block', sp1: 60, grav: 200, l1: 0.6, s1: 8 });
+      if (this.doorT > 1.1) {
+        this.door.broken = true;
+        AudioSys.sfx('boom'); AudioSys.sfx('fanfare');
+        game.shake = Math.max(game.shake, 0.5);
+        Particles.burst(2740, 1350, 26, { colors: ['#8d8fa0', '#c9a96a', '#3ec6b8'], type: 'block', sp1: 420, l1: 1.2, s1: 13, grav: 500 });
+        this.lv.goalStar = { x: 3050, y: 1330 };
+        Particles.candyBurst(3050, 1300, 14);
+      }
+    }
+  }
+  drawBack(ctx, t) {
+    // sandstone interior tints behind the rooms + hub columns + carvings
+    ctx.save();
+    ctx.fillStyle = 'rgba(201,169,106,0.16)';
+    for (const r of [[1350, 1000, 1000, 530], [2700, 580, 700, 950], [3550, 1080, 1150, 450], [2350, 900, 350, 630]]) {
+      rr(ctx, r[0], r[1], r[2], r[3], 14); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(201,169,106,0.4)';
+    for (const cx2 of [2420, 2620]) { // hub columns
+      rr(ctx, cx2 - 22, 940, 44, 590, 10); ctx.fill();
+      rr(ctx, cx2 - 32, 920, 64, 26, 8); ctx.fill();
+    }
+    // wall carvings: rings of little pearl circles
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 3;
+    for (const [ex, ey] of [[1700, 1180], [2000, 1180], [3900, 1240], [4300, 1240]]) {
+      ctx.beginPath(); ctx.arc(ex, ey, 26, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ex, ey, 10, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  draw(ctx, t) {
+    const lit = this.litCount();
+    // ---- glowing streams from lit orbs to the door ----
+    for (let i = 0; i < 3; i++) {
+      if (!this.sockets[i].filled) continue;
+      const o = this.orbs[i];
+      ctx.save();
+      ctx.globalAlpha = 0.45 + 0.2 * Math.sin(t * 3 + i * 2);
+      ctx.strokeStyle = '#3ec6b8'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(o.x, o.y);
+      ctx.quadraticCurveTo((o.x + 2740) / 2, Math.min(o.y, 860) - 120, 2740, this.door && this.door.broken ? 1150 : 900);
+      ctx.stroke();
+      ctx.restore();
+      if (chance(0.2)) Particles.burst(lerp(o.x, 2740, rand(0, 1)), lerp(o.y, 900, rand(0, 1)), 1, { colors: ['#3ec6b8', '#fff'], type: 'sparkle', sp1: 30, grav: -30, l1: 0.7, s1: 7, up: 0 });
+    }
+    // ---- orbs ----
+    for (let i = 0; i < 3; i++) {
+      const o = this.orbs[i], on = this.sockets[i].filled;
+      ctx.fillStyle = '#8d8fa0';
+      rr(ctx, o.x - 14, o.y + 12, 28, 26, 6); ctx.fill();
+      if (on) {
+        ctx.save();
+        ctx.globalAlpha = 0.4 + 0.2 * Math.sin(t * 4 + i);
+        ctx.fillStyle = '#3ec6b8';
+        ctx.beginPath(); ctx.arc(o.x, o.y, 34, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = on ? '#7fe8dc' : '#5a6a7a';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 15, 0, TAU); ctx.fill();
+      ctx.strokeStyle = on ? '#1e8a80' : '#3a4a5a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(o.x, o.y, 15, 0, TAU); ctx.stroke();
+      if (on) drawFace(ctx, o.x, o.y + 2, 11, 'grin', t, o.x);
+    }
+    // ---- the great door + its stone face ----
+    if (this.door) {
+      const awake = this.doorOpen;
+      if (!this.door.broken) {
+        ctx.fillStyle = '#8d8fa0';
+        rr(ctx, 2700, 1170, 80, 360, 6); ctx.fill();
+        ctx.strokeStyle = '#5a5a70'; ctx.lineWidth = 3;
+        rr(ctx, 2700, 1170, 80, 360, 6); ctx.stroke();
+        // three pearl slots on the slab fill in as wings complete — wordless progress
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = this.sockets[i].filled ? '#3ec6b8' : 'rgba(255,255,255,0.25)';
+          ctx.beginPath(); ctx.arc(2740, 1240 + i * 70, 13, 0, TAU); ctx.fill();
+          ctx.strokeStyle = 'rgba(30,60,80,0.5)'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(2740, 1240 + i * 70, 13, 0, TAU); ctx.stroke();
+        }
+        if (lit > 0) { // the seam glows brighter with every wing
+          ctx.save();
+          ctx.globalAlpha = 0.25 * lit * (0.7 + 0.3 * Math.sin(t * 5));
+          ctx.strokeStyle = '#3ec6b8'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.moveTo(2700, 1180); ctx.lineTo(2700, 1520); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(2780, 1180); ctx.lineTo(2780, 1520); ctx.stroke();
+          ctx.restore();
+        }
+      } else { // rubble stubs where the slab stood
+        ctx.fillStyle = '#8d8fa0';
+        rr(ctx, 2700, 1480, 80, 50, 8); ctx.fill();
+        rr(ctx, 2708, 1150, 64, 34, 8); ctx.fill();
+      }
+      // the guardian face on the wall above: asleep until the temple wakes
+      drawFace(ctx, 2740, 1080, 34, awake ? 'grin' : 'sleepy', t, 7);
+    }
+    // ---- sockets: pedestal bowls with a ghost pearl asking for the real one ----
+    for (const s of this.sockets) {
+      ctx.fillStyle = '#8d8fa0';
+      rr(ctx, s.x - 26, s.y - 6, 52, 12, 5); ctx.fill();
+      ctx.strokeStyle = '#5a5a70'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(s.x, s.y - 8, 24, Math.PI * 0.1, Math.PI * 0.9, true); ctx.stroke();
+      if (!s.filled) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 + 0.14 * Math.sin(t * 3 + s.x);
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(s.x, s.y - 18, 15, 0, TAU); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // ---- pearls: shimmering, googly, faintly smug ----
+    for (const p of this.pearls) {
+      const px = p.x + 16, py = p.y + 16;
+      ctx.save();
+      ctx.globalAlpha = 0.25 + 0.1 * Math.sin(p.t * 4);
+      ctx.fillStyle = '#ffe9f2';
+      ctx.beginPath(); ctx.arc(px, py, 26, 0, TAU); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#fdf3f6';
+      ctx.beginPath(); ctx.arc(px, py, 16, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#d8a8c0'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(px, py, 16, 0, TAU); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath(); ctx.arc(px - 5, py - 6, 4.5, 0, TAU); ctx.fill();
+      drawFace(ctx, px, py + 3, 11, p.done ? 'grin' : 'happy', p.t, p.hx);
+    }
+    // ---- valves: bronze wheels with a state lamp ----
+    for (const v of this.valves) {
+      ctx.save();
+      ctx.translate(v.x, v.y);
+      ctx.fillStyle = '#6a5a3a';
+      rr(ctx, -6, 20, 12, 26, 4); ctx.fill(); // mount stem
+      ctx.rotate(v.rot);
+      ctx.strokeStyle = '#c98f4e'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, 0, 24, 0, TAU); ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(i * TAU / 4) * 24, Math.sin(i * TAU / 4) * 24);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.fillStyle = v.on ? '#57d357' : '#8a8a9a'; // the lamp says ON
+      ctx.beginPath(); ctx.arc(v.x, v.y, 8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#3a3a4a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(v.x, v.y, 8, 0, TAU); ctx.stroke();
+      if (this.nearValve === v && game.state === 'play') drawSpacebar(ctx, v.x, v.y - 74, 110, t);
+    }
+  }
+}
+
 // ================================================================ checkpoint & gate
 class Checkpoint {
   constructor(x, groundY) {
