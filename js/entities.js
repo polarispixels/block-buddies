@@ -1659,6 +1659,84 @@ class Pickup {
   }
 }
 
+// ================================================================ growth mushroom
+// The Big Buddy prize: pops out of a bonked Buddy Block with a happy hop, lands,
+// and waddles slowly back and forth (85 px/s vs Jack's 300 — a chase he always
+// wins). Turns at walls and level edges; if it somehow tumbles out of the world
+// it pops right back onto its home block. Lives in game.pickups so darkness
+// lights, update/draw and filtering all come free.
+class GrowthShroom {
+  constructor(s) { // s = the buddy-block solid it emerges from
+    this.w = 46; this.h = 44;
+    this.x = s.x + s.w / 2 - this.w / 2;
+    this.y = s.y - this.h;
+    this.homeX = this.x; this.homeY = this.y;
+    this.vx = 0; this.vy = -380; // pops out with a little hop
+    this.dir = 1;
+    this.t = rand(10);
+    this.dead = false;
+    this.bossKind = null;
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt) {
+    if (this.dead) return;
+    this.t += dt;
+    if (this.y > game.level.h + 60) { // never lost: back to its home block
+      this.x = this.homeX; this.y = this.homeY;
+      this.vy = -380;
+      Particles.burst(this.cx, this.cy, 8, { colors: ['#ffd24a', '#3ec6b8'], type: 'sparkle', sp1: 140, l1: 0.5, s1: 8 });
+    }
+    this.vy += 1300 * dt;
+    if (this.vy > 800) this.vy = 800;
+    this.vx = this.dir * 85;
+    const r = moveEntity(this, game.level, dt);
+    if (r.wall) this.dir *= -1;
+    if (this.x <= 0) { this.x = 0; this.dir = 1; }
+    if (this.x >= game.level.w - this.w) { this.x = game.level.w - this.w; this.dir = -1; }
+    if (overlaps(this, game.player)) { this.dead = true; game.player.grow(); }
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    const cx = this.cx, b = this.y + this.h;
+    const step = Math.sin(this.t * 11);
+    ctx.save();
+    ctx.translate(cx, b);
+    ctx.rotate(step * 0.07); // happy waddle
+    ctx.translate(-cx, -b);
+    ctx.save(); // golden glow: "I'm a prize!"
+    ctx.globalAlpha = 0.22 + 0.1 * Math.sin(this.t * 5);
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath(); ctx.arc(cx, this.cy, 38, 0, TAU); ctx.fill();
+    ctx.restore();
+    // tiny walking feet
+    ctx.fillStyle = '#e8a23c';
+    for (const sd of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + sd * 10 + step * 4 * sd, b - 2, 7, 4, 0, 0, TAU);
+      ctx.fill();
+    }
+    // stalk
+    ctx.fillStyle = '#fff7e8';
+    rr(ctx, cx - 12, this.y + 16, 24, this.h - 20, 8); ctx.fill();
+    ctx.strokeStyle = '#d8b890'; ctx.lineWidth = 2;
+    rr(ctx, cx - 12, this.y + 16, 24, this.h - 20, 8); ctx.stroke();
+    // gold cap with turquoise spots (deliberately NOT the pink bouncer mushroom)
+    ctx.fillStyle = '#ffd24a';
+    ctx.beginPath(); ctx.ellipse(cx, this.y + 17, 23, 17, 0, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(cx, this.y + 17, 23, 17, 0, Math.PI, TAU); ctx.stroke();
+    ctx.fillStyle = '#3ec6b8';
+    for (const [ox, oy, r2] of [[-12, -5, 4.5], [1, -9, 5.5], [13, -4, 4]]) {
+      ctx.beginPath(); ctx.arc(cx + ox, this.y + 17 + oy, r2, 0, TAU); ctx.fill();
+    }
+    // googly face on the stalk
+    drawFace(ctx, cx, this.y + 28, 17, 'grin', this.t, this.homeX);
+    ctx.restore();
+    if (chance(0.05)) Particles.burst(cx + rand(-16, 16), this.y + rand(0, 26), 1, { colors: ['#ffd24a', '#3ec6b8'], type: 'sparkle', sp1: 25, grav: -50, l1: 0.6, s1: 7, up: 0 });
+  }
+}
+
 // ================================================================ checkpoint & gate
 class Checkpoint {
   constructor(x, groundY) {

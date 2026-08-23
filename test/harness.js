@@ -1585,6 +1585,31 @@ check('bigbuddy: boarding a vehicle resets big', G().player.big === false && G()
 vm.runInContext('game.startLevel(1)', sandbox);
 frames(170);
 check('bigbuddy: new level resets to normal size', G().player.big === false && G().player.h === 94);
+
+// GrowthShroom: pops out, settles, waddles, flips at walls, can't be lost, grows Jack
+vm.runInContext(`
+  game.testShroom = new GrowthShroom({ x: 3540, y: 378, w: 52, h: 52 });
+  game.pickups.push(game.testShroom);
+  game.player.x = 100; game.player.y = 620 - 94; // out of the way
+`, sandbox);
+frames(90);
+const sh1 = vm.runInContext('game.testShroom', sandbox);
+check('shroom: settles onto the ground', Math.abs(sh1.y + sh1.h - 620) < 3);
+const sx0 = sh1.x;
+frames(40);
+check('shroom: waddles horizontally', Math.abs(vm.runInContext('game.testShroom.x', sandbox) - sx0) > 30);
+vm.runInContext('game.testShroom.x = 3300; game.testShroom.y = 620 - 44; game.testShroom.dir = 1;', sandbox);
+frames(60); // block pile at x=3356 is a wall in its face
+check('shroom: turns around at walls', vm.runInContext('game.testShroom.dir', sandbox) === -1);
+vm.runInContext('game.testShroom.y = 1500;', sandbox); // "fell out of the world"
+frames(3);
+check('shroom: can never be lost (pops back to its block)', vm.runInContext('game.testShroom.y', sandbox) < 500);
+vm.runInContext('game.player.x = game.testShroom.x; game.player.y = game.testShroom.y - 20;', sandbox);
+frames(4);
+check('shroom: collecting it grows Jack', G().player.big === true && vm.runInContext('game.testShroom.dead', sandbox) === true);
+frames(30);
+check('shroom: collected shroom leaves the pickup list', !G().pickups.includes(vm.runInContext('game.testShroom', sandbox)));
+vm.runInContext('game.player.shrinkDown()', sandbox);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
