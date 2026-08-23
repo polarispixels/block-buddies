@@ -1610,6 +1610,38 @@ check('shroom: collecting it grows Jack', G().player.big === true && vm.runInCon
 frames(30);
 check('shroom: collected shroom leaves the pickup list', !G().pickups.includes(vm.runInContext('game.testShroom', sandbox)));
 vm.runInContext('game.player.shrinkDown()', sandbox);
+
+// Head-bonk: ride a real jump into a buddy block and a bonus block
+vm.runInContext(`
+  game.testBuddy = { x: 3540, y: 620 - 242, w: 52, h: 52, buddy: true };
+  game.testBonus = { x: 3920, y: 620 - 242, w: 52, h: 52, bigBonus: true };
+  game.level.solids.push(game.testBuddy, game.testBonus);
+  game.player.x = 3540 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h;
+  game.player.vx = 0; game.player.vy = 0;
+`, sandbox);
+const pickupsBefore = G().pickups.length;
+tap('ArrowUp');
+frames(40);
+check('bonk: jumping into a buddy block uses it', vm.runInContext('game.testBuddy.used', sandbox) === true);
+check('bonk: a GrowthShroom pops out', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom).length', sandbox) === 1);
+vm.runInContext('game.player.x = 3540 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('bonk: a used buddy block stays quiet', vm.runInContext('game.pickups.filter(p => p instanceof GrowthShroom).length', sandbox) === 1);
+vm.runInContext('game.pickups = game.pickups.filter(p => !(p instanceof GrowthShroom));', sandbox);
+// small Jack cannot break the candy crate...
+vm.runInContext('game.player.x = 3920 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+tap('ArrowUp');
+frames(40);
+check('bonk: small Jack cannot break the bonus crate', !vm.runInContext('game.testBonus.broken', sandbox));
+// ...Big Jack smashes it into candy
+vm.runInContext('game.player.grow(); game.player.x = 3920 + 26 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+const candyBefore = G().pickups.length;
+tap('ArrowUp');
+frames(40);
+check('bonk: BIG Jack smashes the bonus crate', vm.runInContext('game.testBonus.broken', sandbox) === true);
+check('bonk: smashed crate rains candy', G().pickups.length >= candyBefore + 3);
+vm.runInContext('game.player.shrinkDown()', sandbox);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

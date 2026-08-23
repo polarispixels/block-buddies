@@ -253,6 +253,42 @@ game.smashWall = function (s) {
     for (let bx = s.x; bx < s.x + s.w; bx += 48)
       Particles.burst(bx + 24, by + 24, 3, { colors: ['#d9b98a', '#a8895a'], type: 'block', sp1: 380, l1: 1, s1: 12, grav: 900 });
 };
+game.bumpBlock = function (s) { // head-bonk on a Buddy Block or a candy crate
+  const pl = game.player;
+  if (s.buddy) {
+    if (s.used) { s.bumpT = 0.2; AudioSys.sfx('thud'); return; } // sleepy now
+    s.used = true; s.bumpT = 0.35;
+    AudioSys.sfx('boing');
+    AudioSys.sfx('collect');
+    pl.setMood('surprised', 0.8);
+    Particles.burst(s.x + s.w / 2, s.y, 12, { colors: ['#ffd24a', '#3ec6b8', '#fff'], type: 'sparkle', sp1: 240, l1: 0.7, s1: 10, grav: 150 });
+    game.pickups.push(new GrowthShroom(s));
+    return;
+  }
+  if (s.bigBonus && !s.broken) {
+    if (pl.big) { // SMASH! candy everywhere
+      s.broken = true;
+      AudioSys.sfx('smash');
+      AudioSys.sfx('candy');
+      game.shake = Math.max(game.shake, 0.35);
+      pl.setMood('grin', 1.5);
+      Particles.candyBurst(s.x + s.w / 2, s.y + s.h / 2, 10);
+      Particles.burst(s.x + s.w / 2, s.y + s.h / 2, 14, { colors: ['#ff8fb0', '#fff', '#ffd24a'], type: 'block', sp1: 360, l1: 0.9, s1: 12, grav: 800 });
+      for (let i = 0; i < 3; i++) {
+        const c = new Pickup(s.x + s.w / 2, s.y - 20, 'candy');
+        c.physics = true;
+        c.vx = (i - 1) * 130;
+        c.vy = -330;
+        game.pickups.push(c);
+      }
+    } else { // small Jack just wobbles it — funny, not punishing
+      s.bumpT = 0.25;
+      AudioSys.sfx('thud');
+      pl.setMood('surprised', 0.6);
+      Particles.burst(s.x + s.w / 2, s.y + s.h, 4, { colors: ['#fff'], sp1: 90, l1: 0.3, grav: 200, up: 10, s1: 6 });
+    }
+  }
+};
 game.activateBridge = function (b) {
   if (b.active) return;
   b.active = true;
@@ -599,6 +635,7 @@ function updatePlay(dt) {
     if (z && game.bossStage > 0 && overlaps(pr, z)) { z.hitBy(pr.kind); pr.impact(true); }
   }
 
+  for (const s of lv.solids) if (s.bumpT) s.bumpT = Math.max(0, s.bumpT - dt); // block bonk hop
   for (const p of game.pickups) p.update(dt);
   for (const c of lv.checks) c.update(dt);
   if (lv.gate) lv.gate.update(dt);

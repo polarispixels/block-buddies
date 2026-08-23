@@ -40,7 +40,7 @@ function moveEntity(e, lv, dt) {
       if (s.bouncy) { e.vy = s.bounceVy || -980; if (s.bounceVx) { e.vx = s.bounceVx; e.launchT = 1.3; } res.bounced = true; }
       else { e.vy = 0; res.ground = true; res.groundS = s; }
     } else if (e.vy < 0) {
-      e.y = s.y + s.h; e.vy = 0; res.head = true;
+      e.y = s.y + s.h; e.vy = 0; res.head = true; res.headS = s;
     }
   }
   return res;
@@ -342,6 +342,7 @@ class Player {
         AudioSys.sfx('land'); this.squash = 0.72;
         Particles.burst(this.cx, this.y + this.h, 5, { colors: ['#fff'], sp1: 110, l1: 0.3, grav: 300, up: 10, s1: 6 });
       }
+      if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus)) game.bumpBlock(res.headS);
       this.spin += this.vx * dt / 30;
       this.x = clamp(this.x, 0, lv.w - this.w);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
