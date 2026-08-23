@@ -50,7 +50,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown` (attached as `lv.puzzle`) |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown` (attached as `lv.puzzle`) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -116,6 +116,22 @@ everywhere via `drawBoy`/`drawHead`).
   enemy-free (jump spiders chase from 430px). Theming is config: gate
   `{theme:'wood'|'jungle'}`, shrine `{theme:'stone'|'nest'}`, item kinds
   `'key'`/`'dinokey'` pick the `drawKey` style.
+- **Big Buddy growth (v1.14.0)**: solids flagged `{buddy: true}` are bonkable
+  head-hit blocks (`moveEntity` reports the hit solid via `res.headS`; the
+  player's on-foot branch calls `game.bumpBlock(s)`); a bonk spawns a
+  `GrowthShroom` (waddling gold mushroom in `game.pickups`, 85 px/s, turns at
+  walls, teleports home if lost) and marks the block `used` (one-shot;
+  `s.bumpT` hop anim decayed in `updatePlay`). Collecting it → `Player.grow()`:
+  `big = true`, hitbox 56×94 → 78×130 (feet planted), art scales via lerped
+  `drawK` around the feet. The shrink-instead-of-heart rule lives at the TOP of
+  `Player.damage()` so every hazard gets it free (`shrinkDown()`, `inv = 2`, no
+  heart). `{bigBonus: true}` solids are pink candy crates only a big bonk
+  breaks (own flag, NOT `breakable`, so Super Mode can't smash them; always
+  optional). Vehicles/water/space: `grow()` just cheers; boarding resets big;
+  new levels/sublevels start normal; `exitSub` restores bigness with the host
+  player. Block placement rule: underside at G-190 (bonkable from ground,
+  walk-under for Big Jack 130). Placed in meadow (3540 + crate 3920) and
+  jungle (560, before dino #1 whose flame reaches x≈758).
 - **Bouncers**: any solid with `bouncy: true`; `bounceVy` sets launch power
   (default -980 ≈ 2× jump, mission ledges -1150 ≈ 3×). Themed skins are
   automatic (spring block; mushroom in forest/jungle). Land targets should be
@@ -198,7 +214,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 423 checks; must print
+  actual badge/footer values). 456 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

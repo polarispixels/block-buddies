@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.13.1</span>
+  <span class="badge">v1.14.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -278,6 +278,43 @@ The behavior is deliberately split from the artwork:</p>
   befriend it with rainbow (retires it), or hit it with fire for a harmless comedy burp.</li>
 </ul>
 
+<h3>Big Buddy growth system (since v1.14.0)</h3>
+<p>A Mario-inspired-but-ours growth mechanic, built entirely out of existing plumbing:</p>
+<ul>
+  <li><strong>Buddy Blocks</strong> — plain solids flagged <code>{buddy: true}</code> in
+  <code>lv.solids</code>, drawn in <code>drawSolids</code> as glowing turquoise blocks with a golden
+  mushroom emblem and a face. <code>moveEntity</code> now reports <em>which</em> solid a rising head
+  hit (<code>res.headS</code>); the player's on-foot branch routes that into
+  <code>game.bumpBlock(s)</code>, which hops the block (<code>s.bumpT</code>, decayed in
+  <code>updatePlay</code>), marks it <code>used</code> (sleepy gray, one activation only), and spawns a
+  <code>GrowthShroom</code>.</li>
+  <li><strong><code>GrowthShroom</code></strong> (<code>js/entities.js</code>) — a gold-capped,
+  turquoise-spotted mushroom with tiny walking feet that pops out with a hop, settles, and waddles at
+  85&nbsp;px/s (vs the hero's 300 — the chase is always a win). Turns at walls and level edges, and if it
+  ever falls out of the world it pops back onto its home block, so it cannot be permanently lost. It
+  lives in <code>game.pickups</code>, so update/draw/filter and darkness lights all come free.</li>
+  <li><strong>Big Buddy state</strong> — <code>Player.grow()</code> sets <code>big</code>, resizes the
+  hitbox 56×94 → 78×130 (~1.4×, feet planted), and the art scales uniformly around the feet via a
+  lerped <code>drawK</code> (the wheel grows too). The first hit while big — any hazard, since it is
+  centralized at the top of <code>Player.damage()</code> — calls <code>shrinkDown()</code>: pop back to
+  normal, <em>no heart lost</em>, standard 2&nbsp;s invulnerability. After that, hearts work exactly as
+  before. Vehicles/water/space keep their own shapes (<code>grow()</code> just cheers), boarding a
+  vehicle or starting a level/sublevel resets to normal, and <code>exitSub</code> restores the host
+  player instance, so bigness survives a secret-room visit.</li>
+  <li><strong>Candy crates</strong> — solids flagged <code>{bigBonus: true}</code>, drawn as
+  pink-striped candy boxes (deliberately distinct from tan cracked walls). Only a BIG buddy's bonk
+  breaks one (candy explosion + 3 scattered candy pickups via the usual
+  <code>s.broken = true</code> trick); a small buddy just wobbles it. They use their own flag, not
+  <code>breakable</code>, so Super Mode cannot smash them — bigness is the only key. Always optional,
+  never on the main route.</li>
+  <li><strong>Placements</strong> — Block Meadow teaches the whole sequence wordlessly after the last
+  checkpoint (buddy block at x≈3540 → chase → grow → last spider → candy crate at x≈3920 → gate);
+  Dino Jungle reinforces it with a buddy block at x≈560, right before the first fire dino whose flame
+  demonstrates the shrink rule. Both blocks float with their underside at G−190: bonkable from the
+  ground (jump rise 148), tall enough that even Big Jack (130) walks underneath — respecting the
+  "no solid ceilings over jump paths" rule.</li>
+</ul>
+
 <h3>Cutscenes &amp; endings</h3>
 <p><code>game.cut = {name, t}</code> is handled in <code>updateCut</code> (kinds: <code>bossintro</code>,
 <code>magmaintro</code>, <code>rumble</code>, <code>chestfall</code>, <code>eruption</code>, <code>coronation</code>);
@@ -301,7 +338,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Biome</dt><dd>Sunny grass meadow: smiling sun with rotating rays, rolling hills, flowers, round trees, drifting clouds. World 4200&nbsp;px wide, flat ground at y=620.</dd>
   <dt>Objective</dt><dd>Tutorial run to the star gate. Floating keycap hints teach ◀▶ movement, ▲ jump, and Space to throw.</dd>
   <dt>Enemies</dt><dd>3 walking spiders (purple, googly-eyed, patrol a fixed range).</dd>
-  <dt>New here</dt><dd>Everything foundational: running/jumping, candy collecting, hearts, checkpoints, block piles, platforms, the 🔥 fire block and throwing, the star gate.</dd>
+  <dt>New here</dt><dd>Everything foundational: running/jumping, candy collecting, hearts, checkpoints, block piles, platforms, the 🔥 fire block and throwing, the star gate. Since v1.14.0, also the <strong>Big Buddy</strong> teaching sequence after the last checkpoint: a glowing turquoise <strong>Buddy Block</strong> (x≈3540) bonked from below releases a waddling gold mushroom — catch it to grow ~1.4× and soak one free hit — and a pink-striped <strong>candy crate</strong> (x≈3920) near the gate that only BIG Jack can smash open.</dd>
   <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy rows and arcs.</dd>
   <dt>Cameos</dt><dd>None — this is the origin. Its walk spider, candy trails, checkpoints, and star gate recur in every later world.</dd>
   <dt>Secret</dt><dd>A suspiciously oversized green pipe (x≈2950) with a face keeps <em>burping candy</em> — walk into it and FWOOOP: the <strong>Secret Pipe Room</strong> (see Mini-games).</dd>
@@ -427,7 +464,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>The <strong><code>FireBreather</code></strong>: a squat orange dino whose cycle is idle → <em>inhale (cheeks puff huge — the unmissable "fire is coming!" telegraph)</em> → a low horizontal flame stream. The flame hugs the ground so <em>jumping over it</em> is the natural answer; touching it costs one heart with a gentle shove, standard invulnerability applies. Ice freezes him (pausing the fire), rainbow befriends him for good, and fireballs just make him burp. Also new: the <strong>Three Lost Dinosaur Eggs</strong> — the terrace holds the Dinosaur Nest Shrine (a vine-wrapped chest with three empty nest bowls showing ghost eggs), and the eggs are scattered along the jungle: one on a low leaf platform, one high in the canopy reached by a <strong>giant bouncy mushroom</strong>, and one bobbing right in the shrine guard's flame path (time the fire cycle — or freeze/befriend the guard). Returning with all three runs the nest ceremony, complete with a one-second gag where an egg cracks and a baby eye peeks out. Friendly dinosaurs everywhere: two long-necks that bend their heads toward the hero and blow hearts, a baby triceratops that wanders, sniffs flowers, and hops excitedly when approached, and a goofy T-Rex in the valley with comically tiny arms who stomps, roars… and then sneezes.</dd>
   <dt>Ending</dt><dd>The Ancient Jungle Gate (mossy stone, dino carvings, flanking statues, huge golden keyhole) grinds and shakes when bumped and thinks of a <em>green dino-head key</em>. Bringing the Dino Key makes the stone slab rise into the lintel under falling leaves — and then the <strong>GIANT SPINOSAURUS</strong> stomps in, roars (and hiccups), and vine-rocks seal the valley on both sides. Boss plan: ❄️ ice ×3 douses his ground-hugging flame breath (cheeks + sail glow during the inhale telegraph; jump the flame like the little fire-dinos taught you) → 🔥 fire ×3 gives him the hiccups (his own medicine) → 🌈 rainbow befriends him: flower behind the ear, crumbling walls, and confetti breath forever after. The valley's golden star (reachable only once he's a friend) starts the <strong>SECRET DINO VALLEY</strong> party — the Spinosaurus dances → party exit returns to the title.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2 (befriending a fire-breather is a valid strategy!), ice ×1, heart ×2, candy arcs tracing the jump path over every flame.</dd>
-  <dt>Cameos</dt><dd>The mission grammar from Mountain World (locked thing → find item → return) with every piece re-themed via configuration; the hang spider reappears as a vine spider; the sequence-puzzle symbols are the familiar power blocks; the golden goal star from Space Maze ends the level; leaf platforms reuse Unicorn Forest's branch drawing.</dd>
+  <dt>Cameos</dt><dd>The mission grammar from Mountain World (locked thing → find item → return) with every piece re-themed via configuration; the hang spider reappears as a vine spider; the sequence-puzzle symbols are the familiar power blocks; the golden goal star from Space Maze ends the level; leaf platforms reuse Unicorn Forest's branch drawing. Since v1.14.0, a <strong>Buddy Block</strong> (x≈560) right at the entrance — grow BIG before the first fire dino, and its flame teaches "big soaks a hit, no heart lost" without a word.</dd>
   <dt>Secret</dt><dd>Right at the jungle's edge (x≈260), a <em>rope ladder dangles down a giant trunk</em> — leaves flutter out of the canopy, a tiny treehouse peeks through the leaves far above, and a faint monkey whoop drifts down. Climbing in discovers the <strong>Jungle Treehouse Trail</strong> (see Mini-games).</dd>
 </dl>
 </div>
@@ -725,7 +762,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 423 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 456 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -782,7 +819,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.13.1 · built for Jack ·
+  Block Buddies v1.14.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

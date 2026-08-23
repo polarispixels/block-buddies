@@ -8,6 +8,32 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.14.0] - 2026-08-23
+
+### Added — Big Buddy growth system
+
+- **Buddy Blocks**: glowing turquoise blocks with a golden mushroom emblem
+  float overhead. Bonk one from below with your head and it hops, goes
+  sleepy-gray, and a **gold, turquoise-spotted mushroom with tiny walking
+  feet** pops out and waddles around (slow enough that the chase is always a
+  win; it can never be permanently lost — it pops back to its block if it
+  ever tumbles away).
+- **Big Jack / Big Becca**: catch the mushroom and grow ~40% BIGGER (wheel
+  and all) with a stretchy pop and a rising jingle. Staying big is a free
+  extra layer: the first hit — spider, flame, lava, anything — shrinks you
+  back with a pop instead of costing a heart. Hearts work exactly as before
+  after that.
+- **Candy crates**: pink-striped bonus blocks only BIG buddies can smash from
+  underneath — a candy explosion inside. Small buddies just wobble them
+  (funny, not punishing). Super Mode can't smash them; only bigness can.
+- Placements: Block Meadow teaches the whole sequence after the last
+  checkpoint (buddy block → chase → grow → last spider → optional candy
+  crate → gate); Dino Jungle reinforces it with a buddy block right at the
+  entrance, so the first fire dino's flame demonstrates the shrink rule
+  wordlessly.
+- New `grow` / `shrinkpop` sounds; vehicles, water, and space are unchanged
+  (boarding or a new level resets to normal size).
+
 ## [1.13.1] - 2026-08-20
 
 ### Changed — Zombie Town: the answers moved across town (Ryan's playtest note)
