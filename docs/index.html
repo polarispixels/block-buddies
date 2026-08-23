@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.14.1</span>
+  <span class="badge">v1.15.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -307,6 +307,14 @@ The behavior is deliberately split from the artwork:</p>
   <code>s.broken = true</code> trick); a small buddy just wobbles it. They use their own flag, not
   <code>breakable</code>, so Super Mode cannot smash them — bigness is the only key. Always optional,
   never on the main route.</li>
+  <li><strong>Big-brick walls &amp; refill blocks (since v1.15.0)</strong> — <code>{bigBrick: true}</code>
+  solids are tall red-brick walls a BIG buddy rams straight through in either axis (handled in
+  <code>moveEntity</code> exactly like <code>breakable</code>+<code>superT</code>, via
+  <code>game.smashWall(s, cols)</code>); a small hero pushing one triggers <code>s.hintT</code>, drawn
+  as a thought bubble with a mini gold mushroom. Walls that gate a mandatory route are paired with
+  <code>{buddy: true, refill: true}</code> blocks, which re-arm on bonk once the hero is small and no
+  live shroom exists — the never-soft-lock guarantee. Both debut in Block Meadow 0-2 (see
+  Mini-games).</li>
   <li><strong>Placements</strong> — Block Meadow teaches the whole sequence wordlessly after the last
   checkpoint (buddy block at x≈3540 → chase → grow → last spider → candy crate at x≈3920 → gate);
   Dino Jungle reinforces it with a buddy block at x≈560, right before the first fire dino whose flame
@@ -341,7 +349,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>Everything foundational: running/jumping, candy collecting, hearts, checkpoints, block piles, platforms, the 🔥 fire block and throwing, the star gate. Since v1.14.0, also the <strong>Big Buddy</strong> teaching sequence after the last checkpoint: a glowing turquoise <strong>Buddy Block</strong> (x≈3540) bonked from below releases a waddling gold mushroom — catch it to grow ~1.4× and soak one free hit — and a pink-striped <strong>candy crate</strong> (x≈3920) near the gate that only BIG Jack can smash open.</dd>
   <dt>Pickups</dt><dd>Fire ×2, heart ×1, candy rows and arcs.</dd>
   <dt>Cameos</dt><dd>None — this is the origin. Its walk spider, candy trails, checkpoints, and star gate recur in every later world.</dd>
-  <dt>Secret</dt><dd>A suspiciously oversized green pipe (x≈2950) with a face keeps <em>burping candy</em> — walk into it and FWOOOP: the <strong>Secret Pipe Room</strong> (see Mini-games).</dd>
+  <dt>Secret</dt><dd>A suspiciously oversized green pipe (x≈2950) with a face keeps <em>burping candy</em> — walk into it and FWOOOP: the <strong>Secret Pipe Room</strong> (see Mini-games). And since v1.15.0, not secret at all: the <strong>stage archway to BLOCK MEADOW 0-2</strong> (x≈4230, star + "2" badge) stands right before the gate — the world grew to 4650px wide (gate now at x=4530) to fit it.</dd>
 </dl>
 </div>
 
@@ -693,6 +701,25 @@ backward, one tiny one in an enormous hat), a skeleton playing trombone badly, a
 fireworks, candy rain, a briefly smug moon, and the golden star over the square.
 <em>MIDNIGHT HERO!</em> No enemies, no hazards, no way to lose; the cast uses a four-state model
 (need → solved → walk → square) inside <code>ZombieTown</code> (<code>lv.puzzle</code>).</p>
+
+<h3>Block Meadow 0-2 <small>(wooden stage archway before Block Meadow's gate — v1.15.0)</small></h3>
+<p><strong>The first stage-two level — not a secret, an invitation.</strong> A wooden archway with a
+golden star on the arch and a big friendly "2" badge stands right on the walk to the meadow's goal
+gate (the meadow grew 4200 → 4650 to fit it). Walking in continues the meadow as <strong>BLOCK
+MEADOW 0-2</strong> — at 6800px the longest level in the game, still gentle meadow all the way, but
+built around one rule: the route is <em>barred twice by big-brick walls</em>
+(<code>{bigBrick: true}</code> solids — a 240px single and a 288px double guarding a candy vault)
+that cannot be jumped, stepped over, or smashed with Super Mode. The ONLY way through is Big Buddy:
+each wall is preceded by a <strong>refilling buddy block</strong> (<code>{buddy: true, refill:
+true}</code>) that re-arms after its mushroom is spent (dim teal pulse instead of sleepy gray)
+whenever the hero is small and no shroom is loose — so shrinking can never soft-lock the stage.
+A small hero pushing a wall gets a wordless thought-bubble hint (a little gold mushroom); a BIG hero
+simply plows through (<code>moveEntity</code> treats <code>bigBrick × e.big</code> exactly like
+<code>breakable × superT</code>, with red-brick shrapnel and a boom). Also along the way: a
+spring-block sky path, a jump spider, an optional candy crate, two hearts, three walk spiders, two
+checkpoints, and a golden-star finale party. Completion is stored in <code>ffbg_mini</code> like
+every stage door (dormant gold trophy, Space to replay).</p>
+
 <h3>Adding a future mini-game</h3>
 <ol>
   <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
@@ -762,7 +789,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 463 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all eleven mini-games (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 487 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -819,7 +846,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.14.1 · built for Jack ·
+  Block Buddies v1.15.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

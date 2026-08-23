@@ -66,7 +66,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 
 | # (internal n) | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
-| 1 | Block Meadow | meadow | tutorial, fire block | star gate |
+| 1 | Block Meadow | meadow | tutorial, fire block; stagegate archway (x=4230, w now 4650, gate 4530) → BLOCK MEADOW 0-2 ('meadow2': 6800px, route barred by two bigBrick walls, refill buddy blocks) | star gate |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | star gate |
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
@@ -131,7 +131,14 @@ everywhere via `drawBoy`/`drawHead`).
   new levels/sublevels start normal; `exitSub` restores bigness with the host
   player. Block placement rule: underside at G-190 (bonkable from ground,
   walk-under for Big Jack 130). Placed in meadow (3540 + crate 3920) and
-  jungle (560, before dino #1 whose flame reaches x≈758).
+  jungle (560, before dino #1 whose flame reaches x≈758). Since v1.15.0:
+  `{bigBrick: true}` solids are tall red-brick walls BIG Jack rams through in
+  either axis (moveEntity, mirrors breakable×superT via `smashWall(s, cols)`);
+  small hero pushing one sets `s.hintT` → mushroom thought bubble. A wall that
+  gates a MANDATORY route must be ≥240 tall (jump 148 + step-up 52 = 200
+  clearable) and paired with a `{buddy: true, refill: true}` block, which
+  re-arms on bonk when the hero is small and no live shroom exists — the
+  never-soft-lock rule. Both debut in 'meadow2'.
 - **Bouncers**: any solid with `bouncy: true`; `bounceVy` sets launch power
   (default -980 ≈ 2× jump, mission ledges -1150 ≈ 3×). Themed skins are
   automatic (spring block; mushroom in forest/jungle). Land targets should be
@@ -145,9 +152,10 @@ everywhere via `drawBoy`/`drawHead`).
   is wanted.
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
-  'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown'), entered
+  'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
+  'meadow2'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
-  pipe/eyes/asteroid/ladder/garage/moonwell — 'garage' also requires slow/stopped
+  pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — 'garage' also requires slow/stopped
   entry in the truck so a race is never hijacked;
   re-arms only after horizontal separation so exit never re-enters; once
   COMPLETED a door goes dormant — shrunken trophy w/ gold star, walk-over
@@ -216,7 +224,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 463 checks; must print
+  actual badge/footer values). 487 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

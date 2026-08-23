@@ -8,6 +8,29 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.15.0] - 2026-08-23
+
+### Added — BLOCK MEADOW 0-2: the first stage-two level
+
+- **A wooden stage archway** (golden star on the arch, big friendly "2" badge)
+  now stands on the walk to Block Meadow's goal gate — the meadow grew a
+  little (4200 → 4650) to make room. Walk in and the meadow keeps going:
+  **BLOCK MEADOW 0-2**, at 6800px the longest level in the game, still gentle
+  meadow all the way.
+- **Big-brick walls**: the route through 0-2 is barred twice by tall red-brick
+  walls (one single, one double guarding a candy vault). They cannot be
+  jumped, stepped, or Super-Moded — the ONLY way through is to become Big
+  Buddy and **ram straight through them** (boom, brick shrapnel, onward).
+  A small hero pushing one gets a wordless thought-bubble hint: a little gold
+  mushroom.
+- **Refilling buddy blocks**: the block before each wall re-arms itself after
+  its mushroom is spent (dim teal pulse instead of sleepy gray), so shrinking
+  never soft-locks the stage — bonk, chase, grow, smash, repeat.
+- Other 0-2 fun: a spring-block sky path, a jump spider, an optional candy
+  crate, two hearts, generous checkpoints, and a golden-star finale party.
+  Completion earns the archway its gold trophy star (replay anytime with
+  Space, like every stage door).
+
 ## [1.14.1] - 2026-08-23
 
 ### Added — Escape quits to the title (Ryan's desktop request)
