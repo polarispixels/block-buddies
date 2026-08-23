@@ -50,7 +50,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple` (attached as `lv.puzzle`) |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -153,7 +153,7 @@ everywhere via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2'), entered
+  'meadow2', 'water2', 'cloud2'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
   pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — 'garage' also requires slow/stopped
   entry in the truck so a race is never hijacked;
@@ -224,7 +224,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 504 checks; must print
+  actual badge/footer values). 520 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

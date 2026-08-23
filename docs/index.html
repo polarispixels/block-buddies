@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.16.0</span>
+  <span class="badge">v1.17.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -374,7 +374,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Enemies</dt><dd>2 jumping spiders (new) and 2 walking spiders.</dd>
   <dt>New here</dt><dd>🌈 rainbow block (the <strong>befriending</strong> mechanic), one-way pass-through platforms, pink bouncy spring blocks, rainbow bridges, and <strong>cloud-catch</strong> (<code>lv.fallCatch</code>): falling never hurts — a smiling cloud scoops the player back up.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2, heart ×1, candy.</dd>
-  <dt>Cameos</dt><dd>Walk spiders from the meadow. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches.</dd>
+  <dt>Cameos</dt><dd>Walk spiders from the meadow. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches. Since v1.17.0 the world grew (4600 → 5000, gate at x=4930) to seat the <strong>stage archway to THE WEATHER FACTORY 2-2</strong> (x≈4700) on its own island.</dd>
   <dt>Mini-game</dt><dd>A cloud-swirl <code>SubDoor</code> on the middle island leads into <strong>Cloud Climb</strong> (see Mini-games).</dd>
 </dl>
 </div>
@@ -740,6 +740,22 @@ crumble the slab, and reveal the golden star in the treasure chamber that was vi
 walls all along. No enemies or hazards inside the temple; completion persists in
 <code>ffbg_mini</code> like every stage door.</p>
 
+<h3>The Weather Factory 2-2 <small>(stage archway island at Cloud World's end — v1.17.0)</small></h3>
+<p><strong>Systems thinking and sequencing</strong> — release two of the <em>Puzzle &amp;
+Long-Level</em> direction (BACKLOG item 2), run by the <code>WeatherFactory</code> machine on
+<code>lv.puzzle</code>. At 7600 × 1440 the biggest level in the game: four weather stations on
+their own islands with wide open sky between them (<code>fallCatch</code>, no enemies, no hazards).
+Six icon-knob <strong>levers</strong> (Space nearby; reversible until a station latches) combine
+into visible recipes: water → RAIN blooms the flower garden, whose <em>giant stalk grows the
+stairway</em> to the high deck; the fan → WIND spins the windmill, which latches <strong>POWER</strong>
+forever and lights a sagging spark-carrying cable to the freezer and sun lamp (no power = gray
+sputters — the dependency is visible, and the harness proves rain+cold alone can't snow); water +
+cold + power → SNOW builds the thought-bubble snowman ball by ball until he waves; water + sun +
+power → a walkable <strong>RAINBOW</strong> bridges the great gap. All four orbs → the golden star
+ignites on its own far island with a four-slot weather pedestal as wordless progress. Cloud World
+grew (4600 → 5000, gate at 4930) to give the archway a roomy island; completion persists in
+<code>ffbg_mini</code>.</p>
+
 <h3>Adding a future mini-game</h3>
 <ol>
   <li>Add a string entry to <code>LEVEL_META</code> and a <code>buildLevel('yourid')</code> branch
@@ -809,7 +825,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all thirteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 504 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all fourteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party, and the whole Weather Factory: lever reversibility and latching, the no-power dependency, every recipe, and the rainbow ridden across the gap), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 520 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -866,7 +882,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.16.0 · built for Jack ·
+  Block Buddies v1.17.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

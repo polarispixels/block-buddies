@@ -8,6 +8,40 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.17.0] - 2026-08-23
+
+### Added — THE WEATHER FACTORY 2-2: recipes in the sky
+
+Release two of the *Puzzle & Long-Level* direction (BACKLOG item 2): a
+weather-making factory in the open sky above Cloud World — at 7600px the
+biggest level in the game, with wide stretches of open air between its four
+island stations (big levels should breathe — Ryan's note).
+
+- **Levers & recipes**: six big levers with icon knobs (💧 water, ❄ cold,
+  ☀ sun, fan) toggle with Space and stay reversible until a station latches
+  done. Recipes are taught by doing: water → RAIN; fan → WIND; water + cold →
+  SNOW; water + sun → RAINBOW.
+- **The power cable**: the fan spins the windmill, which latches POWER
+  forever (flywheel!) — a visible sagging cable with traveling sparks feeds
+  the freezer and the sun lamp, so nothing cold or bright works until the
+  windmill turns. No power = the freezer sputters gray puffs (funny, never
+  punishing).
+- **Four stations, visibly transforming**: rain blooms the wilted flower
+  garden and grows a giant stalk stairway to the high deck; snow builds the
+  hopeful puddle (thought-bubble: a snowman) into a waving snowman,
+  ball by ball; rain + sun over the great gap paints a RAINBOW you can
+  actually walk across.
+- **The lonely star**: all four weather orbs lit → the golden star ignites on
+  its own island, a full rainbow-crossing away — with a pedestal whose four
+  weather slots fill in as wordless progress.
+- No enemies, no hazards; falling just means the cloud-catch. Cloud World
+  grew (4600 → 5000, gate to 4930) to give the stage archway its own island.
+
+### Changed
+
+- Sunken Temple's golden star moved deeper into the treasure chamber (spacing
+  note from Ryan's playtest — rewards get their own space).
+
 ## [1.16.0] - 2026-08-23
 
 ### Added — SUNKEN TEMPLE 1-2: the first puzzle stage
