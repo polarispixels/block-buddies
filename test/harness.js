@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -1313,6 +1313,64 @@ check('the exit door returns to Cloud World with no puzzle leak',
 check('the ending room is replayable without limit (no completion flag set)', !G().miniDone.endingblocks);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
+
+// ---------------- beam kit (js/beams.js): raycast logic ----------------
+const BK_BOUNDS = { w: 2000, h: 2000 };
+vm.runInContext(`
+  game.bk = {};
+  game.bk.bounds = { w: 2000, h: 2000 };
+  game.bk.sensor = new BeamSensor(500, 300);
+  game.bk.beams1 = castBeams([new BeamLantern(100, 300, 0)], [], [], [game.bk.sensor], [], game.bk.bounds);
+`, sandbox);
+const BK = () => vm.runInContext('game.bk', sandbox);
+check('a straight beam reaches a sensor in its line', BK().beams1[0].end === 'sensor');
+vm.runInContext(`
+  game.bk.beams2 = castBeams([new BeamLantern(100, 300, 0)], [], [], [game.bk.sensor],
+    [{ x: 300, y: 250, w: 40, h: 100 }], game.bk.bounds);
+`, sandbox);
+check('a solid in the line stops the beam before the sensor', BK().beams2[0].end === 'solid');
+vm.runInContext(`
+  game.bk.m1 = new BeamMirror(400, 500, 2, { groundY: 700 });
+  game.bk.s2 = new BeamSensor(400, 200);
+  game.bk.beams3 = castBeams([new BeamLantern(100, 500, 0)], [game.bk.m1], [], [game.bk.s2], [], game.bk.bounds);
+`, sandbox);
+check('an UP-aimed mirror redirects a rightward beam up into a sensor',
+  BK().beams3[0].end === 'sensor' && BK().beams3[0].pts.length === 3);
+vm.runInContext(`
+  game.bk.m1.dir = 6; // aim DOWN: harmless sizzle somewhere below, never the sensor
+  game.bk.beams4 = castBeams([new BeamLantern(100, 500, 0)], [game.bk.m1], [], [game.bk.s2], [], game.bk.bounds);
+`, sandbox);
+check('a misaligned mirror sends the beam elsewhere (no sensor hit)', BK().beams4[0].end !== 'sensor');
+vm.runInContext(`
+  game.bk.fm = new BeamMirror(400, 500, 2, { frozen: true, groundY: 700 });
+  game.bk.beams5 = castBeams([new BeamLantern(100, 500, 0)], [game.bk.fm], [], [game.bk.s2], [], game.bk.bounds);
+  game.bk.fm.frozen = false;
+  game.bk.beams6 = castBeams([new BeamLantern(100, 500, 0)], [game.bk.fm], [], [game.bk.s2], [], game.bk.bounds);
+`, sandbox);
+check('a frozen mirror\'s ice crust blocks the beam; thawed it redirects',
+  BK().beams5[0].end === 'crust' && BK().beams6[0].end === 'sensor');
+vm.runInContext(`
+  game.bk.vent = new BeamVent(300, 700, 200);
+  game.bk.beams7 = castBeams([new BeamLantern(100, 300, 0)], [], [game.bk.vent], [game.bk.sensor], [], game.bk.bounds);
+  game.bk.vent.frozen = true;
+  game.bk.beams8 = castBeams([new BeamLantern(100, 300, 0)], [], [game.bk.vent], [game.bk.sensor], [], game.bk.bounds);
+`, sandbox);
+check('a steam plume scatters the beam; a frozen vent lets it through',
+  BK().beams7[0].end === 'plume' && BK().beams8[0].end === 'sensor');
+vm.runInContext(`
+  game.bk.ma = new BeamMirror(600, 500, 4, { groundY: 700 }); // aims LEFT
+  game.bk.mb = new BeamMirror(200, 500, 0, { groundY: 700 }); // aims RIGHT
+  game.bk.beams9 = castBeams([new BeamLantern(50, 500, 0)], [game.bk.ma, game.bk.mb], [], [], [], game.bk.bounds);
+`, sandbox);
+check('two facing mirrors terminate via the loop guard (no hang, bounded points)',
+  BK().beams9[0].pts.length <= 14);
+vm.runInContext(`
+  game.bk.rots = [];
+  const rm = new BeamMirror(100, 100, 0, { groundY: 300 });
+  for (let i = 0; i < 8; i++) { rm.rotate(); game.bk.rots.push(rm.dir); }
+`, sandbox);
+check('rotate() steps counter-clockwise through all 8 facings back to start',
+  BK().rots.join(',') === '1,2,3,4,5,6,7,0');
 
 // ---------------- secret: TORCH CAVERN (observation & matching) ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
