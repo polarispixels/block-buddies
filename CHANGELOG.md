@@ -8,6 +8,28 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.21.2] - 2026-08-29
+
+### Changed (Ryan's second playtest round)
+
+- **Squished-rider bug fixed**: the ride path bypassed the normal player
+  update, which is also what relaxes the squash animation — so the last
+  on-foot landing squish froze onto the character for the whole ride. The
+  easing now lives in the ride loop too (plus proper jump-stretch and
+  landing-squash juice on the board).
+- **Truck parts now require a JUMP**: parts float over flat sand at jump
+  height with candy breadcrumbs arcing up toward them — ride under one
+  flat-out and you miss it. (They previously sat on ramp arcs and were
+  collected nearly automatically.) A harness invariant enforces the
+  ride-under height on every generated part.
+- **Trick tutorial waits for the apex**: the TRICK! freeze-frame now fires
+  at the top of the taught jump (was: a split-second after leaving the
+  ground), so the pause clearly reads "you are high in the air — press
+  again!"
+- **Jack's replay door**: a press-gated dune archway at the rally's start
+  line — walk back, press Space/★, and ride the whole Sand Slide again.
+  Experienced riders skip the tutorial freeze-frames on replays.
+
 ## [1.21.1] - 2026-08-29
 
 ### Changed (Ryan's playtest notes)

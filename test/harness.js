@@ -2230,12 +2230,16 @@ check('tutorial: frozen means frozen', G().player.x === frozenX);
 tap('ArrowUp');
 frames(4);
 check('tutorial: the taught press jumps and resumes the ride', SL().tutPhase !== 'jump' && SL().ride.grounded === false);
-frames(6);
-check('tutorial: mid-air, the TRICK prompt freezes the moment', SL().tutPhase === 'trick');
+frames(10);
+check('tutorial: no TRICK prompt yet — the jump gets to breathe first', SL().tutPhase === null);
+frames(22);
+check('tutorial: at the APEX of the taught jump, the TRICK prompt freezes the moment',
+  SL().tutPhase === 'trick' && Math.abs(SL().ride.vy) < 150);
 tap('ArrowUp');
 frames(4);
 check('tutorial: the taught press spins the first trick', SL().tutPhase === null && SL().ride.trickN >= 1);
 frames(80); // land and roll on
+check('slide: the pre-ride landing squish relaxes instead of freezing on', Math.abs(G().player.squash - 1) < 0.08);
 const rx0 = G().player.x;
 frames(60);
 check('slide: the board rides itself forward (no input needed)', G().player.x > rx0 + 300);
@@ -2298,10 +2302,14 @@ vm.runInContext(`
       return gap < 120 || gap >= 200;
     });
     game.testPartsAhead = sl.course.things.some(t => t.kind === 'part' && !t.dead);
+    // Ryan's rule: parts float at JUMP height — ride under them and you miss
+    game.testPartsHigh = sl.course.things.filter(t => t.kind === 'part')
+      .every(t => t.y + t.h < 620 - 94 - 40);
   })()
 `, sandbox);
 check('slide: 60 random templates never create unreadable obstacle spacing', vm.runInContext('game.testGaps', sandbox) === true);
 check('slide: missing parts keep spawning ahead (never blockable)', vm.runInContext('game.testPartsAhead', sandbox) === true);
+check('slide: every generated part floats above ride-under height (jump required)', vm.runInContext('game.testPartsHigh', sandbox) === true);
 // the fifth part -> VICTORY RUN -> mega ramp -> the rally, parts in hand
 vm.runInContext(`(function () {
   const sl = game.level.ride, pl = game.player;
@@ -2329,6 +2337,18 @@ frames(20);
 check('slide: walking up to the truck starts the assembly ceremony immediately',
   vm.runInContext("game.level.truckBuild.state !== 'collect'", sandbox));
 check('slide: the delivered flag was consumed (no leak into later starts)', G().partsDelivered === false);
+// Jack's replay wish: a press-gated back door at the rally's start line
+check('replay: a Sand Slide back-door waits at the rally start line',
+  vm.runInContext("game.level.subDoors.some(d => d.goTo === 'sandslide' && d.press)", sandbox));
+put(140 - 28, 620 - 94);
+frames(20);
+check('replay: standing on the back door never auto-enters', G().level.n === 7);
+tap('Space');
+frames(10);
+check('replay: Space rides the Sand Slide again', G().level.n === 'sandslide');
+frames(170);
+check('replay: an experienced rider skips the tutorial freeze-frames',
+  SL().tutDone.jump === true && SL().tutDone.trick === true && SL().tutPhase === null);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

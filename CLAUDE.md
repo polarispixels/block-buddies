@@ -74,7 +74,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
-| 7 | Monster Truck Rally | dirt | STAGE 6-1 is the DESERT SAND SLIDE ('sandslide', js/ride.js): pattern puzzle → boogie board → procedural downhill ride collecting 5 truck parts → victory run → mega-ramp launch; arriving sets `game.partsDelivered` so the rally's TruckBuild starts in `delivered` mode (token hunt skipped, ceremony fires on approach; a direct startLevel(7) keeps the classic hunt). Then Build-Your-Truck (find wheels/engine/core, assembly ceremony — or delivered) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
+| 7 | Monster Truck Rally | dirt | STAGE 6-1 is the DESERT SAND SLIDE ('sandslide', js/ride.js): pattern puzzle → boogie board → procedural downhill ride collecting 5 truck parts → victory run → mega-ramp launch; arriving sets `game.partsDelivered` so the rally's TruckBuild starts in `delivered` mode (token hunt skipped, ceremony fires on approach; a direct startLevel(7) keeps the classic hunt); a press-gated back-door SubDoor (`{goTo: 'sandslide'}`, x=140) at the rally start replays the slide, tutorial skipped via `game.slideReplay`. Then Build-Your-Truck (find wheels/engine/core, assembly ceremony — or delivered) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
 | 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
@@ -250,7 +250,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 591 checks; must print
+  actual badge/footer values). 598 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

@@ -4310,6 +4310,11 @@ class SubDoor {
     // celebration then the next stage as a full level — instead of enterSub.
     // Dormancy/gold-star logic never applies to an ending.
     this.advance = !!opts.advance;
+    // goTo: a REPLAY back-door — Space on it restarts that chain stage as a
+    // full level (e.g. re-riding the Sand Slide from the rally's start line).
+    // Always press-gated so nobody stumbles backward into it.
+    this.goTo = opts.goTo || null;
+    if (this.goTo) this.press = true;
     this.t = rand(9); this.armed = false;
   }
   get cx() { return this.x + this.w / 2; }
@@ -4323,6 +4328,18 @@ class SubDoor {
           { colors: ['#ffe156', '#7be07b', '#fff'], type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
       }
       if (overlaps(this, game.player)) game.stageClear(this.sub);
+      return;
+    }
+    if (this.goTo) { // the replay back-door: deliberate Space, then off we go
+      if (chance(0.06)) {
+        Particles.burst(this.cx + rand(-30, 30), this.y + rand(10, this.h - 10), 1,
+          { colors: ['#ffe156', '#e8c078', '#fff'], type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
+      }
+      if (overlaps(this, game.player) && justP.Space && game.state === 'play' && !game.cut && !game.endPhase) {
+        game.slideReplay = true; // an experienced rider skips the tutorial
+        AudioSys.sfx('launch');
+        game.startLevel(this.goTo);
+      }
       return;
     }
     const done = this.done();

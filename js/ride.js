@@ -555,6 +555,7 @@ class RideMode {
           this.grounded = false;
           this.vy = this.jumpVy + Math.min(0, this.groundVy * 0.35);
           ev.jumped = true;
+          pl.squash = 1.25;
           AudioSys.sfx('jump');
         }
       }
@@ -579,6 +580,7 @@ class RideMode {
         pl.y = landY;
         this.grounded = true;
         ev.landed = true;
+        pl.squash = 0.78;
         ev.tricks = this.trickN;
         this.spin = 0; this.spinTarget = 0; this.trickN = 0;
         AudioSys.sfx('land');
@@ -651,7 +653,10 @@ class SandSlide {
     this.friendCactus = null;         // the scripted friendship moment
     this.megaLipX = 0;                // set when the victory mega-ramp exists
     this.tutPhase = null;             // 'jump' | 'trick' freeze-frame prompts
-    this.tutDone = { jump: false, trick: false };
+    // a replay via the rally's back door skips the freeze-frames — that
+    // player has already ridden the whole slide once
+    const replay = !!game.slideReplay; game.slideReplay = false;
+    this.tutDone = { jump: replay, trick: replay };
     this.finaleT = 0;                 // the grand farewell flight clock
     this.t = 0;
     this.buildLearnStrip();
@@ -733,22 +738,25 @@ class SandSlide {
       const p0 = c.endX;
       c.node(w, 26); c.patches.push({ x0: p0 - 12, x1: p0 + w + 12 });
       c.node(24, 0); c.flat(80);
-    } else if (kind === 'rampCandy' || kind === 'part' || kind === 'bigRamp') {
-      const big = kind === 'bigRamp' || (kind === 'part' && this.phase() === 'final');
+    } else if (kind === 'part') {
+      // a part floats at JUMP height over flat sand: ride under it and you
+      // miss it — earning a part always takes a deliberate jump (Ryan's note)
+      const partKind = this.pending.shift();
+      this.pending.push(partKind);                // cycles until actually caught
+      c.flat(150);
+      c.add('candy', c.endX - 120, g - 130, 30, 30); // breadcrumbs point the way up
+      c.add('candy', c.endX - 62, g - 176, 30, 30);
+      c.add('part', c.endX - 26, g - 216, 52, 52, { part: partKind });
+      c.flat(210);
+    } else if (kind === 'rampCandy' || kind === 'bigRamp') {
+      const big = kind === 'bigRamp';
       const rise = big ? 120 : 70, run = big ? 300 : 220, gap = big ? 340 : 220;
       c.node(run, -rise); c.node(16, -rise);      // up the ramp to the lip
       const lipX = c.endX, lipY = g - rise;
       c.node(gap, 30);                            // the gap (lands a bit lower)
       c.node(160, 0);                             // recover to base
       const apexY = lipY - (big ? 150 : 100);
-      if (kind === 'part') {
-        const partKind = this.pending.shift();
-        this.pending.push(partKind);              // cycles until actually caught
-        c.add('part', lipX + gap * 0.45, apexY, 52, 52, { part: partKind });
-        this.candyArc(lipX + 30, apexY - 20, 3);
-      } else {
-        this.candyArc(lipX + 20, apexY, big ? 6 : 4);
-      }
+      this.candyArc(lipX + 20, apexY, big ? 6 : 4);
     } else if (kind === 'flatCandy') {
       c.flat(80);
       for (let i = 0; i < 4; i++) c.add('candy', c.endX + i * 70 - 260, g - 70, 30, 30);
@@ -806,7 +814,10 @@ class SandSlide {
       AudioSys.sfx('switch');
       return;
     }
-    if (this.tutDone.jump && !this.tutDone.trick && !this.ride.grounded && this.ride.vy < -120) {
+    // the TRICK lesson waits for the apex of the taught jump, so the pause
+    // clearly reads as "you are high in the air — now press again!"
+    if (this.tutDone.jump && !this.tutDone.trick && !this.ride.grounded &&
+        this.ride.vy > -140 && this.ride.vy < 80) {
       this.tutDone.trick = true;
       this.tutPhase = 'trick';
       AudioSys.sfx('switch');
@@ -814,6 +825,9 @@ class SandSlide {
     }
     if (pl.inv > 0) pl.inv -= dt;
     if (pl.moodT > 0) pl.moodT -= dt; else pl.mood = 'happy';
+    // the ride path bypasses the normal player update, so the squash easing
+    // must live here too — without it a pre-ride landing squish freezes on
+    pl.squash = lerp(pl.squash, 1, 1 - Math.exp(-9 * dt));
     this.ride.speed = this.speedFor(this.phase());
     if (this.state !== 'launched') this.ensure(pl.x + W * 2);
     const ev = this.ride.step(pl, dt, x => this.course.groundY(x));

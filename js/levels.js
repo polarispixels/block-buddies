@@ -459,6 +459,9 @@ function buildLevel(n) {
     // arriving off the Sand Slide's mega ramp: parts already in hand, the
     // ceremony fires on approach; a direct start keeps the classic hunt
     if (game.partsDelivered) { game.partsDelivered = false; lv.truckBuild.deliver(); }
+    // Jack's replay wish: walk back to the start line, press Space at the
+    // dune archway, and ride the whole Sand Slide again (tutorial skipped)
+    lv.subDoors.push(new SubDoor(140, G, 'sandslide', 'stagegate', { goTo: 'sandslide' }));
     // easter egg: don't tell anyone what's parked behind the starting line
     lv.decor.dinoTruck = { x: 42 };
     pick(lv, 1440, G - 90, 'fire');
