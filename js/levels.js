@@ -28,7 +28,8 @@ const LEVEL_META = {
   cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' }, // stage two: weather recipes
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
   endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
-  sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' } // stage 6-1: earn the truck
+  sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
+  mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
 
 // ---- linear world chains (v1.20.0) ----
@@ -36,7 +37,7 @@ const LEVEL_META = {
 // next, and the final stage's finale completes the WORLD. Worlds absent from
 // this table are single-stage chains (future stage-2s slot in by editing it).
 // Secret rooms are NOT chain members — they stay optional enterSub sublevels.
-const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 7: ['sandslide', 7] };
+const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 4: [4, 'mountain2'], 7: ['sandslide', 7] };
 function stageChain(w) { return WORLD_STAGES[w] || [w]; }
 function stageInfo(id) { // -> {world, stage} for chain members, null otherwise
   for (const w in WORLD_STAGES) {
@@ -280,7 +281,9 @@ function buildLevel(n) {
     spider(lv, 4100, 524, 'walk', { range: 60 });
     lv.checks.push(new Checkpoint(1750, 572));
     lv.checks.push(new Checkpoint(3850, 524));
-    lv.gate = new Gate(4700, 524);
+    // STAGE 3-2 (the world's ENDING since v1.23.0): the archway advances
+    // straight into THE FROZEN OBSERVATORY; no star gate anymore
+    lv.subDoors.push(new SubDoor(4700, 524, 'mountain2', 'stagegate', { advance: true }));
     lv.hints.push({ x: 2725, y: 330, icon: 'power' }); // right beside the cracked wall
     // ---- Golden Key adventure mission (collection): the cave under the
     // overhang holds the crystal Shrine — a chest with three empty sockets.
@@ -842,6 +845,42 @@ function buildLevel(n) {
     lv.decor.clouds = []; lv.decor.birds = [];
     for (let i = 0; i < 26; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 1300), s: rand(0.6, 1.6) });
     for (let i = 0; i < 7; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(100, 500), sp: rand(40, 90) });
+  }
+
+  if (n === 'mountain2') { // ---------------- THE FROZEN OBSERVATORY 3-2 (stage two, v1.23.0)
+    // A beam-routing climb: three puzzle terraces ascend the summit, each
+    // solved by routing a visible light beam into a sensor crystal, each
+    // reward opening the way up — ending inside the dome where the grand
+    // alignment fixes the telescope. All beam machinery lives on lv.puzzle
+    // (FrozenObservatory, js/beams.js). No enemies — thinking, not dodging.
+    // Falls always land on the full-width base, so no fall hazard exists.
+    lv.w = 3600; lv.h = 2200;
+    lv.playerStart = { x: 90, y: 2140 - 94 };
+    lv.hints.push({ x: 220, y: 1980, icon: 'space' });
+    addGround(lv, 0, 3600, 2140);                          // T1: the summit trail (teach)
+    lv.checks.push(new Checkpoint(200, 2140));
+    lv.solids.push({ x: 770, y: 1490, w: 100, h: 70, pile: true }); // S1's hanging rock (out of jump reach)
+    candyRow(lv, 1000, 1360, 2080, 4);
+    addPlat(lv, 2200, 1780, 1200, { h: 80 });              // T2: thaw + route
+    lv.checks.push(new Checkpoint(2300, 1780));
+    lv.solids.push({ x: 2900, y: 1450, w: 200, h: 210, pile: true }); // rock tunnel (walk-under, blocks the direct line)
+    pick(lv, 2550, 1690, 'fire');
+    candyRow(lv, 3150, 3350, 1720, 3);
+    addPlat(lv, 400, 1420, 1400, { h: 80 });               // T3: the full chain
+    lv.checks.push(new Checkpoint(600, 1420));
+    pick(lv, 620, 1330, 'fire');
+    pick(lv, 760, 1330, 'ice');
+    pick(lv, 1200, 1330, 'heart');
+    candyRow(lv, 950, 1250, 1360, 4);
+    addPlat(lv, 2000, 1000, 1400, { h: 90 });              // the dome deck
+    lv.checks.push(new Checkpoint(2100, 1000));
+    pick(lv, 2250, 910, 'fire');
+    pick(lv, 2350, 910, 'ice');
+    candyArc(lv, 2500, 2900, 850, 930, 4);
+    lv.puzzle = new FrozenObservatory(lv);
+    // goalStar appears only after the telescope cutscene (machine sets it)
+    lv.decor.pines = []; lv.decor.peaks = true;
+    for (let x = 120; x < 2000; x += rand(300, 650)) lv.decor.pines.push({ x, s: rand(0.8, 1.4) });
   }
 
   if (n === 'cloudclimb') { // ---------------- CLOUD CLIMB (vertical mini-game)

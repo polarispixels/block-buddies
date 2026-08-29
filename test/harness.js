@@ -404,8 +404,20 @@ check('player walks through the open door', G().player.cx > 4480);
 put(4200, 524 - 94); frames(5); put(4340, 524 - 94);
 frames(45, { ArrowRight: 1 });
 check('door stays open on revisit', MIS().gate.state === 'open' && G().player.cx > 4480);
+// linear chains: world 4 now ends at a stage archway into the OBSERVATORY —
+// no star gate anymore (the v1.20.0 conversion pattern)
+check('world 4 has no star gate anymore', G().level.gate === null);
+check('world 4 ends at the observatory stage archway',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'mountain2' && d.advance)", sandbox));
 frames(140, { ArrowRight: 1 });
-check('mountain world still completable past the door', ['complete', 'intro', 'play'].includes(G().state) && (G().state !== 'play' || G().player.cx > 4600));
+check('walking the archway plays the stage-clear beat', G().state === 'stageclear');
+frames(200);
+check('THE FROZEN OBSERVATORY loads as a full level (no subReturn)',
+  G().level.n === 'mountain2' && G().subReturn === null && ['intro', 'play'].includes(G().state));
+frames(150);
+check('the observatory is a tall diagonal level run by the beam machine',
+  G().level.h > 720 && vm.runInContext('game.level.puzzle instanceof FrozenObservatory', sandbox));
+check('the observatory is a thinking space: no enemies', G().spiders.length === 0);
 
 // ---------------- level 5: boss ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
@@ -2321,7 +2333,10 @@ check('factory: Mountain World unlocks', G().unlocked >= 4);
 frames(320);
 tap('Space');
 frames(5);
-check('factory: the world party leads onward to Mountain World', G().level.n === 4);
+// world 4 is a chain now: earlier checks pushed its progress to stage 2, so
+// the onward jump RESUMES at the observatory (the whole point of ffbg_stage)
+check('factory: the world party leads onward to Mountain World (resuming its furthest stage)',
+  G().level.n === 'mountain2' && vm.runInContext("stageInfo('mountain2').world", sandbox) === 4);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
