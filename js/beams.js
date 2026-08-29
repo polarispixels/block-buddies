@@ -223,6 +223,12 @@ class FrozenObservatory {
   update(dt, pl) {
     this.t += dt;
     this.litFlashT = Math.max(0, this.litFlashT - dt);
+    // the grand alignment: one beat to savor the lit eye, then the show
+    if (this.telescopeLit && !this.cutFired && !game.cut && !game.endPhase && game.state === 'play') {
+      this.cutFired = true;
+      game.cut = { name: 'telescope', t: 0 };
+      AudioSys.sfx('fanfare');
+    }
     for (const m of this.mirrors) {
       m.coolT = Math.max(0, (m.coolT || 0) - dt);
       m.spinT = Math.max(0, m.spinT - dt);
@@ -372,5 +378,111 @@ function drawObservatoryDome(ctx, t, lit) {
   ctx.save();
   ctx.fillStyle = 'rgba(160,150,200,0.35)';
   ctx.beginPath(); ctx.arc(2700, 1000, 560, Math.PI, 0); ctx.fill();
+  ctx.restore();
+}
+
+// ---- the telescope finale cutscene (drawn over the world, cam-anchored) ----
+function drawCutsceneAlien(ctx, x, y, s, t, waving) {
+  ctx.save();
+  ctx.translate(x, y);
+  // saucer
+  ctx.fillStyle = '#b8bfd4';
+  ctx.beginPath(); ctx.ellipse(0, s * 0.35, s * 0.95, s * 0.32, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#7a83a0'; ctx.lineWidth = Math.max(2, s * 0.06); ctx.stroke();
+  ctx.fillStyle = 'rgba(190,232,255,0.55)';
+  ctx.beginPath(); ctx.arc(0, s * 0.08, s * 0.55, Math.PI, 0); ctx.fill();
+  // little green pilot
+  ctx.fillStyle = '#7be07b';
+  ctx.beginPath(); ctx.arc(0, -s * 0.05, s * 0.32, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#3aa53a'; ctx.lineWidth = Math.max(2, s * 0.05); ctx.stroke();
+  // antennae
+  ctx.strokeStyle = '#3aa53a'; ctx.lineWidth = Math.max(2, s * 0.04); ctx.lineCap = 'round';
+  for (const sd of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(sd * s * 0.14, -s * 0.3);
+    ctx.quadraticCurveTo(sd * s * 0.26, -s * 0.5, sd * s * 0.3, -s * 0.55); ctx.stroke();
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(sd * s * 0.3, -s * 0.55, s * 0.06, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#7be07b';
+  }
+  drawFace(ctx, 0, -s * 0.05, s * 0.62, 'happy', t, x);
+  if (waving) { // the big friendly wave
+    const wa = Math.sin(t * 7) * 0.7;
+    ctx.strokeStyle = '#7be07b'; ctx.lineWidth = Math.max(3, s * 0.11); ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(s * 0.3, s * 0.1);
+    ctx.lineTo(s * 0.55 + Math.cos(wa) * s * 0.16, -s * 0.25 + Math.sin(wa) * s * 0.12);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawTelescopeCutscene(ctx, t) {
+  const vx = game.cam.x, vy = game.cam.y;
+  // dusk falls over the whole summit
+  const dusk = Math.min(1, t / 1.5) * (t > 6.2 ? Math.max(0, 1 - (t - 6.2) / 0.7) : 1);
+  ctx.save();
+  ctx.fillStyle = `rgba(24,18,58,${0.55 * dusk})`;
+  ctx.fillRect(vx, vy, W, H);
+  // stars twinkle in with the dusk
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 40; i++) {
+    const sx = vx + ((i * 197) % W), sy = vy + ((i * 113) % (H * 0.7));
+    const tw = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.7);
+    ctx.globalAlpha = dusk * tw * 0.9;
+    ctx.fillRect(sx, sy, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  // the lens iris: what the telescope sees
+  const grow = clamp((t - 1.6) / 0.9, 0, 1);
+  const shrink = clamp((t - 6.1) / 0.7, 0, 1);
+  const r = 280 * (grow * grow * (3 - 2 * grow)) * (1 - shrink);
+  if (r > 4) {
+    const cx = vx + W / 2, cy = vy + H * 0.42;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip();
+    ctx.fillStyle = '#0c0a2a';
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 30; i++) {
+      const sx = cx - r + ((i * 149) % (r * 2)), sy = cy - r + ((i * 83) % (r * 2));
+      ctx.globalAlpha = 0.4 + 0.6 * Math.sin(t * 2.5 + i) * 0.5 + 0.3;
+      ctx.fillRect(sx, sy, 2.5, 2.5);
+    }
+    ctx.globalAlpha = 1;
+    // the twinkling green planet
+    ctx.fillStyle = '#57d357';
+    ctx.beginPath(); ctx.arc(cx - r * 0.35, cy + r * 0.25, r * 0.34, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3aa53a';
+    ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy + r * 0.18, r * 0.1, r * 0.06, 0.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - r * 0.26, cy + r * 0.34, r * 0.12, r * 0.07, -0.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(190,232,255,0.7)'; ctx.lineWidth = r * 0.04;
+    ctx.beginPath(); ctx.ellipse(cx - r * 0.35, cy + r * 0.25, r * 0.5, r * 0.14, -0.35, 0, TAU); ctx.stroke();
+    // the friendly saucers wave back
+    const waving = t >= 3.0;
+    const bob = Math.sin(t * 2.2) * r * 0.04;
+    drawCutsceneAlien(ctx, cx + r * 0.3, cy - r * 0.28 + bob, r * 0.3, t, waving);
+    drawCutsceneAlien(ctx, cx + r * 0.62, cy + r * 0.18 - bob, r * 0.22, t, waving);
+    if (waving && chance(0.15)) {
+      Particles.burst(cx + r * 0.4, cy - r * 0.1, 1, { colors: ['#ff8fb0', '#fff'], type: 'heart', sp1: 60, grav: -50, l1: 1, s1: 10 });
+    }
+    ctx.restore();
+    // lens rim
+    ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, r + 7, 0, TAU); ctx.stroke();
+  }
+  // the gift: a golden star beamed down the light to the dome floor
+  if (t >= 5.4) {
+    const k = clamp((t - 5.4) / 1.4, 0, 1), e = k * k * (3 - 2 * k);
+    const gx = lerp(3230, 2600, e), gy = lerp(630, 900, e) - Math.sin(e * Math.PI) * 90;
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.rotate(t * 2);
+    ctx.fillStyle = '#ffd24a';
+    starPath(ctx, 0, 0, 30, 13); ctx.fill();
+    ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
+    if (chance(0.5)) Particles.burst(gx, gy, 1, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 60, grav: 40, l1: 0.5, s1: 8 });
+  }
   ctx.restore();
 }

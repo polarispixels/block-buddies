@@ -539,6 +539,30 @@ put(3080 - 28, 1000 - 94); tap('ArrowUp'); frames(30);
 check('one diagonal aim completes the GRAND ALIGNMENT: the telescope lights',
   OBS().m4.dir === 1 && OBS().eye.lit === true && OBS().telescopeLit === true);
 
+// ---- the telescope cutscene and the world finale ----
+frames(30);
+check('the telescope cutscene begins (input frozen, aliens incoming)',
+  vm.runInContext("game.cut && game.cut.name === 'telescope'", sandbox) === true);
+frames(460);
+check('the cutscene ends and the aliens\' gift star waits in the dome',
+  G().cut === null && !!G().level.goalStar &&
+  Math.hypot(G().level.goalStar.x - 2600, G().level.goalStar.y - 900) < 5);
+put(2570, 1000 - 94);
+frames(15);
+check('the gift star completes WORLD 4 (full party)', G().endPhase === 'party' && G().wonWorld === 4);
+check('Zombie Cave unlocks and world 4 stage progress resets for replay',
+  G().unlocked >= 5 && vm.runInContext('game.stageProg[4] || 0', sandbox) === 0);
+frames(320);
+tap('Space');
+frames(5);
+check('the world party leads onward to Zombie Cave', G().level.n === 5);
+// title resume: a hero who reached the observatory comes straight back to it
+vm.runInContext('game.stageProg[4] = 1; game.startWorld(4)', sandbox);
+frames(3);
+check('picking Mountain World resumes at the furthest stage (the observatory)', G().level.n === 'mountain2');
+vm.runInContext('game.stageProg[4] = 0; game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- level 5: boss ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
 frames(150);
@@ -2453,10 +2477,10 @@ check('factory: Mountain World unlocks', G().unlocked >= 4);
 frames(320);
 tap('Space');
 frames(5);
-// world 4 is a chain now: earlier checks pushed its progress to stage 2, so
-// the onward jump RESUMES at the observatory (the whole point of ffbg_stage)
-check('factory: the world party leads onward to Mountain World (resuming its furthest stage)',
-  G().level.n === 'mountain2' && vm.runInContext("stageInfo('mountain2').world", sandbox) === 4);
+// world 4 is a chain now: the earlier observatory section COMPLETED it,
+// which resets its stage progress — so onward starts the chain fresh at 4-1
+check('factory: the world party leads onward to Mountain World (chain start, progress was reset by its win)',
+  G().level.n === 4 && vm.runInContext('game.stageProg[4] || 0', sandbox) === 0);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

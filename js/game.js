@@ -609,6 +609,26 @@ function updateCut(dt) {
     else { const k = clamp((c.t - 2.6) / 1.5, 0, 1); tx = lerp(sq, 0, k * k * (3 - 2 * k)); }
     game.cam.x = tx;
     if (c.t > 4.2 || justP.Space) { game.cut = null; game.cam.x = 0; }
+  } else if (c.name === 'telescope') {
+    // the observatory finale: dusk falls, the fixed telescope opens the sky,
+    // and the Space Maze's friendly aliens wave back through the lens —
+    // then beam their gift (the golden star) down the light. All wordless.
+    if (c.t < 0.9 && !c.dimmed) { c.dimmed = true; AudioSys.sfx('powerup'); }
+    if (c.t >= 1.6 && !c.irised) { c.irised = true; AudioSys.sfx('chest'); game.shake = Math.max(game.shake, 0.2); }
+    if (c.t >= 3.0 && !c.waved) { c.waved = true; AudioSys.sfx('friend'); AudioSys.sfx('cheer'); }
+    if (c.t >= 5.4 && !c.gifted) {
+      c.gifted = true;
+      AudioSys.sfx('collect');
+      Particles.burst(3230, 630, 16, { colors: ['#ffe156', '#7be07b', '#fff'], type: 'star', sp1: 260, l1: 1, s1: 11, grav: 0 });
+    }
+    if (c.t >= 6.9) {
+      game.cut = null;
+      game.level.goalStar = { x: 2600, y: 900 };
+      if (game.level.puzzle) game.level.puzzle.done = true;
+      AudioSys.sfx('chest');
+      game.shake = Math.max(game.shake, 0.3);
+      Particles.candyBurst(2600, 880, 12);
+    }
   } else if (c.name === 'rumble') {
     game.shake = Math.max(game.shake, 0.4);
     if (c.t > 1.4) {
@@ -1416,6 +1436,7 @@ function renderWorld() {
     if (game.cut.t >= 1.7 && game.cut.t < 2.7) outlineText(ctx, 'RAWR!', z.cx, z.y - 100, 64, '#ff6b35', '#fff');
     else if (game.cut.t >= 2.9 && game.cut.t < 3.6) outlineText(ctx, '...HIC!', z.cx, z.y - 100, 46, '#ffe156', '#2a7a64');
   }
+  if (game.cut && game.cut.name === 'telescope') drawTelescopeCutscene(ctx, game.cut.t);
   if (game.endPhase === 'prompt' && game.chest && game.chest.landed && !game.chest.open) {
     drawSpacebar(ctx, game.chest.cx, game.chest.y - 70, 120, t);
   }
