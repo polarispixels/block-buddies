@@ -53,6 +53,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `ExitDoor` (non-solid exit trigger for win-state-free sublevels, `lv.exitDoors`), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
 | `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering + optional `roundsToWin`/`onWin` success state and `cx` placement for scrolling levels; `LetterBlocksMachine` is mode #1, `PatternBlocksMachine` — complete-the-color-pattern, no reading — is mode #2, debuting in the Sand Slide; `EndingLetterBlocksMachine` — the blank moves to the END of the word, "CA_"→T — is mode #3, in the 'endingblocks' cloud room), and CONTENT tables (`LB_WORDS` 60-word bank, `EL_WORDS` 38-word ending bank — crisp single-letter endings only, icons 100% reused, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
 | `js/ride.js` | RIDE MODE, the reusable automatic-traversal framework: `RideMode` (generic heightfield rider — auto-forward, gravity, jump+coyote, natural ramp launches off falling-away lips, airborne trick combos; nothing desert-specific — future snowboards/minecarts/lava surfing reuse it), `RideCourse` (template procgen: terrain nodes + things, speed-scaled breather-flat constraint after every template), `SandSlide` (desert content + orchestration on `lv.ride`: pattern-puzzle→board handoff, friendship cactus, 5 truck parts with loss/re-queue that can never soft-lock, victory run, mega-ramp `stageClear(7)` with `game.partsDelivered`), plus the contact-sheet-reviewed desert art pack |
+| `js/beams.js` | The reusable LIGHT-BEAM puzzle kit: `castBeams` 8-direction raycast (recomputed every frame), `BeamLantern`, `BeamMirror` (redirector dish — bump underside rotates 45° CCW, face+gold pointer show the aim; `fixed` gold relays for high routing; `frozen` = ground-reaching ice crust, one fire shot thaws), `BeamVent` (steam plume scatters beams; one ice shot freezes forever), `BeamSensor` (lights + latches forever, fires a reward hook), the `FrozenObservatory` machine (`lv.puzzle` for 'mountain2': four stations, respawning fire/ice pickups via `bossKind` = never-soft-lock, `telescopeLit` → the 'telescope' cutscene), the observatory art pack + `drawTelescopeCutscene` |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -71,7 +72,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | 1 | Block Meadow | meadow | tutorial, fire block; Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | stage archway (x=4230) → BLOCK MEADOW 0-2 ('meadow2': 6800px, bigBrick walls + refill buddy blocks); its finale star completes the world |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | stage archway (x=3880) → SUNKEN TEMPLE 1-2; its treasure star completes the world |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch; Ending Blocks learning room (press-gated rainbow SubDoor x=460 on the start platform) — Puzzle Blocks mode #3, ending letters | stage archway (x=4700 island) → WEATHER FACTORY 2-2; its lonely star completes the world |
-| 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
+| 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | stage archway (x=4700) → THE FROZEN OBSERVATORY 3-2 ('mountain2', js/beams.js): three beam-routing terraces (bump-rotate mirror dishes, fire-thaw frozen mirrors, ice-freeze steam vents, latching sensors thaw snow staircases) → dome grand alignment → telescope cutscene (Space Maze aliens wave back, gift the star) completes the world |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
 | 7 | Monster Truck Rally | dirt | STAGE 6-1 is the DESERT SAND SLIDE ('sandslide', js/ride.js): pattern puzzle → boogie board → procedural downhill ride collecting 5 truck parts → victory run → mega-ramp launch; arriving sets `game.partsDelivered` so the rally's TruckBuild starts in `delivered` mode (token hunt skipped, ceremony fires on approach; a direct startLevel(7) keeps the classic hunt); a press-gated back-door SubDoor (`{goTo: 'sandslide'}`, x=140) at the rally start replays the slide, tutorial skipped via `game.slideReplay`. Then Build-Your-Truck (find wheels/engine/core, assembly ceremony — or delivered) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
@@ -81,13 +82,13 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 
 Progression (LINEAR WORLD CHAINS since v1.20.0): each world is an ordered
 stage list in `WORLD_STAGES` (levels.js) — currently `1: [1,'meadow2']`,
-`2: [2,'water2']`, `3: [3,'cloud2']`, `7: ['sandslide', 7]`, everything else
-single-stage. A stage's
+`2: [2,'water2']`, `3: [3,'cloud2']`, `4: [4,'mountain2']`,
+`7: ['sandslide', 7]`, everything else single-stage. A stage's
 ending is a `{advance: true}` stagegate SubDoor → `game.stageClear(next)`
 (a light ~2.4s STAGE CLEAR card, then the next stage loads as a FULL level —
 no enterSub). The FINAL stage's goalStar → `game.worldWin(w)`: full party,
-unlocks world w+1, resets that world's stage progress. World 4 still ends at
-its star `Gate` (single-stage chain); beating each boss/finale unlocks the
+unlocks world w+1, resets that world's stage progress. Every base world (1-4)
+is a two-stage chain now (no star `Gate`s left); beating each boss/finale unlocks the
 bonus worlds as before (zombie→6, magma→7, rally→8, coronation→9, maze
 star→10) and party exits chain 5→6→7→8→9→10→title (internal n). Picking a
 world (medallion/digit/Space → `game.startWorld`) resumes at the furthest
@@ -167,8 +168,8 @@ via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2', 'cloud2', 'letterblocks', 'endingblocks'; since v1.20.0
-  meadow2/water2/cloud2 are CHAIN STAGES started via `startLevel`, not
+  'meadow2', 'water2', 'cloud2', 'mountain2', 'letterblocks', 'endingblocks'; since v1.20.0
+  meadow2/water2/cloud2/mountain2 are CHAIN STAGES started via `startLevel`, not
   sublevels — the rest are true sublevels), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
   pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — opts {press: true} makes
@@ -251,7 +252,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 614 checks; must print
+  actual badge/footer values). 664 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

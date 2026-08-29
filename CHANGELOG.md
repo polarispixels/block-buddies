@@ -8,6 +8,48 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.23.0] - 2026-08-29
+
+### Added
+
+- **THE FROZEN OBSERVATORY 3-2** (backlog #3, spec
+  `docs/superpowers/specs/2026-08-29-frozen-observatory-design.md`) — Mountain
+  World becomes a linear chain (`4: [4, 'mountain2']`): the star gate is
+  replaced by a stage archway, and the observatory's finale completes the
+  world. Three beam-puzzle terraces climb the summit to the dome — the third
+  step of the cognitive ladder (cause-and-effect → systems → multi-step
+  spatial reasoning).
+- **Light-beam kit** (`js/beams.js`, reusable): crystal lanterns, redirector
+  mirror dishes (bump the underside to rotate one 45° step CCW — the dish's
+  face looks where it points; every wrong aim is a harmless, funny sizzle),
+  fixed gold relay dishes, frozen mirrors in ground-reaching ice crusts (one
+  FIRE shot thaws — crusts reach the ground because projectiles fly at wheel
+  height), steam vents whose plumes scatter the beam (one ICE shot freezes
+  them into proud sculptures), and latching sensor gems. Beams re-raycast
+  every frame so cause and effect is always visible. Nothing
+  observatory-specific lives in the kit.
+- **Terraces**: (1) teach — three bumps sweep the beam right → diagonal → UP
+  into the sensor, thawing a snow staircase; (2) thaw + route over a rock
+  tunnel; (3) the full chain — thaw → aim → plug the vent; (dome) the grand
+  alignment, ending on the level's one diagonal aim into the telescope eye.
+  Every sensor latch is permanent and every fire/ice pickup respawns after
+  use (the boss-pickup respawner) — no wrong order or wasted shot can ever
+  soft-lock.
+- **Telescope finale**: dusk falls, the lens iris opens on a ringed green
+  planet and the Space Maze's saucer aliens waving back, and they beam a
+  golden star down the light — collecting it completes world 4 (full party,
+  Zombie Cave unlock, chain replay reset). Wordless foreshadowing of world 9.
+- Harness: 41 new checks (664 total) — beam raycast logic, real bump/shot/
+  latch interactions, every staircase genuinely ridden jump by jump, respawn
+  latching, the pickup re-arm rule, cutscene → goalStar → worldWin(4) →
+  unlock → party-onward, and title stage resume.
+
+### Fixed
+
+- `sw.js` offline cache was missing `js/puzzleblocks.js` and `js/ride.js`
+  (network-first, so online play never noticed; offline PWA would have
+  broken on those levels). Both cached now, along with the new `js/beams.js`.
+
 ## [1.22.0] - 2026-08-29
 
 ### Added

@@ -19,8 +19,8 @@ release spec. Maintenance rules:
 |---|------|------|--------|
 | 1 | Underwater 1-2: The Sunken Temple | Stage 2 | ✅ shipped v1.16.0 — valve→current→pearl→socket chains across three any-order wings (one-valve lesson, two-valve up-shaft, shell-switch cage), waking stone door, treasure chamber; pearls unlosable, everything reversible (see CHANGELOG 1.16.0) |
 | 2 | Cloud 2-2: The Weather Factory | Stage 2 | ✅ shipped v1.17.0 — six levers, four island stations spread across a 7600px sky (rain→bloom→stalk stairway, wind→windmill→POWER cable feeding freezer + sun lamp, rain+cold+power→snowman, rain+sun+power→rainbow bridge), star alone on a far island (see CHANGELOG 1.17.0) |
-| 3 | Mountain 3-2: The Frozen Observatory | Stage 2 | 🎯 next up |
-| 4 | Space 8-2: The Alien Space Station | Stage 2 | idea |
+| 3 | Mountain 3-2: The Frozen Observatory | Stage 2 | ✅ shipped v1.23.0 — reusable light-beam kit (`js/beams.js`: raycast, bump-rotate redirector dishes, fire-thaw ice crusts, ice-freeze steam vents, latching sensor gems) + a 3600×2200 three-terrace beam-routing climb (chain stage `4: [4, 'mountain2']`) ending in the dome's grand alignment; telescope cutscene: the Space Maze aliens wave back and gift the world star (see CHANGELOG 1.23.0) |
+| 4 | Space 8-2: The Alien Space Station | Stage 2 | 🎯 next up |
 | 5 | Dino Jungle 9-2: The Great Dinosaur Rescue | Stage 2 | idea |
 | 6 | Monster Truck 6-2: Junkyard Bridge Builders | Stage 2 | idea |
 | 7 | Lava 5-2: Magma Cooling Works | Stage 2 | idea |
