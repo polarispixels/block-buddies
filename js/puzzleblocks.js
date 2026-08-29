@@ -2614,6 +2614,68 @@ class LetterBlocksMachine extends PuzzleBlocksMachine {
   }
 }
 
+// ---- mode 3: Ending Letter Blocks ("CA_") ----
+// Same interaction as Beginning Letters with the blank moved to the END of
+// the word. Content reuses the kid-verified LB_ICONS art; the word list keeps
+// only crisp single-letter endings (no doubles like BALL/EGG, no digraphs
+// like DUCK/KING, no silent-e like MOUSE) so "the last letter" always has
+// one honest answer for a 5-year-old.
+const EL_WORDS = [
+  { word: 'cat',   prompt: 'CA_',   correct: 'T', distractors: ['D', 'P'] },
+  { word: 'dog',   prompt: 'DO_',   correct: 'G', distractors: ['K', 'T'] },
+  { word: 'pig',   prompt: 'PI_',   correct: 'G', distractors: ['T', 'D'] },
+  { word: 'fox',   prompt: 'FO_',   correct: 'X', distractors: ['S', 'K'] },
+  { word: 'bug',   prompt: 'BU_',   correct: 'G', distractors: ['D', 'T'] },
+  { word: 'frog',  prompt: 'FRO_',  correct: 'G', distractors: ['K', 'D'] },
+  { word: 'bear',  prompt: 'BEA_',  correct: 'R', distractors: ['L', 'T'] },
+  { word: 'book',  prompt: 'BOO_',  correct: 'K', distractors: ['G', 'T'] },
+  { word: 'bed',   prompt: 'BE_',   correct: 'D', distractors: ['T', 'B'] },
+  { word: 'cup',   prompt: 'CU_',   correct: 'P', distractors: ['B', 'T'] },
+  { word: 'hat',   prompt: 'HA_',   correct: 'T', distractors: ['D', 'M'] },
+  { word: 'car',   prompt: 'CA_',   correct: 'R', distractors: ['L', 'D'] },
+  { word: 'sun',   prompt: 'SU_',   correct: 'N', distractors: ['M', 'T'] },
+  { word: 'moon',  prompt: 'MOO_',  correct: 'N', distractors: ['M', 'T'] },
+  { word: 'bat',   prompt: 'BA_',   correct: 'T', distractors: ['D', 'G'] },
+  { word: 'log',   prompt: 'LO_',   correct: 'G', distractors: ['K', 'T'] },
+  { word: 'box',   prompt: 'BO_',   correct: 'X', distractors: ['S', 'T'] },
+  { word: 'van',   prompt: 'VA_',   correct: 'N', distractors: ['M', 'T'] },
+  { word: 'can',   prompt: 'CA_',   correct: 'N', distractors: ['M', 'P'] },
+  { word: 'fan',   prompt: 'FA_',   correct: 'N', distractors: ['M', 'T'] },
+  { word: 'pan',   prompt: 'PA_',   correct: 'N', distractors: ['M', 'T'] },
+  { word: 'ant',   prompt: 'AN_',   correct: 'T', distractors: ['D', 'K'] },
+  { word: 'crab',  prompt: 'CRA_',  correct: 'B', distractors: ['P', 'D'] },
+  { word: 'snail', prompt: 'SNAI_', correct: 'L', distractors: ['R', 'T'] },
+  { word: 'sheep', prompt: 'SHEE_', correct: 'P', distractors: ['B', 'T'] },
+  { word: 'goat',  prompt: 'GOA_',  correct: 'T', distractors: ['D', 'P'] },
+  { word: 'boat',  prompt: 'BOA_',  correct: 'T', distractors: ['D', 'K'] },
+  { word: 'lion',  prompt: 'LIO_',  correct: 'N', distractors: ['M', 'T'] },
+  { word: 'star',  prompt: 'STA_',  correct: 'R', distractors: ['L', 'T'] },
+  { word: 'drum',  prompt: 'DRU_',  correct: 'M', distractors: ['N', 'B'] },
+  { word: 'nest',  prompt: 'NES_',  correct: 'T', distractors: ['D', 'P'] },
+  { word: 'bus',   prompt: 'BU_',   correct: 'S', distractors: ['Z', 'T'] },
+  { word: 'train', prompt: 'TRAI_', correct: 'N', distractors: ['M', 'L'] },
+  { word: 'leaf',  prompt: 'LEA_',  correct: 'F', distractors: ['V', 'T'] },
+  { word: 'flag',  prompt: 'FLA_',  correct: 'G', distractors: ['K', 'D'] },
+  { word: 'crown', prompt: 'CROW_', correct: 'N', distractors: ['M', 'T'] },
+  { word: 'robot', prompt: 'ROBO_', correct: 'T', distractors: ['D', 'P'] },
+  { word: 'owl',   prompt: 'OW_',   correct: 'L', distractors: ['R', 'T'] }
+];
+class EndingLetterBlocksMachine extends PuzzleBlocksMachine {
+  constructor(groundY) {
+    super(groundY, {
+      entries: EL_WORDS,
+      round: w => ({ correct: w.correct, options: [w.correct].concat(w.distractors) }),
+      drawPrompt(ctx, w, phase) {
+        LB_ICONS[w.word](ctx, 640, 150, 190);
+        const filled = phase === 'hold';
+        outlineText(ctx, filled ? w.word.toUpperCase() : w.prompt, 640, 285, 64, filled ? '#7be07b' : '#fff');
+      },
+      // the flying letter lands exactly on the prompt's trailing blank
+      flyTarget: w => ({ x: 640 + (w.prompt.length * 40) / 2 - 20, y: 285 })
+    });
+  }
+}
+
 // ---- mode 2: Pattern Blocks (complete the pattern) ----
 // No reading required: a row of colored funny-face blocks plays out a simple
 // pattern and the hero bumps the block that comes NEXT. Debuts inside the

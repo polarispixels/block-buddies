@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.21.2</span>
+  <span class="badge">v1.22.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -384,7 +384,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>New here</dt><dd>🌈 rainbow block (the <strong>befriending</strong> mechanic), one-way pass-through platforms, pink bouncy spring blocks, rainbow bridges, and <strong>cloud-catch</strong> (<code>lv.fallCatch</code>): falling never hurts — a smiling cloud scoops the player back up.</dd>
   <dt>Pickups</dt><dd>Rainbow ×2, heart ×1, candy.</dd>
   <dt>Cameos</dt><dd>Walk spiders from the meadow. The spring block returns in Lava World and (as a pink mushroom) in Unicorn Forest; the one-way platforms return as forest branches. Since v1.17.0 the world grew (4600 → 5000) to seat the <strong>stage archway to THE WEATHER FACTORY 2-2</strong> (x≈4700) on its own island — since v1.20.0 the world's ending (the star gate is gone): the factory's lonely star completes the world.</dd>
-  <dt>Mini-game</dt><dd>A cloud-swirl <code>SubDoor</code> on the middle island leads into <strong>Cloud Climb</strong> (see Mini-games).</dd>
+  <dt>Mini-game</dt><dd>A cloud-swirl <code>SubDoor</code> on the middle island leads into <strong>Cloud Climb</strong> (see Mini-games). Since v1.22.0, a press-gated rainbow door on the calm start platform (x≈460) leads into <strong>Ending Blocks</strong>, the ending-letters learning room (see Mini-games) — rainbow is the learning-door style everywhere.</dd>
 </dl>
 </div>
 
@@ -613,8 +613,8 @@ out of the machine. The whole mechanism is <code>PipeWorks</code> (<code>lv.puzz
 <code>PuzzleBlocksMachine</code> ENGINE (pool shuffle/no-repeat, physical block solids, selection
 lock + per-block cooldown, wobble/fly/hold phases, candy reward hook), a small MODE config object
 defining semantics (round generation, prompt rendering, choice rendering, fly target — Letter Blocks
-is one such mode; Ending Letter Blocks, Count the Objects, and Pattern Blocks are the planned next
-three, see <code>BACKLOG.md</code> item 11), and pure CONTENT tables. The file
+is one such mode; Pattern Blocks shipped as mode #2 in v1.21.0 and Ending Blocks as mode #3 in
+v1.22.0; Count the Objects is next, see <code>BACKLOG.md</code> item 11), and pure CONTENT tables. The file
 keeps content (<code>LB_WORDS</code>, a 60-entry word bank since v1.19.0 — grown from 20 with new word
 families like <code>_AN</code>, <code>_ING</code>, <code>_OAT</code>, <code>_OUSE</code> — with procedural icons in
 <code>LB_ICONS</code>, all second-generation since v1.19.0: every icon individually verified on
@@ -634,6 +634,22 @@ through all 20 words before reshuffling, and never repeats the same word twice i
 reshuffle. There's no win state — a new <strong>ExitDoor</strong> primitive (a plain overlap trigger that
 calls <code>game.exitSub()</code> directly, the first sublevel exit that skips the <code>subWin</code>/party
 flow entirely) lets the room be left at any time, and re-entering always rebuilds a fresh puzzle.</p>
+<h3>Ending Blocks: Ending Letters <small>(rainbow door on Cloud World's start platform, x≈460 — v1.22.0)</small></h3>
+<p><strong>Puzzle Blocks mode #3, and the proof of the framework's prompt-structure reuse:</strong>
+the same picture-prompt loop as the meadow's Letter Blocks with the blank moved to the <em>end</em> of
+the word ("CA_" → the T block completes CAT). <code>EndingLetterBlocksMachine</code>
+(<code>js/puzzleblocks.js</code>) is a content table plus a ~20-line mode config on the untouched
+generic engine — the winning letter flies onto the <em>trailing</em> blank. Its word bank
+<code>EL_WORDS</code> holds 38 words chosen for crisp single-letter endings: doubles (BALL, EGG),
+digraphs (DUCK, KING), and silent-e words (MOUSE, CAKE) are deliberately excluded so "the last
+letter" always has one honest answer for a five-year-old, and every word reuses an existing
+kid-verified <code>LB_ICONS</code> picture — zero new art, no contact-sheet cycle needed. The room
+(<code>'endingblocks'</code>) is the letterblocks layout in cloud clothes: one non-scrolling screen,
+three bonkable answer blocks at the Buddy-Block underside height, candy through the normal economy,
+wobble-and-plop wrong answers, no win state, an always-open <strong>ExitDoor</strong>, and a fresh
+shuffled pool on every visit. Per the biome-fit plan in <code>BACKLOG.md</code> (Cloud = ending
+letters), the entrance is a press-gated rainbow <code>SubDoor</code> on Cloud World's enemy-free
+start platform — stand on it and press Space/★.</p>
 <h3>Desert Sand Slide <small>(stage 6-1, before the Monster Truck Rally — v1.21.0)</small></h3>
 <p><strong>RIDE MODE debuts: a reusable automatic-traversal framework</strong> (<code>js/ride.js</code>).
 The stage explains where the monster truck comes from. On foot in the desert, a <strong>Pattern
@@ -888,7 +904,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all fifteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party, and the whole Weather Factory: lever reversibility and latching, the no-power dependency, every recipe, and the rainbow ridden across the gap, and the Letter Blocks learning room: content-data integrity, the puzzle controller's pool/shuffle/no-repeat/double-trigger logic, and the physical room ridden with real jumps — wrong answers, a correct answer through to its candy reward and next puzzle, leaving mid-animation, and replay, plus the Puzzle Blocks engine/mode reuse contract: a throwaway numeric mode driven through a full round on the untouched engine, and the linear world chains: all three stage archways walked for real into their stage-clear beats, each final stage's star completing the world with unlock + party-onward checks, and title-screen stage resume, and the whole Desert Sand Slide: pattern rounds to the board, auto-riding, jumps, trick stacking, the rainbow friendship shot, part loss/re-queue economics, procgen spacing invariants over 60 random templates, the fifth part's victory run, and the mega-launch delivering the parts into the rally's skipped-hunt ceremony), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 598 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all sixteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party, and the whole Weather Factory: lever reversibility and latching, the no-power dependency, every recipe, and the rainbow ridden across the gap, and the Letter Blocks learning room: content-data integrity, the puzzle controller's pool/shuffle/no-repeat/double-trigger logic, and the physical room ridden with real jumps — wrong answers, a correct answer through to its candy reward and next puzzle, leaving mid-animation, and replay, and the Ending Blocks room the same way plus its content-table shape proofs (every blank is the final letter, every icon already exists, the winning letter targets the word's end), plus the Puzzle Blocks engine/mode reuse contract: a throwaway numeric mode driven through a full round on the untouched engine, and the linear world chains: all three stage archways walked for real into their stage-clear beats, each final stage's star completing the world with unlock + party-onward checks, and title-screen stage resume, and the whole Desert Sand Slide: pattern rounds to the board, auto-riding, jumps, trick stacking, the rainbow friendship shot, part loss/re-queue economics, procgen spacing invariants over 60 random templates, the fifth part's victory run, and the mega-launch delivering the parts into the rally's skipped-hunt ceremony), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 614 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -945,7 +961,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.21.2 · built for Jack ·
+  Block Buddies v1.22.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

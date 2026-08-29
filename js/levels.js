@@ -27,6 +27,7 @@ const LEVEL_META = {
   water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' }, // stage two: cause-and-effect temple
   cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' }, // stage two: weather recipes
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
+  endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' } // stage 6-1: earn the truck
 };
 
@@ -211,6 +212,9 @@ function buildLevel(n) {
     lv.bridges.push({ x: 4140, y: 570, w: 240, active: false, t: 0 });
     addPlat(lv, 4440, 570, 160, { h: 80 });
     lv.hints.push({ x: 250, y: 430, icon: 'space' });
+    // ENDING BLOCKS learning room: press-gated rainbow door on the calm,
+    // enemy-free start platform (rainbow = the learning-door style everywhere)
+    lv.subDoors.push(new SubDoor(460, 520, 'endingblocks', 'rainbow', { press: true }));
     pick(lv, 380, 540, 'rainbow');
     pick(lv, 2350, 500, 'rainbow');
     pick(lv, 3760, 490, 'heart');
@@ -1123,6 +1127,21 @@ function buildLevel(n) {
     for (const s of lv.puzzle.solids) lv.solids.push(s);
     lv.exitDoors.push(new ExitDoor(1150, G));
     lv.checks.push(new Checkpoint(120, G));
+  }
+
+  if (n === 'endingblocks') { // ---------------- ENDING BLOCKS (Ending Letters)
+    // The Cloud World sibling of the meadow's LETTER BLOCKS room — same
+    // single-screen learning-garden layout, same continuous replay with an
+    // always-open EXIT door, but the blank moves to the END of the word.
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new EndingLetterBlocksMachine(G);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.exitDoors.push(new ExitDoor(1150, G));
+    lv.checks.push(new Checkpoint(120, G));
+    lv.decor.clouds = [];
+    for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
   }
 
   if (n === 'piperoom') { // ---------------- SECRET PIPE ROOM (cause & effect)

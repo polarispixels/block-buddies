@@ -8,6 +8,30 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.22.0] - 2026-08-29
+
+### Added
+
+- **ENDING BLOCKS** — the second literacy Puzzle Blocks mode (backlog #13,
+  planned as "Ending Letter Blocks"): same picture-prompt loop as the
+  meadow's LETTER BLOCKS, but the blank moves to the END of the word
+  (`CA_` → T). `EndingLetterBlocksMachine` in `js/puzzleblocks.js` proves
+  the prompt-structure reuse the framework promised — the mode is a content
+  table plus a ~20-line config on the untouched generic engine.
+- **New word bank `EL_WORDS`**: 38 words with crisp single-letter endings
+  (doubles like BALL, digraphs like DUCK, and silent-e words like MOUSE are
+  deliberately excluded), every one reusing an existing kid-verified
+  `LB_ICONS` picture — zero new art.
+- **The room**: a cloud-themed single-screen learning garden ('endingblocks')
+  cloned from the letterblocks layout — three bonkable answer blocks, candy
+  per correct answer, continuous replay, always-open EXIT door. Entered via
+  a press-gated rainbow SubDoor on Cloud World's calm start platform
+  (rainbow = the learning-door style everywhere).
+- Harness: 16 new checks — content-table shape (final-letter blanks, icon
+  reuse, distractor sanity), engine-subclass contract, fly-target lands past
+  the word's center, no-repeat across reshuffles, full first-pass coverage,
+  and a real walk-in/wrong-bump/right-bump/exit traversal of the room.
+
 ## [1.21.2] - 2026-08-29
 
 ### Changed (Ryan's second playtest round)

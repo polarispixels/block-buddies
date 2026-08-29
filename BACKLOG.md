@@ -29,7 +29,7 @@ release spec. Maintenance rules:
 | 10 | New World: The Clockwork Castle | Major World | idea (save for a major release) |
 | 11 | Letter Blocks: Beginning Letters | Puzzle Blocks mode | ✅ shipped v1.18.0 — reusable picture-prompt framework (word bank, puzzle controller, `ExitDoor` primitive) + first instance in Block Meadow: missing-first-letter, candy reward (see CHANGELOG 1.18.0). Second iteration v1.19.0 after kid playtest: all icons redrawn with contact-sheet review, word bank 20 → 60 (see CHANGELOG 1.19.0) |
 | 12 | Puzzle Blocks framework formalization | Framework | ✅ shipped v1.19.1 — engine/mode split in `js/puzzleblocks.js` (`PuzzleBlocksMachine` generic engine; Letter Blocks becomes its first mode), framework backlog documented below (see item 11 of the doc sections + `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md`) |
-| 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | 🎯 next up |
+| 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | ✅ shipped v1.22.0 — `EndingLetterBlocksMachine` (mode #3, a content table + ~20-line config on the untouched engine, proving prompt-structure reuse); 38-word `EL_WORDS` bank with crisp single-letter endings, 100% reused kid-verified icons (zero new art); cloud-themed room off Cloud World's start platform via a press-gated rainbow door (see CHANGELOG 1.22.0) |
 | 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | queued (after 13) |
 | 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | ✅ shipped v1.21.0 — `PatternBlocksMachine` (complete-the-color-pattern, no reading) debuts inside the Desert Sand Slide, 3 rounds free the boogie board; a standalone replayable room can reuse it any time |
 | 17 | Desert Sand Slide + Ride Mode framework | Stage + framework | ✅ shipped v1.21.0 — world 6 opens with 'sandslide' (chain `7: ['sandslide', 7]`): pattern puzzle → boogie board → procedural heightfield ride (js/ride.js: RideMode/RideCourse/SandSlide) → 5 truck parts → victory run → mega-ramp into the rally's delivered ceremony (see CHANGELOG 1.21.0) |
@@ -365,7 +365,7 @@ Extend the engine only when a real mode needs it (the multi-step/ordered-answer
 architecture for Build-the-Word and Sequence Blocks is explicitly deferred).
 
 **Mode backlog** (families; see spec for full detail):
-- **A. Letters/phonics**: A1 beginning ✅ · A2 ending · A3 middle (vowels) ·
+- **A. Letters/phonics**: A1 beginning ✅ · A2 ending ✅ (v1.22.0) · A3 middle (vowels) ·
   A4 beginning sound (image-only) · A5 whole-word match · A6 rhyming ·
   A7 word families · A8 build-the-entire-word (multi-step, future)
 - **B. Vocabulary/classification**: categories (animal/food/vehicle...) ·
@@ -392,9 +392,11 @@ MELT?") · Zombie Town = playful rhymes, night/day, memory.
 
 **Next three builds** (chosen to prove framework breadth):
 1. **Ending Letter Blocks** — cheapest extension, tests prompt-structure reuse.
+   ✅ shipped v1.22.0.
 2. **Number Blocks: Count the Objects** — first non-literacy mode; numeric
    answers, multi-object prompts.
 3. **Pattern Blocks** — reasoning with zero reading required; visual choices.
+   ✅ shipped v1.21.0 (debuted inside the Desert Sand Slide).
 
 **Never build** (protect "the child wants to play"): lessons, dashboards,
 grades, parent reporting, timers, skill trees, XP, adaptive-learning engines,

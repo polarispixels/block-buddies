@@ -51,7 +51,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
 | `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `ExitDoor` (non-solid exit trigger for win-state-free sublevels, `lv.exitDoors`), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
-| `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering + optional `roundsToWin`/`onWin` success state and `cx` placement for scrolling levels; `LetterBlocksMachine` is mode #1, `PatternBlocksMachine` — complete-the-color-pattern, no reading — is mode #2, debuting in the Sand Slide), and CONTENT tables (`LB_WORDS` 60-word bank, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
+| `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering + optional `roundsToWin`/`onWin` success state and `cx` placement for scrolling levels; `LetterBlocksMachine` is mode #1, `PatternBlocksMachine` — complete-the-color-pattern, no reading — is mode #2, debuting in the Sand Slide; `EndingLetterBlocksMachine` — the blank moves to the END of the word, "CA_"→T — is mode #3, in the 'endingblocks' cloud room), and CONTENT tables (`LB_WORDS` 60-word bank, `EL_WORDS` 38-word ending bank — crisp single-letter endings only, icons 100% reused, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
 | `js/ride.js` | RIDE MODE, the reusable automatic-traversal framework: `RideMode` (generic heightfield rider — auto-forward, gravity, jump+coyote, natural ramp launches off falling-away lips, airborne trick combos; nothing desert-specific — future snowboards/minecarts/lava surfing reuse it), `RideCourse` (template procgen: terrain nodes + things, speed-scaled breather-flat constraint after every template), `SandSlide` (desert content + orchestration on `lv.ride`: pattern-puzzle→board handoff, friendship cactus, 5 truck parts with loss/re-queue that can never soft-lock, victory run, mega-ramp `stageClear(7)` with `game.partsDelivered`), plus the contact-sheet-reviewed desert art pack |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
@@ -70,7 +70,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 |---|---|---|---|---|
 | 1 | Block Meadow | meadow | tutorial, fire block; Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | stage archway (x=4230) → BLOCK MEADOW 0-2 ('meadow2': 6800px, bigBrick walls + refill buddy blocks); its finale star completes the world |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | stage archway (x=3880) → SUNKEN TEMPLE 1-2; its treasure star completes the world |
-| 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | stage archway (x=4700 island) → WEATHER FACTORY 2-2; its lonely star completes the world |
+| 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch; Ending Blocks learning room (press-gated rainbow SubDoor x=460 on the start platform) — Puzzle Blocks mode #3, ending letters | stage archway (x=4700 island) → WEATHER FACTORY 2-2; its lonely star completes the world |
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
@@ -167,7 +167,7 @@ via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2', 'cloud2', 'letterblocks'; since v1.20.0
+  'meadow2', 'water2', 'cloud2', 'letterblocks', 'endingblocks'; since v1.20.0
   meadow2/water2/cloud2 are CHAIN STAGES started via `startLevel`, not
   sublevels — the rest are true sublevels), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
@@ -211,7 +211,8 @@ via `drawBoy`/`drawHead`).
   Letter Blocks ('letterblocks', off Block Meadow) is the first PUZZLE BLOCKS
   mode — the educational mini-game framework in `js/puzzleblocks.js` (see that
   row above and BACKLOG.md item 11 for the full mode backlog; next planned
-  modes: Ending Letter Blocks, Count the Objects, Pattern Blocks). It's also
+  modes: Count the Objects next; Ending Letter Blocks shipped v1.22.0 as
+  Cloud World's 'endingblocks' room, Pattern Blocks v1.21.0). It's also
   the first sublevel with no win state — a new `ExitDoor` primitive
   (`lv.exitDoors`) lets the room be left at any time via `game.exitSub()`
   directly, skipping `subWin`/party entirely, and re-entry always rebuilds a
@@ -250,7 +251,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 598 checks; must print
+  actual badge/footer values). 614 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

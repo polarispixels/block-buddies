@@ -1231,6 +1231,89 @@ check('the room is replayable without limit (no completion flag set)', G().level
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- Ending Letter Blocks: mode logic ----------------
+// content-table shape: every entry blanks exactly the LAST letter and the
+// icon it points at already exists in the kid-verified LB_ICONS set
+check('EL_WORDS entries all blank the final letter and reuse existing icons',
+  vm.runInContext(`EL_WORDS.length >= 30 && EL_WORDS.every(w =>
+    w.prompt.endsWith('_') &&
+    w.prompt.slice(0, -1).toLowerCase() === w.word.slice(0, -1) &&
+    w.correct === w.word[w.word.length - 1].toUpperCase() &&
+    w.distractors.length === 2 &&
+    w.distractors.every(d => d !== w.correct) &&
+    w.distractors[0] !== w.distractors[1] &&
+    typeof LB_ICONS[w.word] === 'function')`, sandbox));
+check('Ending Letter Blocks is a mode of the generic engine, not a fork of it',
+  vm.runInContext('new EndingLetterBlocksMachine(620) instanceof PuzzleBlocksMachine', sandbox));
+vm.runInContext('game.testEL = new EndingLetterBlocksMachine(620);', sandbox);
+const ELT = () => vm.runInContext('game.testEL', sandbox);
+check('fresh ending machine starts idle with a word and 3 unique answer letters',
+  ELT().state === 'idle' && !!ELT().current && new Set(ELT().slots.map(s => s.value)).size === 3 &&
+  ELT().slots.some(s => s.value === ELT().current.correct));
+check('the flying letter targets the END of the word, past its center',
+  vm.runInContext('game.testEL.mode.flyTarget(game.testEL.current).x', sandbox) > 640);
+// pool exhaustion across 2+ reshuffles: never repeat back-to-back, and the
+// first pass deals every word once
+vm.runInContext(`
+  game.testEL2 = new EndingLetterBlocksMachine(620);
+  game.testELSeen = [];
+  const elN = EL_WORDS.length;
+  for (let i = 0; i < elN * 2 + 10; i++) {
+    game.testELSeen.push(game.testEL2.current.word);
+    const okIdx = game.testEL2.slots.findIndex(s => s.value === game.testEL2.current.correct);
+    game.testEL2.onAnswer(game.testEL2.solids[okIdx]);
+    for (let f = 0; f < 100; f++) game.testEL2.update(1 / 60);
+  }
+`, sandbox);
+const elSeen = vm.runInContext('game.testELSeen', sandbox);
+const elPool = vm.runInContext('EL_WORDS.length', sandbox);
+check('no two consecutive ending puzzles repeat across 2+ reshuffles',
+  elSeen.every((w, i) => i === 0 || w !== elSeen[i - 1]));
+check('every ending word appears within the first pass through the pool',
+  new Set(elSeen.slice(0, elPool)).size === elPool);
+
+// ---------------- secret: ENDING LETTER BLOCKS (Cloud World) ----------------
+vm.runInContext('game.startLevel(3)', sandbox);
+frames(150);
+check('Cloud World hides a rainbow learning door on the calm start platform',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'endingblocks' && d.press)", sandbox));
+// entering is deliberate: walking across the press-gated door never swallows the hero
+put(380, 520 - 94);
+frames(30, { ArrowRight: 1 });
+check('walking across the cloud rainbow door never auto-enters', G().level.n === 3 && G().player.x > 500);
+put(460 - 35, 520 - 94);
+frames(10);
+tap('Space');
+frames(10);
+check('standing on the door + Space enters ENDING LETTER BLOCKS', G().level.n === 'endingblocks');
+frames(150); // clear the intro cutscene
+const EL = () => vm.runInContext('game.level.puzzle', sandbox);
+check('the cloud room loads with a word, 3 unique letters, and an idle state',
+  !!EL().current && EL().state === 'idle' && new Set(EL().slots.map(s => s.value)).size === 3);
+const elCandy0 = G().candy;
+const elWrong = EL().slots.find(s => s.value !== EL().current.correct);
+vm.runInContext(`game.player.x = ${elWrong.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
+tap('ArrowUp');
+frames(40);
+check('a real jump into the wrong ending letter wobbles it and changes nothing',
+  G().candy === elCandy0 && EL().state === 'idle');
+const elRight = EL().slots.find(s => s.value === EL().current.correct);
+const elWordBefore = EL().current.word;
+vm.runInContext(`game.player.x = ${elRight.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
+tap('ArrowUp');
+frames(40);
+check('a real jump into the correct ending letter locks the round', EL().state !== 'idle');
+frames(110);
+check('ending candy is awarded exactly once through the normal economy', G().candy === elCandy0 + 1);
+check('a new randomized ending puzzle follows automatically', EL().current.word !== elWordBefore && EL().state === 'idle');
+vm.runInContext('game.player.x = 1150 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(5);
+check('the exit door returns to Cloud World with no puzzle leak',
+  G().level.n === 3 && G().state === 'play' && G().level.puzzle === null);
+check('the ending room is replayable without limit (no completion flag set)', !G().miniDone.endingblocks);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- secret: TORCH CAVERN (observation & matching) ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
 frames(150);
