@@ -295,9 +295,9 @@ class LetterBlocksMachine {
   // else in the machine.
   drawPrompt(ctx) {
     const word = this.current;
-    LB_ICONS[word.word](ctx, 640, 200, 200);
+    LB_ICONS[word.word](ctx, 640, 150, 190);
     const filled = this.state === 'hold';
-    outlineText(ctx, filled ? word.word.toUpperCase() : word.prompt, 640, 340, 64, filled ? '#7be07b' : '#fff');
+    outlineText(ctx, filled ? word.word.toUpperCase() : word.prompt, 640, 285, 64, filled ? '#7be07b' : '#fff');
   }
   draw(ctx) {
     const word = this.current;
@@ -325,7 +325,7 @@ class LetterBlocksMachine {
       const charW = 40, blankX = 640 - (word.prompt.length * charW) / 2 + charW / 2;
       const p = this.flyT / 0.6;
       const ex = lerp(sl.x, blankX, p);
-      const ey = lerp(this.g - 190 - this.bh / 2, 340, p) - Math.sin(p * Math.PI) * 80;
+      const ey = lerp(this.g - 190 - this.bh / 2, 285, p) - Math.sin(p * Math.PI) * 80;
       outlineText(ctx, sl.letter, ex, ey, lerp(this.bw * 0.55, 44, p), '#fff', '#2a3a6a');
     }
   }
