@@ -50,7 +50,8 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/util.js` | Constants (W=1280, H=720), helpers (rr, drawFace, drawBlock, drawCrown, keycaps, candy), palettes (`POW`, `RAINBOW`), keyboard input (`keys`/`justP`), `TouchUI` (two-thumb touch layout + fullscreen button + title tap hook) |
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
-| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
+| `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `ExitDoor` (non-solid exit trigger for win-state-free sublevels, `lv.exitDoors`), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
+| `js/letterblocks.js` | `LB_WORDS` (20-word content bank), `LB_ICONS` (procedural icon renderers), `LetterBlocksMachine` (the reusable Letter Blocks puzzle-controller machine, attached as `lv.puzzle` like other secret-room machines) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -66,7 +67,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 
 | # (internal n) | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
-| 1 | Block Meadow | meadow | tutorial, fire block; stagegate archway (x=4230, w now 4650, gate 4530) → BLOCK MEADOW 0-2 ('meadow2': 6800px, route barred by two bigBrick walls, refill buddy blocks) | star gate |
+| 1 | Block Meadow | meadow | tutorial, fire block; stagegate archway (x=4230, w now 4650, gate 4530) → BLOCK MEADOW 0-2 ('meadow2': 6800px, route barred by two bigBrick walls, refill buddy blocks); Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | star gate |
 | 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | star gate |
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
@@ -153,7 +154,7 @@ everywhere via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2', 'cloud2'), entered
+  'meadow2', 'water2', 'cloud2', 'letterblocks'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
   pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — 'garage' also requires slow/stopped
   entry in the truck so a race is never hijacked;
@@ -189,7 +190,15 @@ everywhere via `drawBoy`/`drawHead`).
   compact moonlit town (ZombieTown machine: night sky via drawBack, reveal
   pan cut 'townreveal', four NPCs with a need->solved->walk->square state
   model, four different solve verbs incl. spending a HUD candy with Space,
-  and a clock-tower festival finale gated on all four reaching the square). The Jungle Treehouse Trail ('treehouse',
+  and a clock-tower festival finale gated on all four reaching the square).
+  Letter Blocks ('letterblocks', off Block Meadow) is the first EDUCATIONAL
+  mini-game and the first reusable *framework*: content (`LB_WORDS`/`LB_ICONS`)
+  and the puzzle engine (`LetterBlocksMachine`) are deliberately separate so
+  future picture-prompt modes can reuse the engine with new content. It's also
+  the first sublevel with no win state — a new `ExitDoor` primitive
+  (`lv.exitDoors`) lets the room be left at any time via `game.exitSub()`
+  directly, skipping `subWin`/party entirely, and re-entry always rebuilds a
+  fresh puzzle. The Jungle Treehouse Trail ('treehouse',
   the biggest secret — a mini-adventure off world 10) adds two more reusable pieces: `lv.vines`
   (`Vine` class: contextual jump-in grab, deterministic pendulum swing,
   Up/Space release with momentum + a friendly boost; `lv.vineHold` tracks the
@@ -224,7 +233,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 520 checks; must print
+  actual badge/footer values). 546 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

@@ -27,6 +27,7 @@ release spec. Maintenance rules:
 | 8 | Unicorn Forest 7-2: The Enchanted Garden | Stage 2 | idea |
 | 9 | New World: The Toy Factory | Major World | idea |
 | 10 | New World: The Clockwork Castle | Major World | idea (save for a major release) |
+| 11 | Letter Blocks: Beginning Letters | Educational mini-game | ✅ shipped v1.18.0 — reusable picture-prompt framework (`js/letterblocks.js`: word bank, `LetterBlocksMachine` puzzle controller, `ExitDoor` primitive) + first instance in Block Meadow: missing-first-letter, 20-word pool, candy reward (see CHANGELOG 1.18.0) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark

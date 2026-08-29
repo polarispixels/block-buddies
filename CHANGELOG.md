@@ -8,6 +8,32 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.18.0] - 2026-08-29
+
+### Added — LETTER BLOCKS: a reusable educational mini-game framework
+
+The first non-platforming mini-game: a picture-prompt puzzle framework
+(`js/letterblocks.js`) built to grow into future modes (missing-last-letter,
+picture-to-word matching, word families, counting, colors...), plus its
+first instance, **Beginning Letters**, in Block Meadow.
+
+- **The room**: a small learning-garden screen off a new rainbow-sparkle
+  door (x=2700, past the second spider) — a picture, a word with its first
+  letter missing (e.g. "_AT"), and three big physical answer blocks. Jump up
+  and bonk the correct one from underneath, exactly like a Buddy Block; the
+  letter flies into the blank, the word completes, and candy is awarded
+  through the normal economy. Wrong answers just wobble and bounce — no
+  punishment, no reset, unlimited retries.
+- **20-word pool**: cat, dog, pig, fox, bug, fish, bird, frog, duck, bear,
+  ball, book, bed, cup, hat, car, sun, moon, tree, apple — each with its own
+  procedural icon and plausible-letter distractors (some intentionally
+  overlapping word families, e.g. cat/hat share `_AT`). Shuffled and cycled
+  without back-to-back repeats; reshuffles once exhausted.
+- **Always replayable**: no required round count, no completion state, no
+  score beyond the shared candy counter. A new `ExitDoor` primitive lets the
+  room be left at any time, mid-animation or not — the first sublevel exit
+  that isn't gated behind a win condition.
+
 ## [1.17.0] - 2026-08-23
 
 ### Added — THE WEATHER FACTORY 2-2: recipes in the sky
