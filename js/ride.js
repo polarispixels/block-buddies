@@ -650,6 +650,9 @@ class SandSlide {
     this.toastT = 0; this.toastText = ''; this.toastKind = null;
     this.friendCactus = null;         // the scripted friendship moment
     this.megaLipX = 0;                // set when the victory mega-ramp exists
+    this.tutPhase = null;             // 'jump' | 'trick' freeze-frame prompts
+    this.tutDone = { jump: false, trick: false };
+    this.finaleT = 0;                 // the grand farewell flight clock
     this.t = 0;
     this.buildLearnStrip();
   }
@@ -780,6 +783,35 @@ class SandSlide {
   updatePlayer(pl, dt) {
     this.t += dt;
     pl.t += dt;
+    // ---- tutorial freeze-frames: the game pauses and teaches the button ----
+    if (this.tutPhase) {
+      if (justP.ArrowUp) {
+        if (this.tutPhase === 'jump') {
+          this.ride.grounded = false;
+          this.ride.vy = this.ride.jumpVy;
+          AudioSys.sfx('jump');
+        } else {
+          this.ride.trickN++;
+          this.ride.spinTarget += TAU;
+          AudioSys.sfx('flap');
+          Particles.burst(pl.cx, pl.cy, 8, { colors: RAINBOW, type: 'sparkle', sp1: 180, l1: 0.6, s1: 9 });
+        }
+        this.tutPhase = null;
+      }
+      return; // the world holds its breath until the taught button is pressed
+    }
+    if (this.state === 'riding' && !this.tutDone.jump && pl.x > this.startX + 90) {
+      this.tutDone.jump = true;
+      this.tutPhase = 'jump';
+      AudioSys.sfx('switch');
+      return;
+    }
+    if (this.tutDone.jump && !this.tutDone.trick && !this.ride.grounded && this.ride.vy < -120) {
+      this.tutDone.trick = true;
+      this.tutPhase = 'trick';
+      AudioSys.sfx('switch');
+      return;
+    }
     if (pl.inv > 0) pl.inv -= dt;
     if (pl.moodT > 0) pl.moodT -= dt; else pl.mood = 'happy';
     this.ride.speed = this.speedFor(this.phase());
@@ -797,16 +829,35 @@ class SandSlide {
       this.ride.hop(-520); // the board pops him out — momentum survives
     }
     this.things(pl, dt);
-    // the mega launch: leaving the victory lip hands the stage over
+    // the mega launch: leaving the victory lip begins the GRAND FINALE — a
+    // long soaring farewell flight with auto-stacking flips (mash for more!)
     if (this.state === 'victory' && this.megaLipX && pl.x > this.megaLipX && !this.ride.grounded) {
       this.state = 'launched';
-      this.ride.spinTarget += TAU * 3; // an outrageous farewell flip
+      this.finaleT = 0;
+      this.ride.vy = -390;        // a long shallow soaring arc that stays on screen
+      this.ride.gravity = 270;    // floaty grand-finale hang time
+      this.ride.spinTarget += TAU * 2;
       AudioSys.sfx('launch');
+      AudioSys.sfx('cheer');
+      game.shake = Math.max(game.shake, 0.2);
     }
-    if (this.state === 'launched' && this.ride.vy > -80) {
-      // apex of the great flight: cut to the rally with the parts in hand
-      game.partsDelivered = true;
-      game.stageClear(7);
+    if (this.state === 'launched') {
+      const prevT = this.finaleT;
+      this.finaleT += dt;
+      // a fresh outrageous flip every beat, plus a rainbow sparkle trail
+      for (const beat of [0.5, 1.0, 1.5, 2.0, 2.5]) {
+        if (prevT < beat && this.finaleT >= beat) {
+          this.ride.trickN++;
+          this.ride.spinTarget += TAU;
+          AudioSys.sfx(beat >= 1.5 ? 'neigh' : 'flap');
+        }
+      }
+      Particles.burst(pl.cx - 30, pl.cy, 2, { colors: RAINBOW, type: 'star', sp1: 90, l0: 0.5, l1: 1.1, s1: 9, grav: 60, up: 0 });
+      if (this.finaleT > 3) {
+        // the flight of a lifetime is complete: cut to the rally, parts in hand
+        game.partsDelivered = true;
+        game.stageClear(7);
+      }
     }
     if (this.ride.grounded && chance(0.5)) {
       Particles.burst(pl.x, pl.y + pl.h, 1, { colors: ['#e8c078'], sp1: 90, l1: 0.4, grav: 200, up: 40, s1: 6 });
@@ -989,6 +1040,22 @@ class SandSlide {
       if (this.toastKind) drawSlidePart(ctx, pl.cx - 44, ty, 40, this.toastKind, this.t);
       outlineText(ctx, this.toastText, pl.cx + (this.toastKind ? 24 : 0), ty, 34, '#ffe156', '#5a4a86');
       ctx.restore();
+    }
+    // tutorial freeze-frame: a bright bubble showing the taught button
+    if (this.tutPhase) {
+      const pl = game.player;
+      const bx = pl.cx, by = pl.y - 96 + Math.sin(this.t * 3) * 5;
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = '#1a1030';
+      ctx.fillRect(game.cam.x, game.cam.y, W, H); // the held breath
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      rr(ctx, bx - 118, by - 52, 236, 104, 18); ctx.fill();
+      ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 4;
+      rr(ctx, bx - 118, by - 52, 236, 104, 18); ctx.stroke();
+      drawKeycap(ctx, bx - 58, by, 58, 'up', this.t);
+      outlineText(ctx, this.tutPhase === 'jump' ? 'JUMP!' : 'TRICK!', bx + 38, by, 36, this.tutPhase === 'jump' ? '#57d357' : '#ff5fa2', '#3a2a4a');
     }
   }
 }

@@ -2221,6 +2221,21 @@ check('slide: a won machine ignores further bumps', vm.runInContext('game.level.
 put(1390 - 28, 620 - 94);
 frames(10);
 check('slide: grabbing the board starts the ride', SL().state === 'riding');
+// the tutorial freeze-frames: JUMP taught on the ground, TRICK taught mid-air
+frames(30);
+check('tutorial: the ride freezes with the JUMP prompt', SL().tutPhase === 'jump');
+const frozenX = G().player.x;
+frames(30);
+check('tutorial: frozen means frozen', G().player.x === frozenX);
+tap('ArrowUp');
+frames(4);
+check('tutorial: the taught press jumps and resumes the ride', SL().tutPhase !== 'jump' && SL().ride.grounded === false);
+frames(6);
+check('tutorial: mid-air, the TRICK prompt freezes the moment', SL().tutPhase === 'trick');
+tap('ArrowUp');
+frames(4);
+check('tutorial: the taught press spins the first trick', SL().tutPhase === null && SL().ride.trickN >= 1);
+frames(80); // land and roll on
 const rx0 = G().player.x;
 frames(60);
 check('slide: the board rides itself forward (no input needed)', G().player.x > rx0 + 300);
@@ -2296,8 +2311,13 @@ frames(14);
 check('slide: the fifth part triggers the VICTORY RUN', SL().state === 'victory' && SL().partsGot.length === 5);
 check('slide: the mega ramp is waiting at the end', SL().megaLipX > 0);
 vm.runInContext('game.player.x = game.level.ride.megaLipX - 300; game.player.y = game.level.ride.course.groundY(game.player.x + 28) - game.player.h;', sandbox);
-frames(120);
-check('slide: the mega launch fires the stage-clear handoff',
+frames(45);
+check('finale: the mega launch begins the GRAND FLIGHT (not an instant cut)',
+  SL().state === 'launched' && G().state === 'play');
+frames(60);
+check('finale: the farewell flight auto-stacks outrageous flips', SL().ride.spinTarget > 12 && G().state === 'play');
+frames(150);
+check('slide: after the flight of a lifetime, the stage-clear handoff fires',
   G().state === 'stageclear' || G().level.n === 7);
 frames(170);
 check('slide: STAGE CLEAR lands in the MONSTER TRUCK RALLY', G().level.n === 7 && (G().state === 'intro' || G().state === 'play'));

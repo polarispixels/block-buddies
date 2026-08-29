@@ -8,6 +8,20 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.21.1] - 2026-08-29
+
+### Changed (Ryan's playtest notes)
+
+- **Sand Slide tutorial freeze-frames**: moments after the board starts
+  moving, the world holds its breath and shows the ▲ key with "JUMP!" —
+  the taught press performs the jump and resumes; mid-air it freezes once
+  more with "TRICK!" so the first flip is taught the same way.
+- **The GRAND FINALE flight**: the mega ramp no longer cuts to the stage
+  card at the apex (an accidental amputation of the ending). The launch now
+  begins a ~3-second soaring farewell arc — floaty hang time, an
+  auto-stacking outrageous flip every half second, a rainbow star trail,
+  and mashing jump piles on even more — before the handoff to the rally.
+
 ## [1.21.0] - 2026-08-29
 
 ### Added — DESERT SAND SLIDE: earn the monster truck (and a whole new way to move)
