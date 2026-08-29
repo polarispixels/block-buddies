@@ -25,7 +25,8 @@ const LEVEL_META = {
   zombietown: { name: 'ZOMBIE TOWN AFTER DARK', theme: 'cave', music: 'midnight' },
   meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' }, // stage two: the meadow keeps going
   water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' }, // stage two: cause-and-effect temple
-  cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' } // stage two: weather recipes
+  cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' }, // stage two: weather recipes
+  letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' }
 };
 
 function newLevel(n) {
@@ -38,7 +39,7 @@ function newLevel(n) {
     ramps: null, turbos: null, finishX: null,
     centipedes: [], castleX: null,
     space: false, mazeGrid: null, goalStar: null, mission: null,
-    subDoors: [], flight: false,
+    subDoors: [], exitDoors: [], flight: false,
     truckBuild: null, vents: null, risingLava: null,
     currents: null, shellSwitches: null, goldRush: null,
     vines: null, vineHold: null, vineLock: false,
@@ -105,6 +106,11 @@ function buildLevel(n) {
     spider(lv, 1350, G, 'walk', { range: 160 });
     spider(lv, 2250, G, 'walk', { range: 170 });
     spider(lv, 3700, G, 'walk', { range: 150 });
+    // the LETTER BLOCKS learning garden: a rainbow-sparkle door tucked
+    // between the second spider and the pipe room, clear of every scripted
+    // traversal in the harness's early level-1 playthrough — always
+    // available, no completion state, replay indefinitely
+    lv.subDoors.push(new SubDoor(2700, G, 'letterblocks', 'rainbow'));
     // the SECRET PIPE ROOM: a suspiciously oversized pipe that keeps burping
     // candy — walk into it and FWOOOP, you're inside the machine room
     lv.subDoors.push(new SubDoor(2950, G, 'piperoom', 'pipe'));
@@ -1059,6 +1065,20 @@ function buildLevel(n) {
     lv.decor.weeds = []; lv.decor.fish = [];
     for (let x = 60; x < 2560; x += rand(160, 320)) lv.decor.weeds.push({ x, h: rand(50, 120), seed: rand(9) });
     for (let i = 0; i < 8; i++) lv.decor.fish.push({ x: rand(100, 2500), y: rand(300, 1700), s: rand(0.6, 1.1), sp: rand(25, 60) * (chance(0.5) ? 1 : -1), c: randi(0, 3) });
+  }
+
+  if (n === 'letterblocks') { // ---------------- LETTER BLOCKS: BEGINNING LETTERS
+    // A single non-scrolling learning-garden screen: a picture + missing-
+    // first-letter word up top, three head-bonkable answer blocks on the
+    // floor (same underside-height convention as Buddy Blocks), and an
+    // always-open EXIT door. No win state — pure continuous replay.
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new LetterBlocksMachine(G);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.exitDoors.push(new ExitDoor(1150, G));
+    lv.checks.push(new Checkpoint(120, G));
   }
 
   if (n === 'piperoom') { // ---------------- SECRET PIPE ROOM (cause & effect)

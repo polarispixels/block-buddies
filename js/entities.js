@@ -344,7 +344,7 @@ class Player {
         AudioSys.sfx('land'); this.squash = 0.72;
         Particles.burst(this.cx, this.y + this.h, 5, { colors: ['#fff'], sp1: 110, l1: 0.3, grav: 300, up: 10, s1: 6 });
       }
-      if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus)) game.bumpBlock(res.headS);
+      if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus || res.headS.letterBlock)) game.bumpBlock(res.headS);
       // pushing a big-brick wall while small: a mushroom thought bubble hints the answer
       if (res.wall && res.wallS && res.wallS.bigBrick) res.wallS.hintT = 1;
       this.spin += this.vx * dt / 30;
@@ -4237,6 +4237,44 @@ class Spino {
 }
 
 // ================================================================ sublevel doors
+// A non-solid overlap trigger that leaves a sublevel WITHOUT going through
+// the win-state subWin/party flow every other sublevel uses. Continuous-play
+// rooms with no win condition (Letter Blocks, and future ones like it) need
+// a door that just always works.
+class ExitDoor {
+  constructor(cx, groundY) {
+    this.w = 70; this.h = 100;
+    this.x = cx - this.w / 2; this.y = groundY - this.h; this.groundY = groundY;
+    this.t = rand(9);
+  }
+  get cx() { return this.x + this.w / 2; }
+  get cy() { return this.y + this.h / 2; }
+  update(dt) {
+    this.t += dt;
+    if (game.state === 'play' && !game.cut && !game.endPhase && overlaps(this, game.player)) {
+      AudioSys.sfx('switch');
+      game.exitSub();
+    }
+    if (chance(0.06)) {
+      Particles.burst(this.cx + rand(-20, 20), this.y + rand(10, this.h - 10), 1,
+        { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const g = ctx.createLinearGradient(0, 0, 0, this.h);
+    g.addColorStop(0, '#ffe9a8'); g.addColorStop(1, '#ffd24a');
+    ctx.fillStyle = g;
+    rr(ctx, 0, 0, this.w, this.h, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,80,20,0.5)'; ctx.lineWidth = 4;
+    rr(ctx, 0, 0, this.w, this.h, 14); ctx.stroke();
+    ctx.fillStyle = '#7a5a20';
+    ctx.beginPath(); ctx.arc(this.w * 0.28, this.h * 0.55, 6, 0, TAU); ctx.fill();
+    outlineText(ctx, 'EXIT', this.w / 2, this.h * 0.22, 26, '#7a5a20', '#fff');
+    ctx.restore();
+  }
+}
 // The shared entrance into mini-games/sublevels. Stand a SubDoor in any level
 // (lv.subDoors) and walking into it calls game.enterSub(this.sub); on return
 // the player reappears beside it. `armed` prevents instant re-entry after

@@ -254,8 +254,9 @@ game.smashWall = function (s, cols) {
     for (let bx = s.x; bx < s.x + s.w; bx += 48)
       Particles.burst(bx + 24, by + 24, 3, { colors: cols || ['#d9b98a', '#a8895a'], type: 'block', sp1: 380, l1: 1, s1: 12, grav: 900 });
 };
-game.bumpBlock = function (s) { // head-bonk on a Buddy Block or a candy crate
+game.bumpBlock = function (s) { // head-bonk on a Buddy Block, a candy crate, or a Letter Blocks answer
   const pl = game.player;
+  if (s.letterBlock) { game.level.puzzle.onAnswer(s); return; }
   if (s.buddy) {
     // refill blocks guard MANDATORY brick walls: once the mushroom is spent and
     // Jack is small again, a fresh bonk re-arms the block — never a soft-lock
@@ -647,6 +648,7 @@ function updatePlay(dt) {
   for (const c of lv.checks) c.update(dt);
   if (lv.gate) lv.gate.update(dt);
   for (const sd of lv.subDoors) sd.update(dt);
+  for (const ed of lv.exitDoors) ed.update(dt);
   if (lv.mission) lv.mission.update(dt, pl);
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
   if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber / Treehouse Trail)
@@ -1266,6 +1268,7 @@ function renderWorld() {
   for (const c of lv.checks) c.draw(ctx);
   if (lv.gate) lv.gate.draw(ctx);
   for (const sd of lv.subDoors) sd.draw(ctx);
+  for (const ed of lv.exitDoors) ed.draw(ctx);
   if (lv.mission) lv.mission.draw(ctx, t);
   if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
   if (lv.puzzle) lv.puzzle.draw(ctx, t);
