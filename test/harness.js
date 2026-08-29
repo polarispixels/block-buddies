@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -507,10 +507,13 @@ check('candy volcano party', G().endPhase === 'party');
 frames(320);
 tap('Space');
 frames(5);
-check('magma party exit leads into level 7', G().level.n === 7 && (G().state === 'intro' || G().state === 'play'));
+check('magma party exit leads into the DESERT SAND SLIDE (world 6 chain)', G().level.n === 'sandslide' && (G().state === 'intro' || G().state === 'play'));
 check('level 7 unlocked & saved', G().unlocked === 7 && sandbox.localStorage.getItem('ffbg_unlocked') === '7');
 
 // ---------------- level 7: MONSTER TRUCK RALLY (now with BUILD YOUR TRUCK) ----------------
+// a direct start (no Sand Slide delivery) keeps the CLASSIC token hunt —
+// the regression guarantee for all existing rally content below
+vm.runInContext('game.startLevel(7)', sandbox);
 frames(160);
 check('rally loaded and playing', G().state === 'play' && G().level.theme === 'dirt');
 check('starts on the block wheel', G().player.vehicle === 'wheel');
@@ -2190,6 +2193,122 @@ frames(3);
 vm.runInContext('game.stageProg = {}; game.startWorld(1);', sandbox);
 frames(5);
 check('a fresh or fully-beaten world starts back at stage 1', G().level.n === 1);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
+// ---------------- DESERT SAND SLIDE (v1.21.0) — the ride, ridden for real ----------------
+vm.runInContext('game.partsDelivered = false; game.stageProg = {}; game.startWorld(7)', sandbox);
+frames(170);
+check('slide: world 6 now begins with the DESERT SAND SLIDE', G().level.n === 'sandslide' && G().state === 'play');
+const SL = () => vm.runInContext('game.level.ride', sandbox);
+check('slide: on-foot intro, a Pattern Blocks station, board still hidden',
+  SL().state === 'intro' && !SL().boardRevealed &&
+  vm.runInContext('game.level.puzzle instanceof PatternBlocksMachine', sandbox));
+// three correct pattern rounds free the board and lock the machine
+vm.runInContext(`
+  for (let r = 0; r < 3; r++) {
+    const pz = game.level.puzzle;
+    const ok = pz.slots.findIndex(s => s.value === pz.answer);
+    pz.onAnswer(pz.solids[ok]);
+    for (let f = 0; f < 100; f++) pz.update(1 / 60);
+  }
+`, sandbox);
+check('slide: 3 pattern rounds lock the machine WON and reveal the board',
+  vm.runInContext('game.level.puzzle.state', sandbox) === 'won' && SL().boardRevealed === true);
+vm.runInContext('game.level.puzzle.onAnswer(game.level.puzzle.solids[0])', sandbox);
+check('slide: a won machine ignores further bumps', vm.runInContext('game.level.puzzle.state', sandbox) === 'won');
+// grab the board -> the ride begins
+put(1390 - 28, 620 - 94);
+frames(10);
+check('slide: grabbing the board starts the ride', SL().state === 'riding');
+const rx0 = G().player.x;
+frames(60);
+check('slide: the board rides itself forward (no input needed)', G().player.x > rx0 + 300);
+// jumping and tricks
+tap('ArrowUp');
+frames(4);
+check('slide: jump still works on the board', SL().ride.grounded === false);
+frames(12); // let the coyote window lapse
+tap('ArrowUp');
+frames(3);
+tap('ArrowUp');
+frames(3);
+check('slide: airborne presses stack trick flips', SL().ride.trickN >= 2 && SL().ride.spinTarget > 6);
+frames(90);
+check('slide: landing resets the trick combo', SL().ride.grounded === true && SL().ride.trickN === 0);
+// the friendship shot: rainbow blooms a spiky cactus into a friend
+vm.runInContext(`(function () {
+  const pl = game.player, sl = game.level.ride;
+  pl.power = 'rainbow'; pl.cool = 0; pl.inv = 2;
+  sl.course.things = sl.course.things.filter(t => t.x < pl.x); // nothing else eats the shot
+  game.testFC = { kind: 'cactus', x: pl.x + 300, y: pl.y - 60, w: 60, h: 260, dead: false, t: 0, size: 150 };
+  sl.course.things.push(game.testFC);
+})()`, sandbox);
+tap('Space');
+frames(26);
+check('slide: a rainbow shot blooms the cactus into a friend', vm.runInContext('game.testFC.friendly', sandbox) === true);
+// part-loss economics: re-queued, never below zero
+vm.runInContext(`(function () {
+  const sl = game.level.ride;
+  sl.partsGot = ['tire', 'engine']; sl.pending = ['wheel', 'body', 'exhaust'];
+  game.testLose1 = sl.losePart('test');
+  game.testRequeued = sl.pending[0] === 'engine';
+  sl.partsGot = [];
+  game.testLose0 = sl.losePart('test');
+})()`, sandbox);
+check('slide: a lost part goes straight back into the spawn queue',
+  vm.runInContext('game.testLose1', sandbox) === true && vm.runInContext('game.testRequeued', sandbox) === true);
+check('slide: empty pockets can never go below zero', vm.runInContext('game.testLose0', sandbox) === false);
+// quicksand: comedy sink costs a part, momentum survives
+vm.runInContext(`(function () {
+  const sl = game.level.ride, pl = game.player;
+  pl.inv = 0;
+  sl.partsGot = ['tire']; sl.pending = ['engine', 'wheel', 'body', 'exhaust'];
+  sl.course.patches.push({ x0: pl.x + 80, x1: pl.x + 420 });
+})()`, sandbox);
+frames(40);
+check('slide: quicksand comedy-sinks and costs the part', SL().partsGot.length === 0 && G().state === 'play');
+// generator invariants: readable gaps at final-phase speed, forever
+vm.runInContext(`
+  (function () {
+    const sl = game.level.ride;
+    sl.partsGot = ['tire', 'engine', 'wheel', 'body']; sl.pending = ['exhaust']; // 'final' phase pacing
+    for (let i = 0; i < 60; i++) sl.emitTemplate();
+    const obs = sl.course.things.filter(t => ['cactus', 'rock', 'scorpion'].includes(t.kind)).sort((a, b) => a.x - b.x);
+    // every consecutive pair is either one deliberate cluster (jumped as one)
+    // or has real reaction room — never the unreadable in-between
+    game.testGaps = obs.every((o, i) => {
+      if (i === 0) return true;
+      const gap = o.x - (obs[i - 1].x + obs[i - 1].w);
+      return gap < 120 || gap >= 200;
+    });
+    game.testPartsAhead = sl.course.things.some(t => t.kind === 'part' && !t.dead);
+  })()
+`, sandbox);
+check('slide: 60 random templates never create unreadable obstacle spacing', vm.runInContext('game.testGaps', sandbox) === true);
+check('slide: missing parts keep spawning ahead (never blockable)', vm.runInContext('game.testPartsAhead', sandbox) === true);
+// the fifth part -> VICTORY RUN -> mega ramp -> the rally, parts in hand
+vm.runInContext(`(function () {
+  const sl = game.level.ride, pl = game.player;
+  sl.course.things.push({ kind: 'part', part: 'exhaust', x: pl.x + 60, y: pl.y, w: 52, h: 52, dead: false, t: 0 });
+})()`, sandbox);
+frames(14);
+check('slide: the fifth part triggers the VICTORY RUN', SL().state === 'victory' && SL().partsGot.length === 5);
+check('slide: the mega ramp is waiting at the end', SL().megaLipX > 0);
+vm.runInContext('game.player.x = game.level.ride.megaLipX - 300; game.player.y = game.level.ride.course.groundY(game.player.x + 28) - game.player.h;', sandbox);
+frames(120);
+check('slide: the mega launch fires the stage-clear handoff',
+  G().state === 'stageclear' || G().level.n === 7);
+frames(170);
+check('slide: STAGE CLEAR lands in the MONSTER TRUCK RALLY', G().level.n === 7 && (G().state === 'intro' || G().state === 'play'));
+frames(160);
+check('slide: every part arrived with the hero — the hunt is skipped',
+  vm.runInContext('game.level.truckBuild.delivered === true && game.level.truckBuild.count() === 3', sandbox));
+put(400, 620 - 94);
+frames(20);
+check('slide: walking up to the truck starts the assembly ceremony immediately',
+  vm.runInContext("game.level.truckBuild.state !== 'collect'", sandbox));
+check('slide: the delivered flag was consumed (no leak into later starts)', G().partsDelivered === false);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

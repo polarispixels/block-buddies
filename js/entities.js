@@ -134,6 +134,21 @@ class Player {
   setMood(m, t) { this.mood = m; this.moodT = t; }
   update(dt) {
     const lv = game.level;
+    // RIDE MODE (js/ride.js): while riding, the heightfield rider owns the
+    // physics entirely — shooting/cooldown stay live, everything else waits
+    if (lv.ride && lv.ride.state !== 'intro' && lv.ride.state !== undefined) {
+      this.cool = Math.max(0, this.cool - dt);
+      this.facing = 1;
+      if (justP.Space) {
+        const before = game.projectiles.length;
+        this.action();
+        // shots fired from a moving board inherit the ride's momentum, so
+        // they actually outrun the rider (rainbow is a slow projectile)
+        if (game.projectiles.length > before) game.projectiles[game.projectiles.length - 1].vx += Math.max(0, this.vx);
+      }
+      lv.ride.updatePlayer(this, dt);
+      return;
+    }
     this.t += dt;
     this.inv = Math.max(0, this.inv - dt);
     this.cool = Math.max(0, this.cool - dt);
@@ -4922,6 +4937,14 @@ class TruckBuild {
     const left = this.tokens.length - this.count();
     AudioSys.sfx(left === 0 ? 'powerup' : 'collect');
     if (left === 0) AudioSys.sfx('heart'); // every part found!
+  }
+  // Sand Slide handoff (v1.21.0): the hero arrives with every part already
+  // in hand — skip the hunt, the assembly ceremony fires the moment the
+  // player walks up to the waiting truck (state machine below is untouched)
+  deliver() {
+    for (const tk of this.tokens) tk.taken = true;
+    this.delivered = true;
+    this.toastT = 2.6;
   }
   nearCam() { return Math.abs(this.cx - (game.cam.x + W / 2)) < W; }
   update(dt, pl) {

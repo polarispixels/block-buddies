@@ -26,7 +26,8 @@ const LEVEL_META = {
   meadow2: { name: 'BLOCK MEADOW 0-2', theme: 'meadow', music: 'meadow' }, // stage two: the meadow keeps going
   water2: { name: 'SUNKEN TEMPLE 1-2', theme: 'water', music: 'water' }, // stage two: cause-and-effect temple
   cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' }, // stage two: weather recipes
-  letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' }
+  letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
+  sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' } // stage 6-1: earn the truck
 };
 
 // ---- linear world chains (v1.20.0) ----
@@ -34,7 +35,7 @@ const LEVEL_META = {
 // next, and the final stage's finale completes the WORLD. Worlds absent from
 // this table are single-stage chains (future stage-2s slot in by editing it).
 // Secret rooms are NOT chain members — they stay optional enterSub sublevels.
-const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'] };
+const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 7: ['sandslide', 7] };
 function stageChain(w) { return WORLD_STAGES[w] || [w]; }
 function stageInfo(id) { // -> {world, stage} for chain members, null otherwise
   for (const w in WORLD_STAGES) {
@@ -59,6 +60,7 @@ function newLevel(n) {
     currents: null, shellSwitches: null, goldRush: null,
     vines: null, vineHold: null, vineLock: false,
     puzzle: null, // secret-room machine (PipeWorks / TorchCavern / StarChamber)
+    ride: null,   // ride-mode orchestrator (SandSlide — js/ride.js)
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -392,6 +394,26 @@ function buildLevel(n) {
     for (let x = 150; x < lv.w; x += rand(350, 700)) lv.decor.rocks.push({ x, s: rand(0.7, 1.4) });
   }
 
+  if (n === 'sandslide') { // ---------------- DESERT SAND SLIDE (stage 6-1)
+    // Desert arrival on foot -> Pattern Blocks (3 rounds free the boogie
+    // board) -> the procedural downhill ride (js/ride.js) -> victory run ->
+    // mega-ramp launch into the rally with the truck parts in hand.
+    lv.w = 60000; lv.h = 720; // virtual width; the ride ends long before this
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, 1600, G); // the on-foot intro strip (normal physics)
+    lv.solids.push({ x: 1560, y: 0, w: 60, h: 720, slideWall: true, skipDraw: true }); // soft dune wall until the board is claimed
+    lv.hints.push({ x: 260, y: G - 190, icon: 'arrows' });
+    lv.hints.push({ x: 620, y: G - 300, icon: 'up' }); // jump — bump the pattern blocks!
+    lv.ride = new SandSlide(G, 1600);
+    lv.puzzle = new PatternBlocksMachine(G, {
+      cx: 800, roundsToWin: 3,
+      onWin: () => lv.ride.reveal()
+    });
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    pick(lv, 1450, G - 84, 'fire'); // shooting practice for the ride ahead
+    lv.checks.push(new Checkpoint(140, G));
+  }
+
   if (n === 7) { // ---------------- MONSTER TRUCK RALLY (bonus)
     lv.w = 7200;
     lv.lava = [{ x: 1500, w: 220 }, { x: 3000, w: 260 }, { x: 5100, w: 200 }];
@@ -434,6 +456,9 @@ function buildLevel(n) {
       crane: { x: 1250, topY: 350, lowY: G - 64 },
       plate: { x: 1108 }
     });
+    // arriving off the Sand Slide's mega ramp: parts already in hand, the
+    // ceremony fires on approach; a direct start keeps the classic hunt
+    if (game.partsDelivered) { game.partsDelivered = false; lv.truckBuild.deliver(); }
     // easter egg: don't tell anyone what's parked behind the starting line
     lv.decor.dinoTruck = { x: 42 };
     pick(lv, 1440, G - 90, 'fire');

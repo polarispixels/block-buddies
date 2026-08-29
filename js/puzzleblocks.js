@@ -2454,18 +2454,26 @@ const LB_ICONS = {
 // mode contract (only `entries`, `round`, and `drawPrompt` are required):
 //   entries: [...]                       content pool, shuffled by the engine
 //   round(entry) -> {correct, options}   options = 3 values incl. correct
-//   drawPrompt(ctx, entry, phase)        phase: 'idle' | 'fly' | 'hold'
+//   drawPrompt(ctx, entry, phase)        phase: 'idle' | 'fly' | 'hold' | 'won'
 //   drawChoice(ctx, value, x, y, size)?  default: big outlined text
 //   flyTarget(entry)? -> {x, y}          where the winning answer flies
 //   onCorrect()?                         reward override (default: 1 candy)
+//   cx?                                  world-x the station is centered on
+//                                        (default 640 — lets a machine live
+//                                        inside a scrolling level)
+//   roundsToWin? + onWin()?              success state: after N correct
+//                                        rounds the machine locks into
+//                                        phase 'won' and fires onWin once
+//                                        (continuous-play modes omit these)
 // Values are compared with === so modes should use primitives (letters,
 // numbers, color names) as choice values.
 class PuzzleBlocksMachine {
   constructor(groundY, mode) {
     this.mode = mode;
     this.g = groundY;
+    this.cx = mode.cx || 640;
     this.bw = 84; this.bh = 84;
-    this.slots = [380, 640, 900].map((x, idx) => ({ x, value: '', idx }));
+    this.slots = [this.cx - 260, this.cx, this.cx + 260].map((x, idx) => ({ x, value: '', idx }));
     this.solids = this.slots.map(sl => ({
       x: sl.x - this.bw / 2, y: this.g - 190 - this.bh, w: this.bw, h: this.bh,
       puzzleBlock: true, idx: sl.idx, skipDraw: true
@@ -2479,10 +2487,11 @@ class PuzzleBlocksMachine {
     this.flyT = 0; this.holdT = 0; this.flyFrom = -1;
     this.wobble = [0, 0, 0];
     this.cool = [0, 0, 0];
+    this.roundsWon = 0;
     this.onCorrect = mode.onCorrect || (() => {
       game.candy++;
       AudioSys.sfx('candy');
-      Particles.candyBurst(640, this.g - 300, 8);
+      Particles.candyBurst(this.cx, this.g - 300, 8);
     });
     this.nextPuzzle();
   }
@@ -2541,7 +2550,14 @@ class PuzzleBlocksMachine {
       }
     } else if (this.state === 'hold') {
       this.holdT += dt;
-      if (this.holdT > 0.9) this.nextPuzzle();
+      if (this.holdT > 0.9) {
+        this.roundsWon++;
+        if (this.mode.roundsToWin && this.roundsWon >= this.mode.roundsToWin) {
+          this.state = 'won'; // locked forever — the machine's job is done
+          AudioSys.sfx('fanfare');
+          if (this.mode.onWin) this.mode.onWin();
+        } else this.nextPuzzle();
+      }
     }
   }
   drawChoice(ctx, value, x, y, size) {
@@ -2570,7 +2586,7 @@ class PuzzleBlocksMachine {
     }
     if (this.state === 'fly') {
       const sl = this.slots[this.flyFrom];
-      const t = this.mode.flyTarget ? this.mode.flyTarget(this.current) : { x: 640, y: 285 };
+      const t = this.mode.flyTarget ? this.mode.flyTarget(this.current) : { x: this.cx, y: 285 };
       const p = this.flyT / 0.6;
       const ex = lerp(sl.x, t.x, p);
       const ey = lerp(this.g - 190 - this.bh / 2, t.y, p) - Math.sin(p * Math.PI) * 80;
@@ -2594,6 +2610,74 @@ class LetterBlocksMachine extends PuzzleBlocksMachine {
       },
       // the flying letter lands exactly on the prompt's blank
       flyTarget: w => ({ x: 640 - (w.prompt.length * 40) / 2 + 20, y: 285 })
+    });
+  }
+}
+
+// ---- mode 2: Pattern Blocks (complete the pattern) ----
+// No reading required: a row of colored funny-face blocks plays out a simple
+// pattern and the hero bumps the block that comes NEXT. Debuts inside the
+// Desert Sand Slide (3 correct rounds free the boogie board) — backlog #15.
+const PB_COLORS = {
+  red:    { c: '#ff5a5a', c2: '#d63a3a' },
+  blue:   { c: '#4aa3ff', c2: '#2f7fd8' },
+  yellow: { c: '#ffe156', c2: '#e8b93a' },
+  green:  { c: '#57d357', c2: '#3aa53a' }
+};
+const PB_PATTERNS = [
+  { seq: ['red', 'blue', 'red', 'blue'],        correct: 'red',    distractors: ['blue', 'yellow'] },
+  { seq: ['yellow', 'green', 'yellow', 'green'], correct: 'yellow', distractors: ['green', 'red'] },
+  { seq: ['blue', 'blue', 'red', 'blue', 'blue'], correct: 'red',   distractors: ['blue', 'green'] },
+  { seq: ['green', 'red', 'green', 'red'],      correct: 'green',  distractors: ['red', 'blue'] },
+  { seq: ['red', 'red', 'yellow', 'red', 'red'], correct: 'yellow', distractors: ['red', 'blue'] },
+  { seq: ['blue', 'yellow', 'blue', 'yellow'],  correct: 'blue',   distractors: ['yellow', 'green'] },
+  { seq: ['green', 'green', 'blue', 'green', 'green'], correct: 'blue', distractors: ['green', 'red'] },
+  { seq: ['yellow', 'red', 'yellow', 'red'],    correct: 'yellow', distractors: ['red', 'green'] },
+  { seq: ['red', 'green', 'blue', 'red', 'green'], correct: 'blue', distractors: ['red', 'yellow'] },
+  { seq: ['blue', 'red', 'blue', 'red'],        correct: 'blue',   distractors: ['red', 'yellow'] }
+];
+function pbDrawBlock(ctx, color, x, y, size) {
+  const p = PB_COLORS[color], h = size / 2;
+  const g = ctx.createLinearGradient(x, y - h, x, y + h);
+  g.addColorStop(0, p.c); g.addColorStop(1, p.c2);
+  ctx.fillStyle = g;
+  rr(ctx, x - h, y - h, size, size, size * 0.2); ctx.fill();
+  ctx.strokeStyle = 'rgba(51,34,50,0.55)'; ctx.lineWidth = Math.max(2, size * 0.05);
+  rr(ctx, x - h, y - h, size, size, size * 0.2); ctx.stroke();
+  drawFace(ctx, x, y, size * 0.6, 'happy', game.t, x * 0.01);
+}
+class PatternBlocksMachine extends PuzzleBlocksMachine {
+  constructor(groundY, opts = {}) {
+    const cx = opts.cx || 640;
+    super(groundY, {
+      cx,
+      entries: PB_PATTERNS,
+      roundsToWin: opts.roundsToWin,
+      onWin: opts.onWin,
+      round: p => ({ correct: p.correct, options: [p.correct].concat(p.distractors) }),
+      drawPrompt(ctx, p, phase) {
+        // the pattern row, then a pulsing ? box (filled by the answer on hold/won)
+        const n = p.seq.length + 1, bs = 66, gap = 14;
+        const x0 = cx - ((n - 1) * (bs + gap)) / 2;
+        for (let i = 0; i < p.seq.length; i++) pbDrawBlock(ctx, p.seq[i], x0 + i * (bs + gap), 200, bs);
+        const qx = x0 + p.seq.length * (bs + gap);
+        if (phase === 'hold' || phase === 'won') {
+          pbDrawBlock(ctx, p.correct, qx, 200, bs);
+          ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 5;
+          rr(ctx, qx - bs / 2 - 6, 200 - bs / 2 - 6, bs + 12, bs + 12, bs * 0.25); ctx.stroke();
+        } else {
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          rr(ctx, qx - bs / 2, 200 - bs / 2, bs, bs, bs * 0.2); ctx.fill();
+          ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 4;
+          rr(ctx, qx - bs / 2, 200 - bs / 2, bs, bs, bs * 0.2); ctx.stroke();
+          outlineText(ctx, '?', qx, 204, 44 + Math.sin(game.t * 4) * 4, '#8a7fae', '#fff');
+        }
+      },
+      drawChoice(ctx, color, x, y, size) { pbDrawBlock(ctx, color, x, y, size * 0.9); },
+      flyTarget: p => {
+        const n = p.seq.length + 1, bs = 66, gap = 14;
+        return { x: cx - ((n - 1) * (bs + gap)) / 2 + p.seq.length * (bs + gap), y: 200 };
+      }
     });
   }
 }

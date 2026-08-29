@@ -50,6 +50,7 @@ const game = {
   titlePlayer: null, titleSpider: null,
   combo: { up: 0, down: 0, t: 0 }, titleMsg: null,
   subReturn: null, miniDone: saveMini, stageProg: saveStage, flightStars: 0,
+  partsDelivered: false,
   deathPos: null
 };
 
@@ -717,6 +718,7 @@ function updatePlay(dt) {
   if (lv.mission) lv.mission.update(dt, pl);
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
   if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber / Treehouse Trail)
+  if (lv.ride && lv.ride.state === 'intro') lv.ride.updateIntro(dt, pl); // board pickup watch (js/ride.js)
   if (lv.vines) for (const v of lv.vines) v.update(dt, pl, lv); // swinging jungle vines
   // steam vents (Volcano Escape): idle platform -> bubbling warning -> blast.
   // The eruption phase turns the solid bouncy, and anyone already standing on
@@ -825,7 +827,7 @@ function updatePlay(dt) {
       if (game.subReturn) game.exitSub(); // mini-game over — back to the world
       else if (game.wonWorld) { const w = game.wonWorld; game.wonWorld = 0; if (w < 10) game.startWorld(w + 1); else game.goTitle(); }
       else if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
-      else if (lv.n === 6) game.startLevel(7); // and another one!
+      else if (lv.n === 6) game.startWorld(7); // and another one! (via the SAND SLIDE — world 6's chain)
       else if (lv.n === 7) game.startLevel(8); // and one more!
       else if (lv.n === 8) game.startLevel(9); // to infinity!
       else if (lv.n === 9) game.startLevel(10); // ...and beyond, to the dinosaurs!
@@ -1352,6 +1354,7 @@ function renderWorld() {
   // secret-room machines may paint a whole room interior BEHIND the solids and
   // goal star (the Beat Bash garage walls/roller door live here)
   if (lv.puzzle && lv.puzzle.drawBack) lv.puzzle.drawBack(ctx, t);
+  if (lv.ride) lv.ride.drawBack(ctx, t); // ride-mode heightfield terrain
   drawSolids(ctx, lv, cam, t);
   drawHints(ctx, lv, t);
   for (const c of lv.checks) c.draw(ctx);
@@ -1361,6 +1364,7 @@ function renderWorld() {
   if (lv.mission) lv.mission.draw(ctx, t);
   if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
   if (lv.puzzle) lv.puzzle.draw(ctx, t);
+  if (lv.ride) lv.ride.draw(ctx, t);
   if (lv.vines) for (const v of lv.vines) v.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
   for (const cn of lv.centipedes) cn.draw(ctx);
@@ -1372,7 +1376,19 @@ function renderWorld() {
   if (game.state === 'dead') {
     if (game.deathPos) game.player.drawSitting(ctx, game.deathPos.x, game.deathPos.y - 58);
   } else {
-    game.player.draw(ctx);
+    if (lv.ride && lv.ride.state !== 'intro') {
+      // riding: board underfoot, whole hero spins with the trick combo
+      const pl = game.player, rm = lv.ride.ride;
+      ctx.save();
+      ctx.translate(pl.cx, pl.cy);
+      ctx.rotate(rm.spin);
+      if (rm.trickN >= 3) ctx.translate(0, -6 - Math.sin(game.t * 12) * 4); // superman wobble
+      ctx.translate(-pl.cx, -pl.cy);
+      drawBoogieBoard(ctx, pl.cx, pl.y + pl.h + 4, 96, game.t);
+      game.player.draw(ctx);
+      ctx.restore();
+      if (rm.trickN >= 4 && chance(0.5)) Particles.burst(pl.cx, pl.cy, 2, { colors: RAINBOW, type: 'star', sp1: 120, l1: 0.5, s1: 8 });
+    } else game.player.draw(ctx);
   }
   if (game.state === 'caught') drawCatchCloud(ctx);
   Particles.draw(ctx);

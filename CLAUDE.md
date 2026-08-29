@@ -51,7 +51,8 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
 | `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `ExitDoor` (non-solid exit trigger for win-state-free sublevels, `lv.exitDoors`), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
-| `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering; `LetterBlocksMachine` is mode #1), and CONTENT tables (`LB_WORDS` 60-word bank, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
+| `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering + optional `roundsToWin`/`onWin` success state and `cx` placement for scrolling levels; `LetterBlocksMachine` is mode #1, `PatternBlocksMachine` — complete-the-color-pattern, no reading — is mode #2, debuting in the Sand Slide), and CONTENT tables (`LB_WORDS` 60-word bank, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
+| `js/ride.js` | RIDE MODE, the reusable automatic-traversal framework: `RideMode` (generic heightfield rider — auto-forward, gravity, jump+coyote, natural ramp launches off falling-away lips, airborne trick combos; nothing desert-specific — future snowboards/minecarts/lava surfing reuse it), `RideCourse` (template procgen: terrain nodes + things, speed-scaled breather-flat constraint after every template), `SandSlide` (desert content + orchestration on `lv.ride`: pattern-puzzle→board handoff, friendship cactus, 5 truck parts with loss/re-queue that can never soft-lock, victory run, mega-ramp `stageClear(7)` with `game.partsDelivered`), plus the contact-sheet-reviewed desert art pack |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -73,14 +74,15 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
-| 7 | Monster Truck Rally | dirt | Build-Your-Truck opening (find wheels/engine/core, assembly ceremony) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
+| 7 | Monster Truck Rally | dirt | STAGE 6-1 is the DESERT SAND SLIDE ('sandslide', js/ride.js): pattern puzzle → boogie board → procedural downhill ride collecting 5 truck parts → victory run → mega-ramp launch; arriving sets `game.partsDelivered` so the rally's TruckBuild starts in `delivered` mode (token hunt skipped, ceremony fires on approach; a direct startLevel(7) keeps the classic hunt). Then Build-Your-Truck (find wheels/engine/core, assembly ceremony — or delivered) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
 | 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
 
 Progression (LINEAR WORLD CHAINS since v1.20.0): each world is an ordered
 stage list in `WORLD_STAGES` (levels.js) — currently `1: [1,'meadow2']`,
-`2: [2,'water2']`, `3: [3,'cloud2']`, everything else single-stage. A stage's
+`2: [2,'water2']`, `3: [3,'cloud2']`, `7: ['sandslide', 7]`, everything else
+single-stage. A stage's
 ending is a `{advance: true}` stagegate SubDoor → `game.stageClear(next)`
 (a light ~2.4s STAGE CLEAR card, then the next stage loads as a FULL level —
 no enterSub). The FINAL stage's goalStar → `game.worldWin(w)`: full party,
@@ -248,7 +250,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 562 checks; must print
+  actual badge/footer values). 584 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

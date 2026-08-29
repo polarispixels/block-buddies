@@ -31,7 +31,8 @@ release spec. Maintenance rules:
 | 12 | Puzzle Blocks framework formalization | Framework | ✅ shipped v1.19.1 — engine/mode split in `js/puzzleblocks.js` (`PuzzleBlocksMachine` generic engine; Letter Blocks becomes its first mode), framework backlog documented below (see item 11 of the doc sections + `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md`) |
 | 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | 🎯 next up |
 | 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | queued (after 13) |
-| 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | queued (after 14) |
+| 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | ✅ shipped v1.21.0 — `PatternBlocksMachine` (complete-the-color-pattern, no reading) debuts inside the Desert Sand Slide, 3 rounds free the boogie board; a standalone replayable room can reuse it any time |
+| 17 | Desert Sand Slide + Ride Mode framework | Stage + framework | ✅ shipped v1.21.0 — world 6 opens with 'sandslide' (chain `7: ['sandslide', 7]`): pattern puzzle → boogie board → procedural heightfield ride (js/ride.js: RideMode/RideCourse/SandSlide) → 5 truck parts → victory run → mega-ramp into the rally's delivered ceremony (see CHANGELOG 1.21.0) |
 | 16 | Linear world chains | Flow/framework | ✅ shipped v1.20.0 — worlds are ordered stage lists (`WORLD_STAGES`); stage archways end stages with a light STAGE CLEAR beat, final-stage stars complete the world (full party + unlock), `ffbg_stage` title resume; spec in `docs/superpowers/specs/2026-08-29-linear-world-chains-design.md` (see CHANGELOG 1.20.0) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse

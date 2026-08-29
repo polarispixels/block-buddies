@@ -8,6 +8,41 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.21.0] - 2026-08-29
+
+### Added — DESERT SAND SLIDE: earn the monster truck (and a whole new way to move)
+
+World 6 now opens with a new stage ('sandslide' → the rally, via the chain
+system) that explains where the monster truck comes from — and debuts RIDE
+MODE, a reusable automatic-traversal framework (`js/ride.js`):
+
+- **Earn the board**: desert arrival on foot → a PATTERN BLOCKS station
+  (Puzzle Blocks mode #2, backlog #15: complete the color pattern, no
+  reading) — three correct rounds reveal the boogie board.
+- **The Sand Slide**: auto-forward heightfield riding with jumping, natural
+  ramp launches, and shooting on the move. Procedural encounter templates
+  (cactus, clusters, scorpions, quicksand, rocks, tumbleweeds, candy-arc and
+  part ramps) with a hard constraint: a speed-scaled breather flat after
+  every template, so obstacles are always readable. Difficulty phases ramp
+  from Learn → Play → Combine → Final Collection.
+- **Friendship cactus**: a rainbow block on the course, then a grumpy cactus
+  with a heart thought-bubble — one rainbow shot and it blooms flowers and
+  waves. (Rainbow also befriends scorpions; fire pops them into candy.)
+- **5 truck parts** (tire, engine, steering wheel, body, comically oversized
+  exhaust) fly by on ramp arcs. Missed or lost parts re-enter the spawn
+  queue forever — never blockable, never below zero. Only big failures cost
+  a part (quicksand sink, scorpion hit, giant cactus); everything else is a
+  funny bounce with momentum preserved.
+- **Airborne tricks**: mash jump mid-air for stacking flips — sillier with
+  every press, pure spectacle, landing just snaps you upright.
+- **Victory Run**: 5/5 parts → giant ramps, candy everywhere, no harm — then
+  THE mega ramp: the world drops away, one outrageous farewell flip, STAGE
+  CLEAR into the rally where the assembly ceremony fires the moment you walk
+  up (the token hunt is skipped — the parts came with you). A direct rally
+  start keeps the classic hunt, so nothing existing changed.
+- Desert art pack (board, cactus + friendly form, scorpion, tumbleweed,
+  rocks, all five parts) drawn and contact-sheet-verified by a subagent.
+
 ## [1.20.0] - 2026-08-29
 
 ### Changed — LINEAR WORLD CHAINS: stages become the spine
