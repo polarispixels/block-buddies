@@ -107,10 +107,11 @@ function buildLevel(n) {
     spider(lv, 2250, G, 'walk', { range: 170 });
     spider(lv, 3700, G, 'walk', { range: 150 });
     // the LETTER BLOCKS learning garden: a rainbow-sparkle door tucked
-    // between the second spider and the pipe room, clear of every scripted
-    // traversal in the harness's early level-1 playthrough — always
-    // available, no completion state, replay indefinitely
-    lv.subDoors.push(new SubDoor(2700, G, 'letterblocks', 'rainbow'));
+    // between the second spider and the pipe room. press: true — it sits on
+    // the main walking route, so entering is a deliberate stand + Space/★
+    // (Ryan's playtest note), never a walk-over swallow. Always available,
+    // no completion state, replay indefinitely.
+    lv.subDoors.push(new SubDoor(2700, G, 'letterblocks', 'rainbow', { press: true }));
     // the SECRET PIPE ROOM: a suspiciously oversized pipe that keeps burping
     // candy — walk into it and FWOOOP, you're inside the machine room
     lv.subDoors.push(new SubDoor(2950, G, 'piperoom', 'pipe'));

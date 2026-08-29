@@ -8,6 +8,16 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.19.2] - 2026-08-29
+
+### Changed
+
+- The Puzzle Blocks rainbow door in Block Meadow no longer swallows a
+  passer-by: entering is now a deliberate stand-on-it + Space/★ (Ryan's
+  playtest note — the door sits on the main walking route). A bobbing
+  action-key hint appears while the hero stands on the doorstep. New
+  `SubDoor` option `{press: true}` for any future door on a busy route.
+
 ## [1.19.1] - 2026-08-29
 
 ### Changed — PUZZLE BLOCKS: the framework gets its name and its seams

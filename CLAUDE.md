@@ -156,7 +156,9 @@ everywhere via `drawBoy`/`drawHead`).
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
   'meadow2', 'water2', 'cloud2', 'letterblocks'), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
-  pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — 'garage' also requires slow/stopped
+  pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — opts {press: true} makes
+  a door Space/★-only with a bobbing key hint, for doors on busy routes (the
+  letterblocks door); 'garage' also requires slow/stopped
   entry in the truck so a race is never hijacked;
   re-arms only after horizontal separation so exit never re-enters; once
   COMPLETED a door goes dormant — shrunken trophy w/ gold star, walk-over
@@ -233,7 +235,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 549 checks; must print
+  actual badge/footer values). 550 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

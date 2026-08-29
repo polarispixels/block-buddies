@@ -1153,9 +1153,15 @@ vm.runInContext('game.startLevel(1)', sandbox);
 frames(150);
 check('the meadow hides a rainbow-sparkle learning door',
   vm.runInContext("game.level.subDoors.some(d => d.sub === 'letterblocks')", sandbox));
+// entering is deliberate: walking across the door must NOT swallow the hero
+put(2600, 620 - 94);
+frames(30, { ArrowRight: 1 });
+check('walking across the rainbow door never auto-enters', G().level.n === 1 && G().player.x > 2740);
 put(2700 - 35, 620 - 94);
 frames(10);
-check('the rainbow door leads into LETTER BLOCKS', G().level.n === 'letterblocks');
+tap('Space');
+frames(10);
+check('standing on the rainbow door + Space enters LETTER BLOCKS', G().level.n === 'letterblocks');
 frames(150); // clear the intro cutscene (input is frozen until it auto-advances)
 const LB = () => vm.runInContext('game.level.puzzle', sandbox);
 check('the room loads with a word, 3 unique answer letters, and an idle state',
@@ -1198,6 +1204,8 @@ check('no puzzle state leaks into the meadow', G().level.puzzle === null);
 put(200, 620 - 94);
 frames(30);
 put(2700 - 35, 620 - 94);
+frames(10);
+tap('Space');
 frames(10);
 check('re-entering LETTER BLOCKS rebuilds a fresh machine', G().level.n === 'letterblocks' && LB().state === 'idle');
 frames(150); // clear the intro cutscene before the exit door can respond

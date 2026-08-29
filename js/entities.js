@@ -4282,10 +4282,14 @@ class ExitDoor {
 // 'cave' (dark sparkling opening), 'rainbow' (shimmering ring). A gold star
 // appears above once that mini-game has been completed (game.miniDone).
 class SubDoor {
-  constructor(cx, groundY, sub, style) {
+  constructor(cx, groundY, sub, style, opts = {}) {
     this.w = 92; this.h = 118;
     this.x = cx - this.w / 2; this.y = groundY - this.h; this.groundY = groundY;
     this.sub = sub; this.style = style;
+    // press: true = never swallow a passer-by; entering is always a deliberate
+    // stand-on-it + Space/★ (used by the Puzzle Blocks room, which sits on
+    // the main walking route)
+    this.press = !!opts.press;
     this.t = rand(9); this.armed = false;
   }
   get cx() { return this.x + this.w / 2; }
@@ -4303,7 +4307,7 @@ class SubDoor {
       // hijacks the race — you have to stop (or press ★) to investigate.
       const zoomBy = this.style === 'garage' && game.player.vehicle === 'truck' &&
         Math.abs(game.player.vx) > 200 && !justP.Space;
-      if ((!done && !zoomBy) || justP.Space) {
+      if ((!done && !zoomBy && !this.press) || justP.Space) {
         this.armed = false;
         if (this.style === 'pipe') AudioSys.sfx('blorp'); // FWOOOP — sucked in!
         if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
@@ -4414,6 +4418,11 @@ class SubDoor {
   draw(ctx) {
     const t = this.t, cx = this.cx, g = this.groundY;
     const done = this.done();
+    // press doors invite instead of swallowing: a bobbing spacebar hint
+    // appears while the hero stands on the doorstep
+    if (this.press && !done && game.player && overlaps(this, game.player)) {
+      drawSpacebar(ctx, cx, this.y - 46 + Math.sin(t * 3) * 5, 120, t);
+    }
     ctx.save();
     if (done) { // dormant trophy marker: smaller, quieter, clearly "finished"
       ctx.globalAlpha *= 0.8;
