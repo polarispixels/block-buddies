@@ -51,7 +51,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/audio.js` | `AudioSys`: procedural sfx (one `sfx(name)` switch) + step-sequenced music (`SONGS` table: midi arrays per theme). Unlocked on first input. |
 | `js/particles.js` | `Particles` pool (star/sparkle/heart/block/confetti/candy/flame/bubble), `candyBurst` |
 | `js/entities.js` | `moveEntity` physics (AABB, one-way platforms, bouncy, breakable, auto step-up), `Player` (vehicles: wheel/truck/unicorn + water/space movement), `Spider` (kinds walk/jump/hang/swim/tornado/alien; states angry/frozen/friend/burning/flying), `Centipede`, `Projectile`, `Pickup`, `GrowthShroom` (Big Buddy mushroom), `Checkpoint`, `Gate`, `Zombie`, `Magma`, `LavaBlob`, `Shoe`, `Chest`, `ParkedTruck`/`drawTruckBody`, `ParkedUnicorn`/`drawUnicornBody`, adventure-mission kit (`Mission`, `MissionGate`, `MissionItem`, `MissionToken`, `Shrine`, `CollectionPuzzle`), `FireBreather`, `Spino` boss, `SubDoor` (mini-game entrances), `ExitDoor` (non-solid exit trigger for win-state-free sublevels, `lv.exitDoors`), `Vine` (swinging vines, `lv.vines`), `Monkey` (companion), secret-room machines `PipeWorks`/`TorchCavern`/`StarChamber`/`TreehouseTrail`/`BeatBash`/`ZombieTown`/`SunkenTemple`/`WeatherFactory` (attached as `lv.puzzle`) |
-| `js/letterblocks.js` | `LB_WORDS` (60-word content bank), `LB_ICONS` (procedural icon renderers — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog), `LetterBlocksMachine` (the reusable Letter Blocks puzzle-controller machine, attached as `lv.puzzle` like other secret-room machines) |
+| `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering; `LetterBlocksMachine` is mode #1), and CONTENT tables (`LB_WORDS` 60-word bank, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog) |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
 | `js/game.js` | The `game` state machine, boss/ending flows, cutscenes (`updateCut`), camera, HUD, title screen (hero picker + level picker), darkness overlay, main loop |
 
@@ -191,10 +191,10 @@ everywhere via `drawBoy`/`drawHead`).
   pan cut 'townreveal', four NPCs with a need->solved->walk->square state
   model, four different solve verbs incl. spending a HUD candy with Space,
   and a clock-tower festival finale gated on all four reaching the square).
-  Letter Blocks ('letterblocks', off Block Meadow) is the first EDUCATIONAL
-  mini-game and the first reusable *framework*: content (`LB_WORDS`/`LB_ICONS`)
-  and the puzzle engine (`LetterBlocksMachine`) are deliberately separate so
-  future picture-prompt modes can reuse the engine with new content. It's also
+  Letter Blocks ('letterblocks', off Block Meadow) is the first PUZZLE BLOCKS
+  mode — the educational mini-game framework in `js/puzzleblocks.js` (see that
+  row above and BACKLOG.md item 11 for the full mode backlog; next planned
+  modes: Ending Letter Blocks, Count the Objects, Pattern Blocks). It's also
   the first sublevel with no win state — a new `ExitDoor` primitive
   (`lv.exitDoors`) lets the room be left at any time via `game.exitSub()`
   directly, skipping `subWin`/party entirely, and re-entry always rebuilds a
@@ -233,7 +233,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 546 checks; must print
+  actual badge/footer values). 549 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

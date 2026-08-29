@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.19.0</span>
+  <span class="badge">v1.19.1</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -599,7 +599,13 @@ into the furnace melts into a sad puddle with eyes, rainbows explode into harmle
 bulbs → KA-CHUNK ×3 → a candy eruption (real collectible candy rains down) and the golden star pops
 out of the machine. The whole mechanism is <code>PipeWorks</code> (<code>lv.puzzle</code>).</p>
 <h3>Letter Blocks: Beginning Letters <small>(rainbow-sparkle door in Block Meadow, x≈2700 — v1.18.0)</small></h3>
-<p><strong>A reusable educational mini-game framework, not a one-off.</strong> <code>js/letterblocks.js</code>
+<p><strong>The first mode of the Puzzle Blocks framework.</strong> Since v1.19.1, <code>js/puzzleblocks.js</code>
+(renamed from <code>js/letterblocks.js</code>) separates three layers: the generic
+<code>PuzzleBlocksMachine</code> ENGINE (pool shuffle/no-repeat, physical block solids, selection
+lock + per-block cooldown, wobble/fly/hold phases, candy reward hook), a small MODE config object
+defining semantics (round generation, prompt rendering, choice rendering, fly target — Letter Blocks
+is one such mode; Ending Letter Blocks, Count the Objects, and Pattern Blocks are the planned next
+three, see <code>BACKLOG.md</code> item 11), and pure CONTENT tables. The file
 keeps content (<code>LB_WORDS</code>, a 60-entry word bank since v1.19.0 — grown from 20 with new word
 families like <code>_AN</code>, <code>_ING</code>, <code>_OAT</code>, <code>_OUSE</code> — with procedural icons in
 <code>LB_ICONS</code>, all second-generation since v1.19.0: every icon individually verified on
@@ -846,7 +852,7 @@ it breaks Jack's saved progress.</p>
 
 <h2 id="testing">Testing &amp; verification</h2>
 <ul>
-  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all fifteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party, and the whole Weather Factory: lever reversibility and latching, the no-power dependency, every recipe, and the rainbow ridden across the gap, and the Letter Blocks learning room: content-data integrity, the puzzle controller's pool/shuffle/no-repeat/double-trigger logic, and the physical room ridden with real jumps — wrong answers, a correct answer through to its candy reward and next puzzle, leaving mid-animation, and replay), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 546 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
+  <li><strong><code>node test/harness.js</code></strong> — a headless smoke test that stubs DOM/canvas/audio in a Node <code>vm</code> and <em>plays the entire game through</em>: every level, every boss stage, both endings, all vehicles, all fifteen mini-games and stages (entry, play, puzzle solves, completion, and clean state restoration — including riding the Treehouse Trail's vines, ladder, throws, and bell for real, playing the whole Beat Bash: drive-by immunity, hit-window edges, whiffs, misses, band order, finale, and replay, and saving all of Zombie Town: reveal pan, all four rescues ridden for real, the premature-bell guard, and the midnight festival, plus the Big Buddy growth system: real bonk jumps into buddy blocks, the shroom chase, the damage-soak shrink, the big-only candy-crate smash, and sub-room survival, and the Escape-to-title shortcut with its fullscreen and touch guards, plus all of Block Meadow 0-2: the archway entry, both big-brick walls rammed for real, the refill re-arm cycle, and the finale, and the whole Sunken Temple: valve reversibility, every pearl riding its real current, the wrong-order stall and cage-strain paths, the waking door, and the treasure-star party, and the whole Weather Factory: lever reversibility and latching, the no-power dependency, every recipe, and the rainbow ridden across the gap, and the Letter Blocks learning room: content-data integrity, the puzzle controller's pool/shuffle/no-repeat/double-trigger logic, and the physical room ridden with real jumps — wrong answers, a correct answer through to its candy reward and next puzzle, leaving mid-animation, and replay, plus the Puzzle Blocks engine/mode reuse contract: a throwaway numeric mode driven through a full round on the untouched engine), touch-tap paths, title pickers, and versioning checks that parse the actual displayed docs badge/footer values, plus a BFS solvability proof of the space maze. 549 checks; it must print <code>ALL CHECKS PASSED</code>. Run it 2–3× — a flaky pass usually means a real nondeterminism bug. <strong>Every new feature and every bug fix gets a check</strong> (regression checks have caught three shipped bugs).</li>
   <li><strong><code>tools/screenshot.sh &lt;name&gt; '&lt;js-hook&gt;'</code></strong> — real-render screenshots via Windows Chrome headless (WSL interop). Look at the PNGs: the harness's canvas stub cannot catch visual or layering bugs.</li>
   <li><code>node --check js/*.js</code> for quick syntax validation.</li>
   <li><strong>Deploy:</strong> commit + push to <code>main</code>; GitHub Pages rebuilds in ~40–60&nbsp;s. Verify with <code>curl -s &lt;live-url&gt;/js/&lt;file&gt;.js | grep &lt;new-string&gt;</code> — or check the version stamp on the live title screen.</li>
@@ -903,7 +909,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.19.0 · built for Jack ·
+  Block Buddies v1.19.1 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

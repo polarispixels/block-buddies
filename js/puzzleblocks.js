@@ -1,11 +1,21 @@
 'use strict';
-// ================================================================ letter blocks
-// A reusable picture-prompt mini-game framework. This first instance teaches
-// missing first letters (Block Meadow's "Letter Blocks: Beginning Letters").
-// Puzzle definitions (LB_WORDS) and rendering (LB_ICONS) are deliberately
-// separate from the puzzle-controller machine below them, so a future mode
-// (missing-last-letter, picture-to-word matching, ...) can supply its own
-// word list and icons and reuse everything else untouched.
+// ================================================================ puzzle blocks
+// PUZZLE BLOCKS: the reusable educational mini-game framework (see
+// BACKLOG.md item 11 / docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md).
+// Three deliberately separate layers:
+//   1. ENGINE  — PuzzleBlocksMachine (bottom of this file): the physical
+//      interaction loop every mode shares. Prompt -> three bumpable answer
+//      blocks -> feedback -> candy -> next puzzle. Handles pool shuffling
+//      with no-repeat, selection lock + per-block cooldown, wobble/fly/hold
+//      animation phases, the reward hook, and the block solids.
+//   2. MODE    — a small config object giving the engine its semantics
+//      (round generation, prompt rendering, choice rendering). Letter Blocks
+//      is the first mode; Ending Letters / Count the Objects / Pattern
+//      Blocks are the planned next three.
+//   3. CONTENT — data tables like LB_WORDS below. Keep content out of the
+//      engine so new material never touches interaction code.
+// Multi-step/ordered-answer support (Build-the-Word, Sequence Blocks) is
+// deliberately NOT built yet — extend the engine when a real mode needs it.
 
 const LB_WORDS = [
   { word: 'cat',   prompt: '_AT',   correct: 'C', distractors: ['B', 'H'] },
@@ -2440,46 +2450,60 @@ const LB_ICONS = {
   }
 };
 
-class LetterBlocksMachine {
-  constructor(groundY) {
+// ---- the engine ----
+// mode contract (only `entries`, `round`, and `drawPrompt` are required):
+//   entries: [...]                       content pool, shuffled by the engine
+//   round(entry) -> {correct, options}   options = 3 values incl. correct
+//   drawPrompt(ctx, entry, phase)        phase: 'idle' | 'fly' | 'hold'
+//   drawChoice(ctx, value, x, y, size)?  default: big outlined text
+//   flyTarget(entry)? -> {x, y}          where the winning answer flies
+//   onCorrect()?                         reward override (default: 1 candy)
+// Values are compared with === so modes should use primitives (letters,
+// numbers, color names) as choice values.
+class PuzzleBlocksMachine {
+  constructor(groundY, mode) {
+    this.mode = mode;
     this.g = groundY;
     this.bw = 84; this.bh = 84;
-    this.slots = [380, 640, 900].map((x, idx) => ({ x, letter: '', idx }));
+    this.slots = [380, 640, 900].map((x, idx) => ({ x, value: '', idx }));
     this.solids = this.slots.map(sl => ({
       x: sl.x - this.bw / 2, y: this.g - 190 - this.bh, w: this.bw, h: this.bh,
-      letterBlock: true, idx: sl.idx, skipDraw: true
+      puzzleBlock: true, idx: sl.idx, skipDraw: true
     }));
-    this.pool = shuffleLB(LB_WORDS.map((_, i) => i));
+    this.pool = shuffleLB(mode.entries.map((_, i) => i));
     this.poolPos = 0;
-    this.lastWord = -1;
-    this.current = null;
-    this.state = 'idle'; // 'idle' -> 'fly' -> 'hold' -> nextPuzzle() -> 'idle'
+    this.lastIdx = -1;
+    this.current = null;   // the active content entry
+    this.answer = null;    // this round's correct value
+    this.state = 'idle';   // 'idle' -> 'fly' -> 'hold' -> nextPuzzle() -> 'idle'
     this.flyT = 0; this.holdT = 0; this.flyFrom = -1;
     this.wobble = [0, 0, 0];
     this.cool = [0, 0, 0];
-    this.onCorrect = () => {
+    this.onCorrect = mode.onCorrect || (() => {
       game.candy++;
       AudioSys.sfx('candy');
       Particles.candyBurst(640, this.g - 300, 8);
-    };
+    });
     this.nextPuzzle();
   }
   nextPuzzle() {
     if (this.poolPos >= this.pool.length) {
-      this.pool = shuffleLB(LB_WORDS.map((_, i) => i));
+      this.pool = shuffleLB(this.mode.entries.map((_, i) => i));
       this.poolPos = 0;
-      // a fresh shuffle could deal the same word that just ended the last
+      // a fresh shuffle could deal the same entry that just ended the last
       // pass right back out first — swap it away so no two consecutive
-      // puzzles are ever the same word, even across a reshuffle boundary
-      if (this.pool.length > 1 && this.pool[0] === this.lastWord) {
+      // puzzles are ever the same, even across a reshuffle boundary
+      if (this.pool.length > 1 && this.pool[0] === this.lastIdx) {
         const tmp = this.pool[0]; this.pool[0] = this.pool[1]; this.pool[1] = tmp;
       }
     }
     const idx = this.pool[this.poolPos++];
-    this.lastWord = idx;
-    this.current = LB_WORDS[idx];
-    const options = shuffleLB([this.current.correct].concat(this.current.distractors));
-    for (let i = 0; i < 3; i++) this.slots[i].letter = options[i];
+    this.lastIdx = idx;
+    this.current = this.mode.entries[idx];
+    const round = this.mode.round(this.current);
+    this.answer = round.correct;
+    const options = shuffleLB(round.options);
+    for (let i = 0; i < 3; i++) this.slots[i].value = options[i];
     this.state = 'idle';
     this.flyT = 0; this.holdT = 0; this.flyFrom = -1;
     this.wobble = [0, 0, 0];
@@ -2488,7 +2512,7 @@ class LetterBlocksMachine {
     const i = solid.idx;
     if (this.cool[i] > 0 || this.state !== 'idle') return;
     this.cool[i] = 0.3;
-    if (this.slots[i].letter === this.current.correct) {
+    if (this.slots[i].value === this.answer) {
       this.state = 'fly';
       this.flyT = 0;
       this.flyFrom = i;
@@ -2520,19 +2544,12 @@ class LetterBlocksMachine {
       if (this.holdT > 0.9) this.nextPuzzle();
     }
   }
-  // Kept separate from the selection/reward loop and from the answer-block
-  // rendering below so a future mode (missing-last-letter, picture-to-word
-  // matching) can override just this piece later without touching anything
-  // else in the machine.
-  drawPrompt(ctx) {
-    const word = this.current;
-    LB_ICONS[word.word](ctx, 640, 150, 190);
-    const filled = this.state === 'hold';
-    outlineText(ctx, filled ? word.word.toUpperCase() : word.prompt, 640, 285, 64, filled ? '#7be07b' : '#fff');
+  drawChoice(ctx, value, x, y, size) {
+    if (this.mode.drawChoice) { this.mode.drawChoice(ctx, value, x, y, size); return; }
+    outlineText(ctx, String(value), x, y, size, '#fff', '#2a3a6a');
   }
   draw(ctx) {
-    const word = this.current;
-    this.drawPrompt(ctx);
+    this.mode.drawPrompt(ctx, this.current, this.state);
     for (let i = 0; i < 3; i++) {
       const sl = this.slots[i];
       const bx = sl.x, by = this.g - 190 - this.bh / 2;
@@ -2547,17 +2564,36 @@ class LetterBlocksMachine {
       ctx.strokeStyle = 'rgba(30,40,70,0.5)'; ctx.lineWidth = 3;
       rr(ctx, -this.bw / 2, -this.bh / 2, this.bw, this.bh, this.bw * 0.18); ctx.stroke();
       if (!(i === this.flyFrom && this.state === 'fly')) {
-        outlineText(ctx, sl.letter, 0, 4, this.bw * 0.55, '#fff', '#2a3a6a');
+        this.drawChoice(ctx, sl.value, 0, 4, this.bw * 0.55);
       }
       ctx.restore();
     }
     if (this.state === 'fly') {
       const sl = this.slots[this.flyFrom];
-      const charW = 40, blankX = 640 - (word.prompt.length * charW) / 2 + charW / 2;
+      const t = this.mode.flyTarget ? this.mode.flyTarget(this.current) : { x: 640, y: 285 };
       const p = this.flyT / 0.6;
-      const ex = lerp(sl.x, blankX, p);
-      const ey = lerp(this.g - 190 - this.bh / 2, 285, p) - Math.sin(p * Math.PI) * 80;
-      outlineText(ctx, sl.letter, ex, ey, lerp(this.bw * 0.55, 44, p), '#fff', '#2a3a6a');
+      const ex = lerp(sl.x, t.x, p);
+      const ey = lerp(this.g - 190 - this.bh / 2, t.y, p) - Math.sin(p * Math.PI) * 80;
+      this.drawChoice(ctx, sl.value, ex, ey, lerp(this.bw * 0.55, 44, p));
     }
+  }
+}
+
+// ---- mode 1: Letter Blocks (Beginning Letters) ----
+// The Block Meadow original. Content = LB_WORDS/LB_ICONS above; everything
+// physical comes from the engine.
+class LetterBlocksMachine extends PuzzleBlocksMachine {
+  constructor(groundY) {
+    super(groundY, {
+      entries: LB_WORDS,
+      round: w => ({ correct: w.correct, options: [w.correct].concat(w.distractors) }),
+      drawPrompt(ctx, w, phase) {
+        LB_ICONS[w.word](ctx, 640, 150, 190);
+        const filled = phase === 'hold';
+        outlineText(ctx, filled ? w.word.toUpperCase() : w.prompt, 640, 285, 64, filled ? '#7be07b' : '#fff');
+      },
+      // the flying letter lands exactly on the prompt's blank
+      flyTarget: w => ({ x: 640 - (w.prompt.length * 40) / 2 + 20, y: 285 })
+    });
   }
 }

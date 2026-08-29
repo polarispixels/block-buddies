@@ -254,9 +254,9 @@ game.smashWall = function (s, cols) {
     for (let bx = s.x; bx < s.x + s.w; bx += 48)
       Particles.burst(bx + 24, by + 24, 3, { colors: cols || ['#d9b98a', '#a8895a'], type: 'block', sp1: 380, l1: 1, s1: 12, grav: 900 });
 };
-game.bumpBlock = function (s) { // head-bonk on a Buddy Block, a candy crate, or a Letter Blocks answer
+game.bumpBlock = function (s) { // head-bonk on a Buddy Block, a candy crate, or a Puzzle Blocks answer
   const pl = game.player;
-  if (s.letterBlock) { game.level.puzzle.onAnswer(s); return; }
+  if (s.puzzleBlock) { game.level.puzzle.onAnswer(s); return; }
   if (s.buddy) {
     // refill blocks guard MANDATORY brick walls: once the mushroom is spent and
     // Jack is small again, a fresh bonk re-arms the block — never a soft-lock

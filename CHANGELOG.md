@@ -8,6 +8,29 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.19.1] - 2026-08-29
+
+### Changed — PUZZLE BLOCKS: the framework gets its name and its seams
+
+No player-visible changes — this release formalizes Letter Blocks into the
+**Puzzle Blocks** framework ahead of the next three planned modes (Ending
+Letter Blocks, Count the Objects, Pattern Blocks):
+
+- `js/letterblocks.js` → `js/puzzleblocks.js`, split into three layers:
+  the generic `PuzzleBlocksMachine` engine (pool shuffle/no-repeat, block
+  solids, lock/cooldown, wobble/fly/hold phases, reward hook), a small MODE
+  config object defining semantics (round generation, prompt + choice
+  rendering, fly target), and pure CONTENT tables (`LB_WORDS`/`LB_ICONS`).
+  `LetterBlocksMachine` is now a thin mode on the engine. Answer solids are
+  flagged `puzzleBlock` (was `letterBlock`).
+- Harness proves the reuse contract for real: a throwaway numeric counting
+  mode is driven through a full round (choices, correct answer, candy
+  reward, auto-advance) on the untouched engine — 549 checks.
+- The full Puzzle Blocks Learning Framework backlog (mode families A–H,
+  biome fits, progression philosophy, multi-step future, what never to
+  build) is documented in BACKLOG.md item 11, spec preserved verbatim in
+  `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md`.
+
 ## [1.19.0] - 2026-08-29
 
 ### Changed — LETTER BLOCKS second generation: 60 words, kid-proof icons

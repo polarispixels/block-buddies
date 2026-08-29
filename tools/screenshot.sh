@@ -28,7 +28,7 @@ cat > "$TMP" <<EOF
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#241a45;overflow:hidden}</style></head>
 <body><canvas id="game" width="1280" height="720"></canvas>
 <script src="js/util.js"></script><script src="js/audio.js"></script><script src="js/particles.js"></script>
-<script src="js/entities.js"></script><script src="js/letterblocks.js"></script><script src="js/levels.js"></script><script src="js/game.js"></script>
+<script src="js/entities.js"></script><script src="js/puzzleblocks.js"></script><script src="js/levels.js"></script><script src="js/game.js"></script>
 <script>setTimeout(()=>{ const step=(n,fn)=>{for(let i=0;i<n;i++){if(fn)fn(i);update(1/60);}}; $HOOK render(); },800);</script>
 </body></html>
 EOF

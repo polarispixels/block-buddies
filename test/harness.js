@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'letterblocks.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -1077,17 +1077,17 @@ frames(3);
 vm.runInContext('game.testLB = new LetterBlocksMachine(620);', sandbox);
 const LBT = () => vm.runInContext('game.testLB', sandbox);
 check('fresh machine starts idle with a word and 3 unique answer letters',
-  LBT().state === 'idle' && !!LBT().current && new Set(LBT().slots.map(s => s.letter)).size === 3 &&
-  LBT().slots.some(s => s.letter === LBT().current.correct));
+  LBT().state === 'idle' && !!LBT().current && new Set(LBT().slots.map(s => s.value)).size === 3 &&
+  LBT().slots.some(s => s.value === LBT().current.correct));
 
 // double-trigger: a second rapid hit on the SAME wrong block is absorbed by its cooldown
-const wrongIdx = LBT().slots.findIndex(s => s.letter !== LBT().current.correct);
+const wrongIdx = LBT().slots.findIndex(s => s.value !== LBT().current.correct);
 vm.runInContext(`game.testLB.onAnswer(game.testLB.solids[${wrongIdx}]); game.testLB.onAnswer(game.testLB.solids[${wrongIdx}]);`, sandbox);
 check('a wrong hit wobbles the block and changes nothing else',
   LBT().wobble[wrongIdx] > 0 && LBT().state === 'idle');
 
 // correct hit locks the round; a second bump mid-animation (any block) is ignored
-const correctIdx = LBT().slots.findIndex(s => s.letter === LBT().current.correct);
+const correctIdx = LBT().slots.findIndex(s => s.value === LBT().current.correct);
 const otherIdx = LBT().slots.findIndex((s, i) => i !== correctIdx);
 const wordBefore = LBT().current.word;
 vm.runInContext(`game.testLB.onAnswer(game.testLB.solids[${correctIdx}]);`, sandbox);
@@ -1102,7 +1102,7 @@ vm.runInContext('for (let i = 0; i < 100; i++) game.testLB.update(1 / 60);', san
 check('the reward hook awards exactly one candy through the normal economy',
   vm.runInContext('game.candy', sandbox) === candyBeforeLogic + 1);
 check('a new randomized puzzle follows automatically, with 3 fresh unique letters',
-  LBT().state === 'idle' && LBT().current.word !== wordBefore && new Set(LBT().slots.map(s => s.letter)).size === 3);
+  LBT().state === 'idle' && LBT().current.word !== wordBefore && new Set(LBT().slots.map(s => s.value)).size === 3);
 
 // pool exhaustion: 130 rounds (2+ reshuffles of a 60-word pool) never repeat
 // back-to-back, and the first pass touches all 60 words
@@ -1111,7 +1111,7 @@ vm.runInContext(`
   game.testLBSeen = [];
   for (let i = 0; i < 130; i++) {
     game.testLBSeen.push(game.testLB2.current.word);
-    const okIdx = game.testLB2.slots.findIndex(s => s.letter === game.testLB2.current.correct);
+    const okIdx = game.testLB2.slots.findIndex(s => s.value === game.testLB2.current.correct);
     game.testLB2.onAnswer(game.testLB2.solids[okIdx]);
     for (let f = 0; f < 100; f++) game.testLB2.update(1 / 60);
   }
@@ -1121,6 +1121,32 @@ check('no two consecutive puzzles repeat the same word across 130 rounds / 2+ re
   seenWords.every((w, i) => i === 0 || w !== seenWords[i - 1]));
 check('every one of the 60 words appears within the first pass through the pool',
   new Set(seenWords.slice(0, 60)).size === 60);
+
+// Puzzle Blocks framework: the engine accepts a completely different mode
+// (numeric answers, custom prompt/choice rendering) with zero engine changes —
+// the reuse contract the next three planned modes (ending letters, counting,
+// patterns) depend on
+vm.runInContext(`
+  game.testPB = new PuzzleBlocksMachine(620, {
+    entries: [{ n: 2 }, { n: 3 }, { n: 4 }],
+    round: e => ({ correct: e.n, options: [e.n, e.n + 1, e.n - 1] }),
+    drawPrompt() {}
+  });
+`, sandbox);
+const PB = () => vm.runInContext('game.testPB', sandbox);
+check('a numeric test mode runs on the generic engine (3 unique number choices)',
+  PB().state === 'idle' && typeof PB().answer === 'number' &&
+  new Set(PB().slots.map(s => s.value)).size === 3 && PB().slots.some(s => s.value === PB().answer));
+const pbCandy = vm.runInContext('game.candy', sandbox);
+vm.runInContext(`
+  const okIdx = game.testPB.slots.findIndex(s => s.value === game.testPB.answer);
+  game.testPB.onAnswer(game.testPB.solids[okIdx]);
+  for (let f = 0; f < 100; f++) game.testPB.update(1 / 60);
+`, sandbox);
+check('the numeric mode round completes through the shared reward + advance loop',
+  vm.runInContext('game.candy', sandbox) === pbCandy + 1 && PB().state === 'idle');
+check('Letter Blocks is a mode of the generic engine, not a fork of it',
+  vm.runInContext('new LetterBlocksMachine(620) instanceof PuzzleBlocksMachine', sandbox));
 
 // ---------------- secret: LETTER BLOCKS (Beginning Letters) ----------------
 vm.runInContext('game.startLevel(1)', sandbox);
@@ -1133,11 +1159,11 @@ check('the rainbow door leads into LETTER BLOCKS', G().level.n === 'letterblocks
 frames(150); // clear the intro cutscene (input is frozen until it auto-advances)
 const LB = () => vm.runInContext('game.level.puzzle', sandbox);
 check('the room loads with a word, 3 unique answer letters, and an idle state',
-  !!LB().current && LB().state === 'idle' && new Set(LB().slots.map(s => s.letter)).size === 3);
+  !!LB().current && LB().state === 'idle' && new Set(LB().slots.map(s => s.value)).size === 3);
 const candy0 = G().candy;
 
 // a real jump into the WRONG block: no punishment, puzzle stays active
-const wrongSlot = LB().slots.find(s => s.letter !== LB().current.correct);
+const wrongSlot = LB().slots.find(s => s.value !== LB().current.correct);
 vm.runInContext(`game.player.x = ${wrongSlot.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
 tap('ArrowUp');
 frames(40);
@@ -1145,7 +1171,7 @@ check('a real jump into the wrong block wobbles it and changes nothing',
   G().candy === candy0 && LB().state === 'idle');
 
 // a real jump into the CORRECT block: locks, flies the letter in, awards candy
-const correctSlot = LB().slots.find(s => s.letter === LB().current.correct);
+const correctSlot = LB().slots.find(s => s.value === LB().current.correct);
 const wordBefore2 = LB().current.word;
 vm.runInContext(`game.player.x = ${correctSlot.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
 tap('ArrowUp');
@@ -1157,7 +1183,7 @@ check('a new randomized puzzle follows automatically', LB().current.word !== wor
 
 // leaving mid success-animation: trigger another correct hit, then exit
 // through the door WITHOUT waiting for the fly/hold animation to resolve
-const correctSlot2 = LB().slots.find(s => s.letter === LB().current.correct);
+const correctSlot2 = LB().slots.find(s => s.value === LB().current.correct);
 vm.runInContext(`game.player.x = ${correctSlot2.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
 tap('ArrowUp');
 frames(40);

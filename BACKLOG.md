@@ -27,7 +27,11 @@ release spec. Maintenance rules:
 | 8 | Unicorn Forest 7-2: The Enchanted Garden | Stage 2 | idea |
 | 9 | New World: The Toy Factory | Major World | idea |
 | 10 | New World: The Clockwork Castle | Major World | idea (save for a major release) |
-| 11 | Letter Blocks: Beginning Letters | Educational mini-game | ✅ shipped v1.18.0 — reusable picture-prompt framework (`js/letterblocks.js`: word bank, `LetterBlocksMachine` puzzle controller, `ExitDoor` primitive) + first instance in Block Meadow: missing-first-letter, candy reward (see CHANGELOG 1.18.0). Second iteration v1.19.0 after kid playtest: all icons redrawn with contact-sheet review, word bank 20 → 60 (see CHANGELOG 1.19.0) |
+| 11 | Letter Blocks: Beginning Letters | Puzzle Blocks mode | ✅ shipped v1.18.0 — reusable picture-prompt framework (word bank, puzzle controller, `ExitDoor` primitive) + first instance in Block Meadow: missing-first-letter, candy reward (see CHANGELOG 1.18.0). Second iteration v1.19.0 after kid playtest: all icons redrawn with contact-sheet review, word bank 20 → 60 (see CHANGELOG 1.19.0) |
+| 12 | Puzzle Blocks framework formalization | Framework | ✅ shipped v1.19.1 — engine/mode split in `js/puzzleblocks.js` (`PuzzleBlocksMachine` generic engine; Letter Blocks becomes its first mode), framework backlog documented below (see item 11 of the doc sections + `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md`) |
+| 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | 🎯 next up |
+| 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | queued (after 13) |
+| 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | queued (after 14) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark
@@ -320,6 +324,79 @@ The final puzzle should make the player understand that multiple earlier
 systems are parts of one giant machine.
 
 **Target:** 15–25 minutes.
+
+---
+
+## 11. Puzzle Blocks Learning Framework
+
+(Full spec verbatim from Ryan: `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md` —
+this section is the working summary.)
+
+**Puzzle Blocks** is the general system; **Letter Blocks** (shipped v1.18–v1.19)
+is its first mode. The validated core loop stays fixed while the cognitive task
+changes:
+
+```text
+Prompt → physical answer blocks → move/jump/bump → feedback → candy → next puzzle
+```
+
+The goal is to hide learning, reasoning, memory, and problem-solving inside
+normal Block Buddies gameplay — never to make it feel like educational
+software. The child should always feel like they're playing Block Buddies.
+
+**Design principles** (all modes): gameplay first (answers live physically in
+the world — no radio buttons, worksheets, menus, or score screens); familiar
+mechanic with changing mental challenge; low punishment (wobble + funny sound,
+never candy loss/damage/timers/game-over); strong reward loop (flying answers,
+completed words/equations, candy through the normal economy); indefinite
+replay with shuffled pools and voluntary exit; visual clarity (large art, one
+obvious interpretation per picture).
+
+**Architecture** (since v1.19.1): `js/puzzleblocks.js` separates
+- *engine* — `PuzzleBlocksMachine`: pool shuffle/no-repeat, selection,
+  lock/cooldown, retries, fly/hold transitions, reward hook, physical block
+  solids;
+- *type/mode* — a config object defining interaction semantics (round
+  generation, prompt rendering, choice rendering);
+- *content* — data tables like `LB_WORDS`.
+Extend the engine only when a real mode needs it (the multi-step/ordered-answer
+architecture for Build-the-Word and Sequence Blocks is explicitly deferred).
+
+**Mode backlog** (families; see spec for full detail):
+- **A. Letters/phonics**: A1 beginning ✅ · A2 ending · A3 middle (vowels) ·
+  A4 beginning sound (image-only) · A5 whole-word match · A6 rhyming ·
+  A7 word families · A8 build-the-entire-word (multi-step, future)
+- **B. Vocabulary/classification**: categories (animal/food/vehicle...) ·
+  finer categories · opposites · descriptive ("WHAT COLOR?")
+- **C. Numbers** (proves it's not just literacy): count objects · numeral ↔
+  quantity · simple +/− · biggest/smallest · missing-number sequences
+- **D. Shapes/spatial**: identify · match-by-shape-blocks · above/below/beside
+- **E. Patterns** (high priority — reasoning, no reading): alternating · shape ·
+  growing · AAB-style
+- **F. Logic**: odd one out · what belongs together · cause & effect ·
+  what happens next
+- **G. Sequences** (multi-step, future): life cycle · daily routine · story order
+- **H. Memory** (short + forgiving): remember picture / number / sequence
+
+**Biome fits**: Meadow = beginning letters, colors, counting (current room fits) ·
+Underwater = counting fish, more/fewer, sea categories · Cloud = ending letters,
+weather words, patterns · Mountains = shapes, spatial, ordering · Dino Jungle =
+animal names/sounds/categories · Weather Factory = the standout: cause-and-effect
+puzzles reinforcing what the level already shows physically ("WHAT MAKES ICE
+MELT?") · Zombie Town = playful rhymes, night/day, memory.
+
+**Progression philosophy** (invisible to the player, no curriculum): recognition
+→ association → pattern recognition → reasoning → multi-step thinking.
+
+**Next three builds** (chosen to prove framework breadth):
+1. **Ending Letter Blocks** — cheapest extension, tests prompt-structure reuse.
+2. **Number Blocks: Count the Objects** — first non-literacy mode; numeric
+   answers, multi-object prompts.
+3. **Pattern Blocks** — reasoning with zero reading required; visual choices.
+
+**Never build** (protect "the child wants to play"): lessons, dashboards,
+grades, parent reporting, timers, skill trees, XP, adaptive-learning engines,
+required exercises, separate educational currencies.
 
 ---
 
