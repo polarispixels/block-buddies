@@ -428,9 +428,11 @@ check('the machine holds the full instrument set (4 lanterns, 6 rotatable/3 froz
 const obsSolids0 = G().level.solids.length;
 put(820 - 28, 2140 - 94);
 tap('ArrowUp'); frames(30);
-check('a real bump under the mirror rotates it one CCW step', OBS().m0.dir === 1);
+check('a real bump under the mirror rotates it one CCW step', OBS().m0.dir === 0);
 tap('ArrowUp'); frames(30);
-check('a second bump aims it UP and the beam lights sensor 1',
+check('a second bump sweeps the beam to the diagonal', OBS().m0.dir === 1 && OBS().s1.lit === false);
+tap('ArrowUp'); frames(30);
+check('the third bump aims it UP and the beam lights sensor 1',
   OBS().m0.dir === 2 && OBS().s1.lit === true);
 check('sensor 1 thaws the ice staircase (4 new one-way steps)',
   G().level.solids.length === obsSolids0 + 4 &&

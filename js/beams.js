@@ -63,8 +63,11 @@ class BeamVent {
 }
 
 class BeamSensor {
-  constructor(x, y, onLit) {
+  // opts.post: draw a support post from the gem down to this ground y;
+  // opts.hang: draw a hanger up to this y (e.g. the underside of a rock)
+  constructor(x, y, onLit, opts = {}) {
     this.x = x; this.y = y; this.onLit = onLit || null;
+    this.post = opts.post || 0; this.hang = opts.hang || 0;
     this.lit = false; this.t = rand(9); this.litT = 0;
   }
   box() { return { x: this.x - 28, y: this.y - 28, w: 56, h: 56 }; }
@@ -169,14 +172,16 @@ class FrozenObservatory {
     this.litFlashT = 0;
     this.cutFired = false;
     // ---- terrace 1 (teach): one free mirror up to a hanging sensor ----
-    this.m0 = new BeamMirror(820, 1920, 0, { groundY: 2140 });
+    // starts aimed down-right so the wrong beam sizzles into the snow right
+    // beside it; the three teaching bumps sweep it right -> diagonal -> UP
+    this.m0 = new BeamMirror(820, 1920, 7, { groundY: 2140 });
     this.s1 = new BeamSensor(820, 1600, () => this.reward([
-      [1500, 2040], [1700, 1960], [1900, 1880], [2100, 1800]], 170));
+      [1500, 2040], [1700, 1960], [1900, 1880], [2100, 1800]], 170), { hang: 1560 });
     // ---- terrace 2: thaw (fire) + route over the rock tunnel ----
     this.fm2 = new BeamMirror(2700, 1560, 6, { frozen: true, groundY: 1780 });
     this.r2 = new BeamMirror(2700, 1300, 0, { fixed: true });
     this.s2 = new BeamSensor(3250, 1300, () => this.reward([
-      [2100, 1690], [1950, 1580], [1830, 1490]], 130));
+      [2100, 1690], [1950, 1580], [1830, 1490]], 130), { post: 1780 });
     // ---- terrace 3: the full chain (thaw -> aim -> plug the vent) ----
     this.fm3 = new BeamMirror(700, 1200, 6, { frozen: true, groundY: 1420 });
     this.m3 = new BeamMirror(900, 1200, 0, { groundY: 1420 });
@@ -184,7 +189,7 @@ class FrozenObservatory {
     this.r3b = new BeamMirror(1650, 880, 6, { fixed: true });
     this.v3 = new BeamVent(1650, 1420, 1140);
     this.s3 = new BeamSensor(1650, 1260, () => this.reward([
-      [1780, 1330], [1920, 1240], [1780, 1150], [1920, 1060]], 170));
+      [1780, 1330], [1920, 1240], [1780, 1150], [1920, 1060]], 170), { post: 1420 });
     // ---- the dome: grand alignment into the telescope eye ----
     this.fm4 = new BeamMirror(2450, 780, 6, { frozen: true, groundY: 1000 });
     this.v4 = new BeamVent(2800, 1000, 540);
@@ -306,78 +311,257 @@ class FrozenObservatory {
   }
 }
 
-// ---- placeholder art pass (replaced by the reviewed art task) ----
+// ---- the observatory art pack (contact-sheet reviewed) ----
 function drawBeamLantern(ctx, ln, t) {
+  const pulse = 1 + Math.sin(t * 4 + ln.t) * 0.08;
   ctx.save();
+  // stone pedestal
   ctx.fillStyle = '#8a7fae';
-  rr(ctx, ln.x - 14, ln.y + 20, 28, 60, 6); ctx.fill();
+  rr(ctx, ln.x - 12, ln.y + 24, 24, 66, 5); ctx.fill();
+  ctx.fillStyle = '#6a5f8e';
+  rr(ctx, ln.x - 22, ln.y + 82, 44, 14, 5); ctx.fill();
+  // warm halo
+  ctx.globalAlpha = 0.25;
   ctx.fillStyle = '#ffe156';
-  ctx.beginPath(); ctx.arc(ln.x, ln.y, 20 + Math.sin(t * 4 + ln.t) * 2, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(ln.x, ln.y, 42 * pulse, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
+  // gold cage
+  ctx.fillStyle = '#e8c96a';
+  rr(ctx, ln.x - 24, ln.y - 26, 48, 52, 10); ctx.fill();
+  ctx.strokeStyle = '#a8873a'; ctx.lineWidth = 3;
+  rr(ctx, ln.x - 24, ln.y - 26, 48, 52, 10); ctx.stroke();
+  ctx.fillStyle = '#c8a84a';
+  rr(ctx, ln.x - 10, ln.y - 36, 20, 12, 4); ctx.fill();
+  // glowing crystal core with a cozy face
+  ctx.fillStyle = '#fff3b8';
+  ctx.beginPath(); ctx.arc(ln.x, ln.y, 17 * pulse, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#ffe156';
+  ctx.beginPath(); ctx.arc(ln.x, ln.y, 12 * pulse, 0, TAU); ctx.fill();
+  drawFace(ctx, ln.x, ln.y, 22, 'happy', t, ln.t);
   ctx.restore();
 }
 function drawBeamMirror(ctx, m, t) {
-  ctx.save();
   const wob = m.shiverT > 0 ? Math.sin(m.shiverT * 40) * 4 : 0;
-  ctx.translate(m.x + wob, m.y);
+  const [dx, dy] = DIRS8[m.dir];
+  const dl = Math.hypot(dx, dy), nx = dx / dl, ny = dy / dl;
+  ctx.save();
   if (!m.fixed) {
+    // post + base plate
     ctx.fillStyle = '#6a5f8e';
-    rr(ctx, -8, 26, 16, m.groundY - m.y - 26, 5); ctx.fill();
+    rr(ctx, m.x - 8, m.y + 24, 16, m.groundY - m.y - 24, 5); ctx.fill();
+    ctx.fillStyle = '#584e78';
+    rr(ctx, m.x - 26, m.groundY - 12, 52, 12, 4); ctx.fill();
+  } else {
+    // fixed relays hang from their own little rock chip
+    ctx.fillStyle = '#8d8fa0';
+    rr(ctx, m.x - 22, m.y - 46, 44, 22, 8); ctx.fill();
+    ctx.fillStyle = '#7a7c90';
+    rr(ctx, m.x - 5, m.y - 30, 10, 12, 3); ctx.fill();
   }
-  const ang = -m.dir * (TAU / 8) + (m.spinT > 0 ? m.spinT * 2 : 0);
-  ctx.rotate(ang);
-  ctx.fillStyle = m.fixed ? '#e8c96a' : '#bfe8ff';
-  ctx.beginPath(); ctx.arc(0, 0, m.fixed ? 22 : 30, 0, TAU); ctx.fill();
-  ctx.strokeStyle = m.fixed ? '#a8873a' : '#5a7fae'; ctx.lineWidth = 4; ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.moveTo(10, -8); ctx.lineTo(30, 0); ctx.lineTo(10, 8); ctx.closePath(); ctx.fill();
+  ctx.translate(m.x + wob, m.y);
+  const R = m.fixed ? 24 : 32;
+  const spinK = m.spinT > 0 ? Math.sin(m.spinT * 18) * 0.12 : 0;
+  ctx.rotate(Math.atan2(ny, nx) + spinK);
+  // pointer wedge FIRST (under the dish) — the single most important read:
+  // where does this dish send the light?
+  ctx.fillStyle = '#ffd24a';
+  ctx.beginPath();
+  ctx.moveTo(R * 0.4, -R * 0.5); ctx.lineTo(R * 1.65, 0); ctx.lineTo(R * 0.4, R * 0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#c8861b'; ctx.lineWidth = 3; ctx.stroke();
+  // the dish
+  const g = ctx.createLinearGradient(-R, -R, R, R);
+  if (m.fixed) { g.addColorStop(0, '#ffe9a8'); g.addColorStop(1, '#e8b93a'); }
+  else { g.addColorStop(0, '#eaf6ff'); g.addColorStop(1, '#9fd0f0'); }
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  ctx.strokeStyle = m.fixed ? '#a8873a' : '#4a7aae'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 0, R * 0.68, -2.6, -1.1); ctx.stroke();
+  ctx.rotate(-(Math.atan2(ny, nx) + spinK));
+  // the dish's face peeks toward where it points
+  if (!m.frozen) drawFace(ctx, nx * R * 0.22, ny * R * 0.22, R * 1.05, 'happy', t, m.t);
   ctx.restore();
   if (m.frozen) {
     const cb = m.crustBox();
     ctx.save();
-    ctx.globalAlpha = 0.75;
-    ctx.fillStyle = '#bfe4ff';
-    rr(ctx, cb.x, cb.y, cb.w, cb.h, 14); ctx.fill();
-    ctx.strokeStyle = '#7fb8e8'; ctx.lineWidth = 3;
-    rr(ctx, cb.x, cb.y, cb.w, cb.h, 14); ctx.stroke();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#cdeaff';
+    rr(ctx, cb.x, cb.y, cb.w, cb.h, 16); ctx.fill();
+    ctx.strokeStyle = '#7fb8e8'; ctx.lineWidth = 4;
+    rr(ctx, cb.x, cb.y, cb.w, cb.h, 16); ctx.stroke();
+    // icicles along the top lip
+    ctx.fillStyle = '#e8f6ff';
+    for (let i = 0; i < 4; i++) {
+      const ix = cb.x + 12 + i * (cb.w - 24) / 3;
+      ctx.beginPath();
+      ctx.moveTo(ix - 6, cb.y + 2); ctx.lineTo(ix + 6, cb.y + 2); ctx.lineTo(ix, cb.y + 20 + (i % 2) * 8);
+      ctx.closePath(); ctx.fill();
+    }
+    // sparkle glints
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(cb.x + cb.w * 0.28, cb.y + cb.h * 0.3, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(cb.x + cb.w * 0.68, cb.y + cb.h * 0.55, 3, 0, TAU); ctx.fill();
     ctx.restore();
-    drawFace(ctx, m.x, m.y + 50, 40, 'worried', t, m.t);
+    // the trapped dish shivers with a brave worried face
+    drawFace(ctx, m.x + wob, m.y, 34, 'sad', t, m.t);
+  }
+  if (m.thawT > 0) { // relieved steam
+    ctx.save();
+    ctx.globalAlpha = m.thawT * 0.7;
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(m.x - 20 + i * 20, m.y - 40 - (1 - m.thawT) * 60 - i * 8, 10 + i * 2, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
   }
 }
 function drawBeamVent(ctx, v, t) {
   ctx.save();
-  ctx.fillStyle = '#7a6f9e';
-  rr(ctx, v.x - 36, v.groundY - 60, 72, 60, 10); ctx.fill();
+  // stone chimney with a cheeky face
+  const g = ctx.createLinearGradient(v.x, v.groundY - 64, v.x, v.groundY);
+  g.addColorStop(0, '#9a8fbe'); g.addColorStop(1, '#7a6f9e');
+  ctx.fillStyle = g;
+  rr(ctx, v.x - 34, v.groundY - 58, 68, 58, 10); ctx.fill();
+  ctx.strokeStyle = '#584e78'; ctx.lineWidth = 3;
+  rr(ctx, v.x - 34, v.groundY - 58, 68, 58, 10); ctx.stroke();
+  ctx.fillStyle = '#584e78';
+  rr(ctx, v.x - 26, v.groundY - 70, 52, 16, 6); ctx.fill();
   if (v.frozen) {
+    // the whole plume frozen into a proud swirly ice sculpture
     ctx.fillStyle = '#d6f4ff';
-    rr(ctx, v.x - 24, v.plumeTop + 40, 48, v.groundY - v.plumeTop - 100, 16); ctx.fill();
+    ctx.strokeStyle = '#8fd0f0'; ctx.lineWidth = 4;
+    const h = v.groundY - 76 - v.plumeTop - 20;
+    ctx.beginPath();
+    ctx.moveTo(v.x - 20, v.groundY - 72);
+    ctx.quadraticCurveTo(v.x - 30, v.groundY - 72 - h * 0.4, v.x - 10, v.groundY - 72 - h * 0.65);
+    ctx.quadraticCurveTo(v.x + 4, v.groundY - 72 - h * 0.85, v.x - 2, v.groundY - 72 - h);
+    ctx.quadraticCurveTo(v.x + 22, v.groundY - 72 - h * 0.7, v.x + 14, v.groundY - 72 - h * 0.35);
+    ctx.quadraticCurveTo(v.x + 26, v.groundY - 72 - h * 0.15, v.x + 20, v.groundY - 72);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(v.x - 6, v.groundY - 72 - h * 0.6, 4, 0, TAU); ctx.fill();
+    drawFace(ctx, v.x, v.groundY - 30, 34, 'happy', t, v.t);
   } else {
-    ctx.globalAlpha = 0.5; ctx.fillStyle = '#e8e8f4';
-    for (let i = 0; i < 5; i++) {
-      const py = v.groundY - 70 - ((t * 60 + i * 55) % (v.groundY - v.plumeTop - 40));
-      ctx.beginPath(); ctx.arc(v.x + Math.sin(t * 2 + i) * 10, py, 16 + i * 2, 0, TAU); ctx.fill();
+    drawFace(ctx, v.x, v.groundY - 30, 34, 'happy', t, v.t);
+    // puffing steam clouds
+    ctx.globalAlpha = 0.55; ctx.fillStyle = '#eef0fa';
+    const span = v.groundY - 76 - v.plumeTop;
+    for (let i = 0; i < 6; i++) {
+      const k = ((t * 0.35 + i / 6) % 1);
+      const py = v.groundY - 76 - k * span;
+      ctx.beginPath();
+      ctx.arc(v.x + Math.sin(t * 2 + i * 2.1) * 12, py, 14 + k * 10, 0, TAU); ctx.fill();
     }
   }
   ctx.restore();
 }
 function drawBeamSensor(ctx, s, t) {
   ctx.save();
-  ctx.fillStyle = s.lit ? '#ffe156' : '#8a8fae';
-  ctx.beginPath(); ctx.arc(s.x, s.y, 24, 0, TAU); ctx.fill();
-  ctx.strokeStyle = s.lit ? '#c8861b' : '#5a5f7e'; ctx.lineWidth = 4; ctx.stroke();
+  // mount: a post down to its ledge, or a hanger up to its rock
+  ctx.fillStyle = '#6a5f8e';
+  if (s.post) {
+    rr(ctx, s.x - 8, s.y + 16, 16, s.post - s.y - 16, 5); ctx.fill();
+    ctx.fillStyle = '#584e78';
+    rr(ctx, s.x - 24, s.post - 12, 48, 12, 4); ctx.fill();
+    ctx.fillStyle = '#6a5f8e';
+  } else if (s.hang) {
+    rr(ctx, s.x - 6, s.hang, 12, s.y - s.hang - 16, 4); ctx.fill();
+  } else {
+    rr(ctx, s.x - 6, s.y + 16, 12, 30, 4); ctx.fill();
+  }
+  if (s.lit) {
+    // glow rays
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(t * 0.8);
+    ctx.fillStyle = 'rgba(255,225,86,0.35)';
+    for (let i = 0; i < 6; i++) {
+      ctx.rotate(TAU / 6);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(52, -9); ctx.lineTo(52, 9); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // the crystal gem (diamond)
+  const c1 = s.lit ? '#ffe97b' : '#a8a0c8', c2 = s.lit ? '#ffc82b' : '#7a739e';
+  const g = ctx.createLinearGradient(s.x, s.y - 26, s.x, s.y + 26);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y - 27); ctx.lineTo(s.x + 22, s.y); ctx.lineTo(s.x, s.y + 27); ctx.lineTo(s.x - 22, s.y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = s.lit ? '#c8861b' : '#584e78'; ctx.lineWidth = 3.5; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(s.x - 8, s.y - 12); ctx.lineTo(s.x, s.y - 20); ctx.stroke();
+  drawFace(ctx, s.x, s.y + 2, 26, s.lit ? 'happy' : 'sleepy', t, s.t);
   ctx.restore();
 }
 function drawObservatoryTelescope(ctx, eye, t, lit) {
   ctx.save();
+  // pivot mount on the dome floor
+  ctx.fillStyle = '#584e78';
+  rr(ctx, 3060, 940, 90, 60, 10); ctx.fill();
   ctx.fillStyle = '#6a5f8e';
-  rr(ctx, eye.x - 30, eye.y - 20, 160, 44, 14); ctx.fill();
-  ctx.fillStyle = lit ? '#ffe156' : '#4a4f6e';
-  ctx.beginPath(); ctx.arc(eye.x, eye.y, 20, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(3105, 935, 34, 0, TAU); ctx.fill();
+  // the barrel, aimed up toward the sky slit (the eye is its lower lens)
+  ctx.translate(3105, 935);
+  ctx.rotate(Math.atan2(eye.y - 935, eye.x - 3105));
+  const len = Math.hypot(eye.x - 3105, eye.y - 935) + 60;
+  const g = ctx.createLinearGradient(0, -30, 0, 30);
+  g.addColorStop(0, '#9a8fbe'); g.addColorStop(0.5, '#7a6f9e'); g.addColorStop(1, '#584e78');
+  ctx.fillStyle = g;
+  rr(ctx, -14, -26, len, 52, 20); ctx.fill();
+  ctx.strokeStyle = '#463e60'; ctx.lineWidth = 3;
+  rr(ctx, -14, -26, len, 52, 20); ctx.stroke();
+  ctx.fillStyle = '#463e60';
+  rr(ctx, len * 0.42, -30, 16, 60, 6); ctx.fill();
+  ctx.restore();
+  // the eye lens (what the grand alignment must hit)
+  ctx.save();
+  if (!lit) { // gentle pulsing target ring while it waits
+    ctx.strokeStyle = 'rgba(255,225,86,0.6)';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(eye.x, eye.y, 30 + Math.sin(t * 3) * 5, 0, TAU); ctx.stroke();
+  }
+  ctx.fillStyle = lit ? '#fff3b8' : '#bfd0e8';
+  ctx.beginPath(); ctx.arc(eye.x, eye.y, 22, 0, TAU); ctx.fill();
+  ctx.strokeStyle = lit ? '#c8861b' : '#584e78'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(eye.x, eye.y, 22, 0, TAU); ctx.stroke();
+  if (lit) {
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(eye.x, eye.y, 12 + Math.sin(t * 6) * 3, 0, TAU); ctx.fill();
+  }
   ctx.restore();
 }
 function drawObservatoryDome(ctx, t, lit) {
+  // the observatory building, painted behind the deck: a proper dome with a
+  // sky slit over the telescope, warm windows, and its own sleepy face
   ctx.save();
-  ctx.fillStyle = 'rgba(160,150,200,0.35)';
-  ctx.beginPath(); ctx.arc(2700, 1000, 560, Math.PI, 0); ctx.fill();
+  // base building
+  ctx.fillStyle = 'rgba(178,170,214,0.85)';
+  rr(ctx, 2260, 620, 880, 380, 26); ctx.fill();
+  // dome cap
+  ctx.fillStyle = 'rgba(190,182,224,0.9)';
+  ctx.beginPath(); ctx.arc(2700, 640, 440, Math.PI, 0); ctx.fill();
+  // the sky slit, over the telescope's aim — glows once the telescope is lit
+  ctx.fillStyle = lit ? 'rgba(255,225,86,0.5)' : 'rgba(60,50,100,0.45)';
+  ctx.beginPath();
+  ctx.moveTo(3010, 240); ctx.lineTo(3110, 218); ctx.lineTo(3140, 620); ctx.lineTo(3040, 630);
+  ctx.closePath(); ctx.fill();
+  // dome ribs
+  ctx.strokeStyle = 'rgba(120,110,160,0.5)'; ctx.lineWidth = 6;
+  for (const rx of [-300, -150, 0, 150]) {
+    ctx.beginPath(); ctx.arc(2700, 640, 440, 0, Math.PI, true);
+    ctx.moveTo(2700 + rx, 640);
+    ctx.quadraticCurveTo(2700 + rx * 1.05, 400, 2700 + rx * 0.55, 245);
+    ctx.stroke();
+  }
+  // warm little windows
+  ctx.fillStyle = 'rgba(255,225,86,0.4)';
+  for (const wx of [2360, 2520, 2880]) rr(ctx, wx, 760, 56, 76, 12), ctx.fill();
+  // the building's sleepy face wakes up when the telescope lights
+  drawFace(ctx, 2700, 800, 90, lit ? 'happy' : 'sleepy', t, 3);
   ctx.restore();
 }
 
