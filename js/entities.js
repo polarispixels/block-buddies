@@ -4290,13 +4290,26 @@ class SubDoor {
     // stand-on-it + Space/★ (used by the Puzzle Blocks room, which sits on
     // the main walking route)
     this.press = !!opts.press;
+    // advance: true = this door is a STAGE ENDING in a linear world chain
+    // (v1.20.0): touching it triggers game.stageClear(sub) — a short
+    // celebration then the next stage as a full level — instead of enterSub.
+    // Dormancy/gold-star logic never applies to an ending.
+    this.advance = !!opts.advance;
     this.t = rand(9); this.armed = false;
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
-  done() { return !!(game.miniDone && game.miniDone[this.sub]); }
+  done() { return !this.advance && !!(game.miniDone && game.miniDone[this.sub]); }
   update(dt) {
     this.t += dt;
+    if (this.advance) { // a chain-stage ending behaves like a gate: walk in
+      if (chance(0.1)) {
+        Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1,
+          { colors: ['#ffe156', '#7be07b', '#fff'], type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
+      }
+      if (overlaps(this, game.player)) game.stageClear(this.sub);
+      return;
+    }
     const done = this.done();
     const over = overlaps(this, game.player);
     if (over && this.armed && game.state === 'play' && !game.cut && !game.endPhase) {

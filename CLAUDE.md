@@ -67,9 +67,9 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 
 | # (internal n) | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
-| 1 | Block Meadow | meadow | tutorial, fire block; stagegate archway (x=4230, w now 4650, gate 4530) → BLOCK MEADOW 0-2 ('meadow2': 6800px, route barred by two bigBrick walls, refill buddy blocks); Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | star gate |
-| 2 | Underwater World | water | 4-dir swim (`lv.water`) | star gate |
-| 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | star gate |
+| 1 | Block Meadow | meadow | tutorial, fire block; Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | stage archway (x=4230) → BLOCK MEADOW 0-2 ('meadow2': 6800px, bigBrick walls + refill buddy blocks); its finale star completes the world |
+| 2 | Underwater World | water | 4-dir swim (`lv.water`) | stage archway (x=3880) → SUNKEN TEMPLE 1-2; its treasure star completes the world |
+| 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch | stage archway (x=4700 island) → WEATHER FACTORY 2-2; its lonely star completes the world |
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash) | star gate |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
@@ -78,12 +78,23 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens | golden star → MAZE MASTER (befriends all aliens) |
 | 10 | Dino Jungle | jungle | `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
 
-Progression: gates advance 1→5; beating each boss/finale unlocks the next
-bonus world (zombie→6, magma→7, rally→8, coronation→9, maze star→10) and party
-exits chain 5→6→7→8→9→10→title (internal n). Title digit keys use DISPLAYED numbers: 0 = meadow … 9 = jungle (digit d starts internal d+1).
-Persistence (localStorage): `ffbg_unlocked` (1-10),
-`ffbg_char` ('boy'/'girl'), `ffbg_royal` ('1' after coronation → crown drawn
-everywhere via `drawBoy`/`drawHead`).
+Progression (LINEAR WORLD CHAINS since v1.20.0): each world is an ordered
+stage list in `WORLD_STAGES` (levels.js) — currently `1: [1,'meadow2']`,
+`2: [2,'water2']`, `3: [3,'cloud2']`, everything else single-stage. A stage's
+ending is a `{advance: true}` stagegate SubDoor → `game.stageClear(next)`
+(a light ~2.4s STAGE CLEAR card, then the next stage loads as a FULL level —
+no enterSub). The FINAL stage's goalStar → `game.worldWin(w)`: full party,
+unlocks world w+1, resets that world's stage progress. World 4 still ends at
+its star `Gate` (single-stage chain); beating each boss/finale unlocks the
+bonus worlds as before (zombie→6, magma→7, rally→8, coronation→9, maze
+star→10) and party exits chain 5→6→7→8→9→10→title (internal n). Picking a
+world (medallion/digit/Space → `game.startWorld`) resumes at the furthest
+stage reached; a beaten world restarts at stage 1. Title digit keys use
+DISPLAYED numbers: 0 = meadow … 9 = jungle (digit d starts internal d+1).
+Persistence (localStorage): `ffbg_unlocked` (1-10), `ffbg_stage` (furthest
+stage per world, "w:idx,...", additive — old saves unaffected), `ffbg_char`
+('boy'/'girl'), `ffbg_royal` ('1' after coronation → crown drawn everywhere
+via `drawBoy`/`drawHead`).
 
 ## Key subsystems
 
@@ -154,7 +165,9 @@ everywhere via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2', 'cloud2', 'letterblocks'), entered
+  'meadow2', 'water2', 'cloud2', 'letterblocks'; since v1.20.0
+  meadow2/water2/cloud2 are CHAIN STAGES started via `startLevel`, not
+  sublevels — the rest are true sublevels), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
   pipe/eyes/asteroid/ladder/garage/moonwell/stagegate — opts {press: true} makes
   a door Space/★-only with a bobbing key hint, for doors on busy routes (the
@@ -235,7 +248,7 @@ everywhere via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 550 checks; must print
+  actual badge/footer values). 562 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

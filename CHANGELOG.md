@@ -8,6 +8,30 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.20.0] - 2026-08-29
+
+### Changed — LINEAR WORLD CHAINS: stages become the spine
+
+Worlds are now ordered stage chains (Ryan's flow decision — strictly
+linear, with tiered celebrations):
+
+- **The end of 0-1 IS the archway to 0-2** (and 1-1 → Sunken Temple,
+  2-1 → Weather Factory): the star gates in worlds 0-2 are gone; walking
+  into the archway plays a light ~2.4s STAGE CLEAR card, then the next
+  stage loads as a full level. Stage-2s are no longer optional side-trips
+  you return from.
+- **The final stage's golden star completes the WORLD**: full party, next
+  world unlocks there (Underwater now sits behind Block Meadow 0-2,
+  Mountain behind the Weather Factory), and the chain resets for replay.
+- **Title-screen stage resume**: a new additive `ffbg_stage` save key
+  remembers the furthest stage reached per world — picking a world resumes
+  there, so retrying a stage 2 never means replaying stage 1. Old saves
+  unaffected; Up×5 unlock-all remains the parental override.
+- Chain membership is one data table (`WORLD_STAGES`) — the Frozen
+  Observatory and later stage-2s slot in by adding an entry. Secret rooms
+  (pipe room, Letter Blocks, treehouse, ...) stay optional sublevels,
+  untouched.
+
 ## [1.19.2] - 2026-08-29
 
 ### Changed

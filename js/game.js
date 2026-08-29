@@ -14,12 +14,17 @@ window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
 let saveUnlocked = 1, saveChar = 'boy', saveRoyal = false;
-const saveMini = {};
+const saveMini = {}, saveStage = {};
 try {
   saveUnlocked = clamp(parseInt(localStorage.getItem('ffbg_unlocked') || '1', 10) || 1, 1, 10);
   if (localStorage.getItem('ffbg_char') === 'girl') saveChar = 'girl';
   saveRoyal = localStorage.getItem('ffbg_royal') === '1';
   for (const k of (localStorage.getItem('ffbg_mini') || '').split(',')) if (k) saveMini[k] = true;
+  // furthest stage reached per world ("w:idx,..." — linear chains, v1.20.0)
+  for (const pair of (localStorage.getItem('ffbg_stage') || '').split(',')) {
+    const [w, s] = pair.split(':').map(Number);
+    if (w >= 1 && w <= 10 && s > 0) saveStage[w] = s;
+  }
 } catch (e) {}
 
 const game = {
@@ -44,7 +49,7 @@ const game = {
   titleT: 0, titleBoyX: 300, titleBoyD: 1,
   titlePlayer: null, titleSpider: null,
   combo: { up: 0, down: 0, t: 0 }, titleMsg: null,
-  subReturn: null, miniDone: saveMini, flightStars: 0,
+  subReturn: null, miniDone: saveMini, stageProg: saveStage, flightStars: 0,
   deathPos: null
 };
 
@@ -85,7 +90,9 @@ game.resetProgress = function () { // secret combo: Down×5 fast on the title (k
     localStorage.removeItem('ffbg_char');
     localStorage.removeItem('ffbg_royal');
     localStorage.removeItem('ffbg_mini');
+    localStorage.removeItem('ffbg_stage');
   } catch (e) {}
+  game.stageProg = {};
   game.unlocked = 1;
   game.selLevel = 1;
   game.royal = false;
@@ -102,12 +109,65 @@ game.titleTap = function (p) {
   for (let i = 1; i <= 10; i++) {
     const m = medalPos(i);
     if (Math.hypot(p.x - m.x, p.y - m.y) < m.r * 1.35) {
-      if (i <= game.unlocked) { game.selLevel = i; game.startLevel(i); }
+      if (i <= game.unlocked) { game.selLevel = i; game.startWorld(i); }
       else AudioSys.sfx('boing');
       return true;
     }
   }
   return false;
+};
+// ---------------- linear world chains (v1.20.0) ----------------
+// Picking a world resumes at the furthest stage reached (never replay 1-1 to
+// retry 1-2); a fully-beaten world starts back at stage 1 for free chain
+// replay (worldWin resets its progress).
+game.startWorld = function (w) {
+  const chain = stageChain(w);
+  const st = clamp(game.stageProg[w] || 0, 0, chain.length - 1);
+  game.startLevel(chain[st]);
+};
+game.saveStageProg = function () {
+  try {
+    const parts = [];
+    for (const w in game.stageProg) if (game.stageProg[w] > 0) parts.push(w + ':' + game.stageProg[w]);
+    if (parts.length) localStorage.setItem('ffbg_stage', parts.join(','));
+    else localStorage.removeItem('ffbg_stage');
+  } catch (e) {}
+};
+// The light between-stages beat: fanfare + confetti + a short card, then the
+// next stage loads as a FULL level (no subReturn). The big party stays
+// reserved for world completion (worldWin).
+game.stageClear = function (nextId) {
+  if (game.state !== 'play' || game.cut || game.endPhase) return;
+  game.state = 'stageclear'; game.completeT = 0; game.nextStage = nextId;
+  AudioSys.sfx('fanfare');
+  const info = stageInfo(nextId);
+  if (info && (game.stageProg[info.world] || 0) < info.stage) {
+    game.stageProg[info.world] = info.stage;
+    game.saveStageProg();
+  }
+  Particles.burst(game.player.cx, game.player.y, 26,
+    { colors: RAINBOW.concat(['#ffe156']), type: 'confetti', sp1: 380, l0: 0.8, l1: 1.8, s1: 12, grav: 300, up: 260 });
+};
+// World completion: the final stage's finale. Full party, next world
+// unlocked, stage progress reset so the chain replays from its start.
+game.worldWin = function (w) {
+  if (game.mazeDone) return;
+  game.mazeDone = true; // same per-level goal-reached guard as subWin/mazeWin
+  game.endPhase = 'party'; game.partyT = 0;
+  AudioSys.setMusic('win');
+  AudioSys.sfx('chest');
+  AudioSys.sfx('cheer');
+  game.shake = Math.max(game.shake, 0.25);
+  const gs = game.level.goalStar;
+  if (gs) {
+    Particles.burst(gs.x, gs.y, 30, { colors: ['#ffe156', '#ffd24a', '#fff'], type: 'star', sp1: 420, l0: 0.8, l1: 1.6, s1: 13, grav: 100 });
+    Particles.candyBurst(gs.x, gs.y - 30, 12);
+  }
+  game.unlocked = Math.max(game.unlocked, Math.min(10, w + 1));
+  try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
+  game.stageProg[w] = 0;
+  game.saveStageProg();
+  game.wonWorld = w;
 };
 game.startLevel = function (n) {
   game.subReturn = null; game.flightStars = 0;
@@ -123,6 +183,7 @@ game.startLevel = function (n) {
   game.zombie = null; game.bossStage = 0; game.bossPickups = []; game.spinoWalls = [];
   game.chest = null; game.endPhase = null; game.cut = null; game.caught = null;
   game.raceDone = false; game.cheerT = 0; game.crowned = false; game.mazeDone = false;
+  game.wonWorld = 0;
   game.cam.x = 0;
   game.cam.y = lv.h > H ? clamp(game.player.cy - H * 0.5, 0, lv.h - H) : 0;
   game.state = 'intro'; game.introT = 0;
@@ -588,7 +649,11 @@ function updatePlay(dt) {
   // touching the golden star wins the maze
   if (lv.goalStar && !game.mazeDone && (!game.zombie || game.zombie.state === 'friend' || game.zombie.state === 'dance') &&
       Math.hypot(pl.cx - lv.goalStar.x, pl.cy - lv.goalStar.y) < 115) {
-    if (typeof lv.n === 'string') game.subWin();
+    if (typeof lv.n === 'string') {
+      const info = stageInfo(lv.n);
+      if (info && !game.subReturn) game.worldWin(info.world); // final chain stage
+      else game.subWin(); // secret rooms (and any sub-entered replay)
+    }
     else if (lv.n === 10) game.jungleWin();
     else game.mazeWin();
   }
@@ -758,6 +823,7 @@ function updatePlay(dt) {
     }
     if (game.partyT > 5 && justP.Space) {
       if (game.subReturn) game.exitSub(); // mini-game over — back to the world
+      else if (game.wonWorld) { const w = game.wonWorld; game.wonWorld = 0; if (w < 10) game.startWorld(w + 1); else game.goTitle(); }
       else if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
       else if (lv.n === 6) game.startLevel(7); // and another one!
       else if (lv.n === 7) game.startLevel(8); // and one more!
@@ -810,9 +876,9 @@ function updateTitle(dt) {
   // digit keys use the DISPLAYED world numbers 0-9 (0 = the training meadow);
   // internally worlds stay n = 1-10 (saves, buildLevel, harness — display = n-1)
   for (let d = 0; d <= 9; d++) {
-    if (justP['Digit' + d] && d + 1 <= game.unlocked) { game.selLevel = d + 1; game.startLevel(d + 1); return; }
+    if (justP['Digit' + d] && d + 1 <= game.unlocked) { game.selLevel = d + 1; game.startWorld(d + 1); return; }
   }
-  if (justP.Space) game.startLevel(clamp(game.selLevel, 1, game.unlocked));
+  if (justP.Space) game.startWorld(clamp(game.selLevel, 1, game.unlocked));
 }
 function update(dt) {
   game.t += dt;
@@ -859,9 +925,14 @@ function update(dt) {
       game.completeT += dt;
       Particles.update(dt);
       if (game.completeT > 2.4) {
-        if (game.level.n < 5) game.startLevel(game.level.n + 1);
+        if (game.level.n < 5) game.startWorld(game.level.n + 1);
         else game.goTitle();
       }
+      break;
+    case 'stageclear': // the light between-stages beat (linear chains)
+      game.completeT += dt;
+      Particles.update(dt);
+      if (game.completeT > 2.4) game.startLevel(game.nextStage);
       break;
   }
   endFrameInput();
@@ -1183,6 +1254,24 @@ function drawCompleteOverlay() {
   outlineText(ctx, 'HOORAY!', W / 2, y - 30, 82, '#ffe156', '#5a4a86');
   if (game.level.n < 5) drawLevelIcon(ctx, W / 2, y + 80, 38, LEVEL_META[game.level.n + 1].theme, game.t);
 }
+function drawStageClearOverlay() {
+  const t = game.completeT, k = Math.min(1, t * 3);
+  ctx.save();
+  ctx.globalAlpha = 0.35 * k;
+  ctx.fillStyle = '#1a1030'; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  const y = H / 2;
+  ctx.save();
+  ctx.translate(W / 2, y - 20);
+  ctx.rotate(game.t * 0.6);
+  ctx.fillStyle = 'rgba(255,225,86,' + 0.45 * k + ')';
+  starPath(ctx, 0, 0, 200 * k, 95 * k, 8);
+  ctx.fill();
+  ctx.restore();
+  const meta = LEVEL_META[game.nextStage];
+  outlineText(ctx, 'STAGE CLEAR!', W / 2, y - 50, 66, '#7be07b', '#2a4a2a');
+  if (meta) outlineText(ctx, meta.name, W / 2, y + 40, 44, '#ffe156', '#5a4a86');
+}
 function drawPartyOverlay() {
   const t = game.partyT;
   if (t > 0.8) {
@@ -1333,6 +1422,7 @@ function renderWorld() {
   if (game.state === 'intro') drawIntroCard();
   if (game.state === 'dead') drawDeadOverlay();
   if (game.state === 'complete') drawCompleteOverlay();
+  if (game.state === 'stageclear') drawStageClearOverlay();
   if (game.endPhase === 'party') drawPartyOverlay();
   drawTouchUI();
 }

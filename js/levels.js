@@ -29,6 +29,21 @@ const LEVEL_META = {
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' }
 };
 
+// ---- linear world chains (v1.20.0) ----
+// Each world is an ordered stage list; the end of one stage advances to the
+// next, and the final stage's finale completes the WORLD. Worlds absent from
+// this table are single-stage chains (future stage-2s slot in by editing it).
+// Secret rooms are NOT chain members — they stay optional enterSub sublevels.
+const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'] };
+function stageChain(w) { return WORLD_STAGES[w] || [w]; }
+function stageInfo(id) { // -> {world, stage} for chain members, null otherwise
+  for (const w in WORLD_STAGES) {
+    const i = WORLD_STAGES[w].indexOf(id);
+    if (i >= 0) return { world: +w, stage: i };
+  }
+  return typeof id === 'number' ? { world: id, stage: 0 } : null;
+}
+
 function newLevel(n) {
   const m = LEVEL_META[n];
   return {
@@ -127,8 +142,9 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(3100, G));
     // STAGE 0-2: a wooden archway with a golden star and a big "2" badge stands
     // right on the walk to the gate — the meadow keeps going in there!
-    lv.subDoors.push(new SubDoor(4230, G, 'meadow2', 'stagegate'));
-    lv.gate = new Gate(4530, G);
+    // STAGE 0-2 (since v1.20.0 the world's ENDING — linear chains): the
+    // archway advances straight into BLOCK MEADOW 0-2; no star gate anymore
+    lv.subDoors.push(new SubDoor(4230, G, 'meadow2', 'stagegate', { advance: true }));
     lv.decor.flowers = []; lv.decor.trees = []; lv.decor.clouds = [];
     for (let x = 60; x < lv.w; x += rand(90, 200)) lv.decor.flowers.push({ x, c: randi(0, 4), s: rand(0.8, 1.3) });
     for (let x = 200; x < lv.w; x += rand(400, 800)) lv.decor.trees.push({ x, s: rand(0.85, 1.25) });
@@ -166,10 +182,9 @@ function buildLevel(n) {
     // the SECRET BUBBLE MAZE: a seaweed-framed cave on the seafloor breathing
     // a strange stream of bubbles — "where do those bubbles come from?"
     lv.subDoors.push(new SubDoor(3130, 1130, 'bubblemaze', 'bubble'));
-    // STAGE 1-2: the stage archway stands on the seabed before the gate —
-    // beyond it, the SUNKEN TEMPLE
-    lv.subDoors.push(new SubDoor(3880, 1130, 'water2', 'stagegate'));
-    lv.gate = new Gate(4060, 1060);
+    // STAGE 1-2 (the world's ENDING since v1.20.0): the seabed archway
+    // advances straight into the SUNKEN TEMPLE; no star gate anymore
+    lv.subDoors.push(new SubDoor(3880, 1130, 'water2', 'stagegate', { advance: true }));
     lv.decor.weeds = []; lv.decor.corals = []; lv.decor.fish = [];
     for (let x = 40; x < lv.w; x += rand(120, 260)) lv.decor.weeds.push({ x, h: rand(60, 150), seed: rand(9) });
     for (let x = 150; x < lv.w; x += rand(300, 600)) lv.decor.corals.push({ x, s: rand(0.7, 1.4), c: randi(0, 2) });
@@ -208,10 +223,10 @@ function buildLevel(n) {
     lv.subDoors.push(new SubDoor(2480, 560, 'cloudclimb', 'cloud')); // CLOUD CLIMB entrance
     lv.checks.push(new Checkpoint(2350, 560));
     lv.checks.push(new Checkpoint(3750, 570));
-    // STAGE 2-2: a roomy island carries the archway — beyond it, the WEATHER FACTORY
+    // STAGE 2-2 (the world's ENDING since v1.20.0): the archway island
+    // advances straight into the WEATHER FACTORY; no star gate anymore
     addPlat(lv, 4600, 570, 400, { h: 80 });
-    lv.subDoors.push(new SubDoor(4700, 570, 'cloud2', 'stagegate'));
-    lv.gate = new Gate(4930, 570);
+    lv.subDoors.push(new SubDoor(4700, 570, 'cloud2', 'stagegate', { advance: true }));
     lv.decor.clouds = []; lv.decor.birds = [];
     for (let i = 0; i < 16; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 600), s: rand(0.6, 1.6) });
     for (let i = 0; i < 5; i++) lv.decor.birds.push({ x: rand(0, lv.w), y: rand(80, 300), sp: rand(40, 90) });

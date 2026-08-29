@@ -196,12 +196,25 @@ check('rainbow befriends spider', vm.runInContext("game.bowSpider.state==='frien
 frames(120, { ArrowRight: 1 });
 check('friend follows without crashing', G().state === 'play');
 
-// gate completes level
-vm.runInContext('game.player.x = game.level.gate.x - 30; game.player.y = 500;', sandbox);
+// linear chains (v1.20.0): the stage archway ENDS world 1-1 — no star gate
+check('world 1 has no star gate anymore', G().level.gate === null);
+vm.runInContext("(function(){ const d = game.level.subDoors.find(d => d.advance); game.player.x = d.cx - game.player.w / 2; game.player.y = 620 - game.player.h; })()", sandbox);
 frames(10);
-check('gate triggers level complete', G().state === 'complete');
+check('the stage archway triggers the stage-clear beat', G().state === 'stageclear');
+check('reaching stage 2 is remembered', sandbox.localStorage.getItem('ffbg_stage').includes('1:1'));
 frames(160);
-check('auto-advances to level 2', G().level.n === 2 && (G().state === 'intro' || G().state === 'play'));
+check('stage-clear auto-advances into BLOCK MEADOW 0-2', G().level.n === 'meadow2' && (G().state === 'intro' || G().state === 'play'));
+frames(160);
+// the final stage's finale completes the WORLD: full party + next unlock
+vm.runInContext('game.player.x = 6480; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
+frames(60, { ArrowRight: 1 });
+check('the 0-2 finale star completes WORLD 1 with the full party', G().endPhase === 'party' && G().wonWorld === 1);
+check('world completion unlocks Underwater', G().unlocked >= 2);
+check('world completion resets the stage-resume progress', !(sandbox.localStorage.getItem('ffbg_stage') || '').includes('1:'));
+frames(320);
+tap('Space');
+frames(5);
+check('party Space advances to level 2', G().level.n === 2 && (G().state === 'intro' || G().state === 'play'));
 
 // ---------------- level 2 swim ----------------
 frames(160);
@@ -1966,11 +1979,14 @@ frames(3);
 // ---- the stage door in the meadow + the full 0-2 gauntlet, ridden for real ----
 vm.runInContext('game.startLevel(1)', sandbox);
 frames(170);
-check('stage2: the meadow grew to make room for the archway', G().level.w === 4650 && vm.runInContext('game.level.gate.cx', sandbox) === 4530);
-check('stage2: a stagegate door to meadow2 stands on the path', vm.runInContext("game.level.subDoors.some(d => d.sub === 'meadow2' && d.style === 'stagegate')", sandbox));
+check('stage2: the archway is the world ending (advance door, no gate)',
+  G().level.w === 4650 && G().level.gate === null &&
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'meadow2' && d.style === 'stagegate' && d.advance)", sandbox));
 vm.runInContext("(function(){ const d = game.level.subDoors.find(d => d.sub === 'meadow2'); game.player.x = d.cx - game.player.w / 2; game.player.y = 620 - game.player.h; })()", sandbox);
-frames(6);
-check('stage2: walking into the archway enters BLOCK MEADOW 0-2', G().level.n === 'meadow2' && G().state === 'intro');
+frames(10);
+check('stage2: the archway starts the stage-clear beat', G().state === 'stageclear');
+frames(160);
+check('stage2: the beat lands in BLOCK MEADOW 0-2', G().level.n === 'meadow2');
 frames(170);
 check('stage2: 0-2 is longer than every world so far', G().level.w === 6800);
 const w1 = vm.runInContext('game.level.solids.filter(s => s.bigBrick).length', sandbox);
@@ -2007,20 +2023,25 @@ check('stage2: the double wall falls to the candy vault', vm.runInContext('game.
 // finale: the golden star
 vm.runInContext('game.player.x = 6480; game.player.y = 620 - game.player.h; game.player.vy = 0;', sandbox);
 frames(60, { ArrowRight: 1 });
-check('stage2: the golden star throws the party', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.meadow2', sandbox));
-vm.runInContext('game.exitSub()', sandbox);
-frames(3);
-check('stage2: exit lands back in Block Meadow', G().level.n === 1 && G().state === 'play');
+check('stage2: the golden star completes WORLD 1', G().endPhase === 'party' && G().wonWorld === 1);
+frames(320);
+tap('Space');
+frames(5);
+check('stage2: the world party leads onward to Underwater', G().level.n === 2);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
 // ---------------- SUNKEN TEMPLE 1-2 (v1.16.0) — every chain ridden for real ----------------
 vm.runInContext('game.startLevel(2)', sandbox);
 frames(170);
-check('temple: a stage archway stands on the Underwater seabed', vm.runInContext("game.level.subDoors.some(d => d.sub === 'water2' && d.style === 'stagegate')", sandbox));
+check('temple: the seabed archway is the world ending (advance door, no gate)',
+  G().level.gate === null &&
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'water2' && d.style === 'stagegate' && d.advance)", sandbox));
 vm.runInContext('game.player.x = 3860; game.player.y = 1050;', sandbox);
-frames(6);
-check('temple: swimming into the archway enters the SUNKEN TEMPLE', G().level.n === 'water2' && G().state === 'intro');
+frames(10);
+check('temple: swimming into the archway starts the stage-clear beat', G().state === 'stageclear');
+frames(160);
+check('temple: the beat lands in the SUNKEN TEMPLE', G().level.n === 'water2');
 frames(170);
 check('temple: machine + three pearls + three sockets + currents all off', vm.runInContext(
   "game.level.puzzle instanceof SunkenTemple && game.level.puzzle.pearls.length === 3 && game.level.puzzle.sockets.length === 3 && game.level.currents.every(c => c.on === false)", sandbox));
@@ -2073,21 +2094,26 @@ check('temple: three wings wake the door — it crumbles open', vm.runInContext(
 check('temple: the golden star appears in the treasure chamber', !!G().level.goalStar);
 vm.runInContext('game.player.x = 3220; game.player.y = 1270;', sandbox);
 frames(30);
-check('temple: the star throws the party and remembers the win', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.water2', sandbox));
-vm.runInContext('game.exitSub()', sandbox);
-frames(3);
-check('temple: exit lands back in Underwater World', G().level.n === 2 && G().state === 'play');
+check('temple: the star completes WORLD 2 with the full party', G().endPhase === 'party' && G().wonWorld === 2);
+check('temple: Cloud World unlocks', G().unlocked >= 3);
+frames(320);
+tap('Space');
+frames(5);
+check('temple: the world party leads onward to Cloud World', G().level.n === 3);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
 // ---------------- WEATHER FACTORY 2-2 (v1.17.0) — recipes ridden for real ----------------
 vm.runInContext('game.startLevel(3)', sandbox);
 frames(170);
-check('factory: Cloud World grew a roomy archway island', G().level.w === 5000 && vm.runInContext('game.level.gate.cx', sandbox) === 4930 &&
-  vm.runInContext("game.level.subDoors.some(d => d.sub === 'cloud2' && d.style === 'stagegate')", sandbox));
+check('factory: the archway island is the world ending (advance door, no gate)',
+  G().level.w === 5000 && G().level.gate === null &&
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'cloud2' && d.style === 'stagegate' && d.advance)", sandbox));
 vm.runInContext('game.player.x = 4672; game.player.y = 476; game.player.vx = 0; game.player.vy = 0;', sandbox);
-frames(6);
-check('factory: the archway enters THE WEATHER FACTORY', G().level.n === 'cloud2' && G().state === 'intro');
+frames(10);
+check('factory: the archway starts the stage-clear beat', G().state === 'stageclear');
+frames(160);
+check('factory: the beat lands in THE WEATHER FACTORY', G().level.n === 'cloud2');
 frames(170);
 check('factory: machine + six levers + cloud-catch + no star yet', vm.runInContext(
   'game.level.puzzle instanceof WeatherFactory && game.level.puzzle.levers.length === 6', sandbox) &&
@@ -2146,10 +2172,24 @@ check('factory: four stations done — the star ignites far away', !!G().level.g
 vm.runInContext('game.player.x = 6360; game.player.y = 606; game.player.vx = 0; game.player.vy = 0;', sandbox);
 frames(240, { ArrowRight: 1 });
 check('factory: the rainbow carries the hero to the far island', G().player.x > 7000);
-check('factory: the lonely star throws the party', G().endPhase === 'party' && vm.runInContext('!!game.miniDone.cloud2', sandbox));
-vm.runInContext('game.exitSub()', sandbox);
+check('factory: the lonely star completes WORLD 3', G().endPhase === 'party' && G().wonWorld === 3);
+check('factory: Mountain World unlocks', G().unlocked >= 4);
+frames(320);
+tap('Space');
+frames(5);
+check('factory: the world party leads onward to Mountain World', G().level.n === 4);
+vm.runInContext('game.goTitle()', sandbox);
 frames(3);
-check('factory: exit lands back in Cloud World', G().level.n === 3 && G().state === 'play');
+
+// ---- linear chains: title-screen stage resume ----
+vm.runInContext('game.stageProg = { 1: 1 }; game.startWorld(1);', sandbox);
+frames(5);
+check('picking a world resumes at the furthest reached stage', G().level.n === 'meadow2');
+vm.runInContext('game.goTitle();', sandbox);
+frames(3);
+vm.runInContext('game.stageProg = {}; game.startWorld(1);', sandbox);
+frames(5);
+check('a fresh or fully-beaten world starts back at stage 1', G().level.n === 1);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

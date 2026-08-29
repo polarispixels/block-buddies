@@ -32,6 +32,7 @@ release spec. Maintenance rules:
 | 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | 🎯 next up |
 | 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | queued (after 13) |
 | 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | queued (after 14) |
+| 16 | Linear world chains | Flow/framework | ✅ shipped v1.20.0 — worlds are ordered stage lists (`WORLD_STAGES`); stage archways end stages with a light STAGE CLEAR beat, final-stage stars complete the world (full party + unlock), `ffbg_stage` title resume; spec in `docs/superpowers/specs/2026-08-29-linear-world-chains-design.md` (see CHANGELOG 1.20.0) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark
