@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.18.0</span>
+  <span class="badge">v1.19.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -600,7 +600,11 @@ bulbs → KA-CHUNK ×3 → a candy eruption (real collectible candy rains down) 
 out of the machine. The whole mechanism is <code>PipeWorks</code> (<code>lv.puzzle</code>).</p>
 <h3>Letter Blocks: Beginning Letters <small>(rainbow-sparkle door in Block Meadow, x≈2700 — v1.18.0)</small></h3>
 <p><strong>A reusable educational mini-game framework, not a one-off.</strong> <code>js/letterblocks.js</code>
-keeps content (<code>LB_WORDS</code>, a 20-entry word bank with procedural icons in <code>LB_ICONS</code>) and
+keeps content (<code>LB_WORDS</code>, a 60-entry word bank since v1.19.0 — grown from 20 with new word
+families like <code>_AN</code>, <code>_ING</code>, <code>_OAT</code>, <code>_OUSE</code> — with procedural icons in
+<code>LB_ICONS</code>, all second-generation since v1.19.0: every icon individually verified on
+contact-sheet screenshots at in-game size after the kids caught a four-eyed frog and an
+unrecognizable cat in v1) and
 the puzzle engine (<code>LetterBlocksMachine</code>, on <code>lv.puzzle</code> like every other secret-room
 machine) deliberately separate, so a future mode — missing-last-letter, picture-to-word matching, word
 families — can supply its own content and reuse everything else. The room itself is a single non-scrolling
@@ -899,7 +903,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.18.0 · built for Jack ·
+  Block Buddies v1.19.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

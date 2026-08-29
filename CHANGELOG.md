@@ -8,6 +8,28 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.19.0] - 2026-08-29
+
+### Changed — LETTER BLOCKS second generation: 60 words, kid-proof icons
+
+Playtest feedback from the kids (the four-eyed frog, the book that read as
+a card, the cat Rebecca called "that guy") drove a full second iteration:
+
+- **All 20 original icons redrawn + 40 new ones**, every single icon
+  individually verified on contact-sheet screenshots at in-game size — the
+  process gap that let v1's misses ship. New craft rules: silhouette first,
+  at most one face (only where natural), features scaled to read at 190px,
+  no composite operations (fixes the v1 moon punching a hole in the sky).
+- **Word bank tripled to 60**: new `_AN` (van/can/fan/pan), `_ELL`
+  (bell), `_ING` (ring/king), `_OAT` (goat/boat), `_OUSE` (mouse/house),
+  `_AKE` (snake/cake) families plus bat/log/box/truck/star joining the
+  existing cat-hat/dog/fox/duck/car families, and 20 more animals and
+  everyday objects — all vetted for the "kid says a different word"
+  ambiguity trap.
+- Icon batches drawn by parallel subagents, each running its own
+  screenshot-review loop before an orchestrator-level review of the full
+  60-icon contact sheet.
+
 ## [1.18.0] - 2026-08-29
 
 ### Added — LETTER BLOCKS: a reusable educational mini-game framework

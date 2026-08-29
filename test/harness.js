@@ -1047,7 +1047,7 @@ frames(45, { ArrowRight: 1 });
 check('walking over the completed pipe never re-swallows', G().level.n === 1 && G().player.x > 2960);
 
 // ---------------- Letter Blocks: content data integrity ----------------
-check('the word bank has exactly 20 entries', vm.runInContext('LB_WORDS.length', sandbox) === 20);
+check('the word bank has exactly 60 entries', vm.runInContext('LB_WORDS.length', sandbox) === 60);
 check('every word has 3 unique answer letters (correct + 2 distractors)',
   vm.runInContext('LB_WORDS.every(w => new Set([w.correct, ...w.distractors]).size === 3)', sandbox));
 check('every word has a matching icon renderer',
@@ -1104,12 +1104,12 @@ check('the reward hook awards exactly one candy through the normal economy',
 check('a new randomized puzzle follows automatically, with 3 fresh unique letters',
   LBT().state === 'idle' && LBT().current.word !== wordBefore && new Set(LBT().slots.map(s => s.letter)).size === 3);
 
-// pool exhaustion: 45 rounds (2+ reshuffles of a 20-word pool) never repeat
-// back-to-back, and the first pass touches all 20 words
+// pool exhaustion: 130 rounds (2+ reshuffles of a 60-word pool) never repeat
+// back-to-back, and the first pass touches all 60 words
 vm.runInContext(`
   game.testLB2 = new LetterBlocksMachine(620);
   game.testLBSeen = [];
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < 130; i++) {
     game.testLBSeen.push(game.testLB2.current.word);
     const okIdx = game.testLB2.slots.findIndex(s => s.letter === game.testLB2.current.correct);
     game.testLB2.onAnswer(game.testLB2.solids[okIdx]);
@@ -1117,10 +1117,10 @@ vm.runInContext(`
   }
 `, sandbox);
 const seenWords = vm.runInContext('game.testLBSeen', sandbox);
-check('no two consecutive puzzles repeat the same word across 45 rounds / 2+ reshuffles',
+check('no two consecutive puzzles repeat the same word across 130 rounds / 2+ reshuffles',
   seenWords.every((w, i) => i === 0 || w !== seenWords[i - 1]));
-check('every one of the 20 words appears within the first pass through the pool',
-  new Set(seenWords.slice(0, 20)).size === 20);
+check('every one of the 60 words appears within the first pass through the pool',
+  new Set(seenWords.slice(0, 60)).size === 60);
 
 // ---------------- secret: LETTER BLOCKS (Beginning Letters) ----------------
 vm.runInContext('game.startLevel(1)', sandbox);
