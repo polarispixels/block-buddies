@@ -267,13 +267,22 @@ projectile from ground level at the enemy and asserts the hit.
 - Use whatever plugins, skills, and tools are appropriate for the task at hand
   — don't limit yourself to raw file edits when a better tool exists.
 - Use multi-agent architecture whenever appropriate to balance speed, quality,
-  and cost: the top-tier model (e.g. Fable) belongs at the outermost
-  orchestration layer — decomposing work, reviewing results, handling the
-  trickiest design/debugging — while well-scoped subtasks (searches, mechanical
-  edits, screenshot loops, boilerplate, parallel level work) should be
-  delegated to subagents on lesser models (Sonnet/Haiku) for token efficiency.
-  Solo work is fine when a task is small enough that delegation overhead would
-  cost more than it saves.
+  and cost. Model assignment by phase:
+  - **Fable (top-level session)** — brainstorming/design decisions, specs and
+    implementation plans, architecture and progression/flow changes, reviewing
+    subagent output (e.g. contact-sheet art review), the trickiest debugging,
+    and final ship judgment.
+  - **Sonnet (subagents)** — substantive well-scoped work from a precise
+    brief: parallel art/level batches with their own verify loops, feature
+    implementation of a planned task, screenshot-iterate cycles.
+  - **Haiku (subagents)** — mechanical work: searches, renames, bulk data
+    edits, boilerplate, doc-sync sweeps.
+  - Solo work by the session model is fine when a task is small enough that
+    delegation overhead would cost more than it saves.
+  - NOTE: this file only steers delegation downward. The top-level session
+    model is chosen at launch (or `/model`) — Ryan's standing preference is
+    Fable there; if a session starts on a lesser model with architectural
+    work ahead, say so early instead of silently proceeding.
 
 ## Backlog
 
