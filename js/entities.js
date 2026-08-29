@@ -359,7 +359,7 @@ class Player {
         AudioSys.sfx('land'); this.squash = 0.72;
         Particles.burst(this.cx, this.y + this.h, 5, { colors: ['#fff'], sp1: 110, l1: 0.3, grav: 300, up: 10, s1: 6 });
       }
-      if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus || res.headS.puzzleBlock)) game.bumpBlock(res.headS);
+      if (res.head && res.headS && (res.headS.buddy || res.headS.bigBonus || res.headS.puzzleBlock || res.headS.beamMirror)) game.bumpBlock(res.headS);
       // pushing a big-brick wall while small: a mushroom thought bubble hints the answer
       if (res.wall && res.wallS && res.wallS.bigBrick) res.wallS.hintT = 1;
       this.spin += this.vx * dt / 30;

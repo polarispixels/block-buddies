@@ -864,18 +864,25 @@ function buildLevel(n) {
     addPlat(lv, 2200, 1780, 1200, { h: 80 });              // T2: thaw + route
     lv.checks.push(new Checkpoint(2300, 1780));
     lv.solids.push({ x: 2900, y: 1450, w: 200, h: 210, pile: true }); // rock tunnel (walk-under, blocks the direct line)
-    pick(lv, 2550, 1690, 'fire');
     candyRow(lv, 3150, 3350, 1720, 3);
     addPlat(lv, 400, 1420, 1400, { h: 80 });               // T3: the full chain
     lv.checks.push(new Checkpoint(600, 1420));
-    pick(lv, 620, 1330, 'fire');
-    pick(lv, 760, 1330, 'ice');
-    pick(lv, 1200, 1330, 'heart');
+    pick(lv, 800, 1330, 'heart');
     candyRow(lv, 950, 1250, 1360, 4);
     addPlat(lv, 2000, 1000, 1400, { h: 90 });              // the dome deck
     lv.checks.push(new Checkpoint(2100, 1000));
-    pick(lv, 2250, 910, 'fire');
-    pick(lv, 2350, 910, 'ice');
+    // every fire/ice pickup RESPAWNS after use (the boss-pickup respawner):
+    // grabbing the wrong element or double-grabbing can never soft-lock a
+    // frozen mirror or a steam vent — the puzzle powers always come back
+    for (const [px, py, kind] of [
+      [2550, 1690, 'fire'],                     // T2, beside the frozen mirror
+      [620, 1330, 'fire'], [1150, 1330, 'ice'], // T3, spread apart on purpose
+      [2250, 910, 'fire'], [2650, 910, 'ice']   // dome, one per instrument
+    ]) {
+      const p = new Pickup(px, py, kind);
+      p.bossKind = kind;
+      lv.pickups.push(p);
+    }
     candyArc(lv, 2500, 2900, 850, 930, 4);
     lv.puzzle = new FrozenObservatory(lv);
     // goalStar appears only after the telescope cutscene (machine sets it)

@@ -319,6 +319,7 @@ game.smashWall = function (s, cols) {
 game.bumpBlock = function (s) { // head-bonk on a Buddy Block, a candy crate, or a Puzzle Blocks answer
   const pl = game.player;
   if (s.puzzleBlock) { game.level.puzzle.onAnswer(s); return; }
+  if (s.beamMirror) { game.level.puzzle.onMirrorBump(s.beamMirror); return; }
   if (s.buddy) {
     // refill blocks guard MANDATORY brick walls: once the mushroom is spent and
     // Jack is small again, a fresh bonk re-arms the block — never a soft-lock

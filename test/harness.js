@@ -418,6 +418,126 @@ frames(150);
 check('the observatory is a tall diagonal level run by the beam machine',
   G().level.h > 720 && vm.runInContext('game.level.puzzle instanceof FrozenObservatory', sandbox));
 check('the observatory is a thinking space: no enemies', G().spiders.length === 0);
+const OBS = () => vm.runInContext('game.level.puzzle', sandbox);
+check('the machine holds the full instrument set (4 lanterns, 6 rotatable/3 frozen + 3 fixed mirrors, 2 vents, 4 sensors)',
+  OBS().lanterns.length === 4 && OBS().mirrors.length === 9 &&
+  OBS().mirrors.filter(m => !m.fixed).length === 6 && OBS().mirrors.filter(m => m.frozen).length === 3 &&
+  OBS().vents.length === 2 && OBS().sensors.length === 4);
+
+// ---- terrace 1 (teach): bump-rotate the mirror, light the sensor ----
+const obsSolids0 = G().level.solids.length;
+put(820 - 28, 2140 - 94);
+tap('ArrowUp'); frames(30);
+check('a real bump under the mirror rotates it one CCW step', OBS().m0.dir === 1);
+tap('ArrowUp'); frames(30);
+check('a second bump aims it UP and the beam lights sensor 1',
+  OBS().m0.dir === 2 && OBS().s1.lit === true);
+check('sensor 1 thaws the ice staircase (4 new one-way steps)',
+  G().level.solids.length === obsSolids0 + 4 &&
+  G().level.solids.slice(-4).every(s => s.oneWay));
+tap('ArrowUp'); frames(30);
+check('rotating the mirror away does NOT unlight the latched sensor',
+  OBS().m0.dir === 3 && OBS().s1.lit === true);
+
+// ---- ride the thawed staircase to terrace 2 for real ----
+// each leg is a REAL jump+landing (the Cloud Climb lesson: never teleport
+// past a traversal leg); the anchor between legs just squares up the run-up
+const obsHop = (x, y, dir, hold) => {
+  put(x, y); frames(5);
+  tap('ArrowUp'); frames(hold, dir > 0 ? { ArrowRight: 1 } : { ArrowLeft: 1 }); frames(25);
+};
+obsHop(1290, 2046, 1, 52); // trail -> step 1
+check('step 1 of the thawed staircase is landable', Math.abs(G().player.y - (2040 - 94)) < 3);
+obsHop(1520, 1946, 1, 52); // step 1 -> step 2
+obsHop(1720, 1866, 1, 52); // step 2 -> step 3
+obsHop(1920, 1786, 1, 52); // step 3 -> step 4
+put(2120, 1706); frames(30, { ArrowRight: 1 }); // step 4 -> terrace 2 (auto step-up)
+check('the staircase is genuinely climbable: hero stands on terrace 2',
+  Math.abs(G().player.y - (1780 - 94)) < 3 && G().player.x > 2200);
+
+// ---- terrace 2: frozen mirror shivers, fire thaws, chain lights ----
+put(2700 - 28, 1780 - 94);
+tap('ArrowUp'); frames(30);
+check('bumping a FROZEN mirror only shivers it (no rotation)',
+  OBS().fm2.dir === 6 && OBS().fm2.frozen === true);
+put(2520, 1780 - 94); frames(12, { ArrowRight: 1 });
+check('the terrace fire pickup arms the hero', G().player.power === 'fire');
+put(2440, 1780 - 94); frames(3, { ArrowRight: 1 });
+tap('Space'); frames(35);
+check('a REAL fired fireball thaws the ice crust', OBS().fm2.frozen === false);
+for (let i = 0; i < 4; i++) { put(2700 - 28, 1780 - 94); tap('ArrowUp'); frames(28); }
+check('four bumps aim the thawed mirror UP; the relay lights sensor 2',
+  OBS().fm2.dir === 2 && OBS().s2.lit === true &&
+  G().level.solids.length === obsSolids0 + 7);
+put(2700 - 28, 1780 - 94); tap('ArrowUp'); frames(28);
+check('sensor 2 stays latched with the mirror mis-aimed again', OBS().fm2.dir === 3 && OBS().s2.lit === true);
+
+// ---- ride the reward steps up-left to terrace 3 (real jumps again) ----
+obsHop(2290, 1686, -1, 35); // terrace 2 -> step 1
+check('step 1 of the up-left route is landable', Math.abs(G().player.y - (1690 - 94)) < 3);
+obsHop(2180, 1596, -1, 35); // step 1 -> step 2
+obsHop(2030, 1486, -1, 35); // step 2 -> step 3
+obsHop(1900, 1396, -1, 35); // step 3 -> terrace 3
+check('the up-left steps are genuinely climbable: hero stands on terrace 3',
+  Math.abs(G().player.y - (1420 - 94)) < 3 && G().player.x < 1800);
+
+// ---- terrace 3: the full chain (thaw -> aim -> plug -> light) ----
+check('sensor 3 starts unlit', OBS().s3.lit === false);
+for (let i = 0; i < 2; i++) { put(900 - 28, 1420 - 94); tap('ArrowUp'); frames(28); }
+check('aiming the free mirror UP is not enough (crust still blocks upstream)',
+  OBS().m3.dir === 2 && OBS().s3.lit === false);
+put(530, 1420 - 94); frames(3, { ArrowRight: 1 });
+tap('Space'); frames(30);
+check('fire thaws the terrace-3 crust', OBS().fm3.frozen === false);
+for (let i = 0; i < 2; i++) { put(700 - 28, 1420 - 94); tap('ArrowUp'); frames(28); }
+check('the thawed mirror aims RIGHT but the steam plume still scatters the beam',
+  OBS().fm3.dir === 0 && OBS().s3.lit === false);
+put(1120, 1420 - 94); frames(12, { ArrowRight: 1 });
+check('the ice pickup swaps the hero to ice', G().player.power === 'ice');
+frames(200); // let the ~3s respawn timer run out now that fire is no longer held
+check('spent power pickups re-arm (never-soft-lock): the fire pickup respawns once fire is no longer held',
+  vm.runInContext("game.pickups.some(p => p.bossKind === 'fire' && p.x < 700 && !p.dead)", sandbox));
+put(1400, 1420 - 94); frames(3, { ArrowRight: 1 });
+tap('Space'); frames(35);
+check('a REAL iceball freezes the vent and the whole chain lights sensor 3',
+  OBS().v3.frozen === true && OBS().s3.lit === true &&
+  G().level.solids.length === obsSolids0 + 11);
+
+// ---- latching survives a respawn ----
+vm.runInContext('game.respawnPlayer()', sandbox);
+frames(10);
+check('respawn never un-latches progress (sensors lit, crusts thawed, vent frozen)',
+  OBS().s1.lit && OBS().s2.lit && OBS().s3.lit &&
+  !OBS().fm2.frozen && !OBS().fm3.frozen && OBS().v3.frozen);
+
+// ---- ride the zigzag to the dome deck (real jumps, alternating sides) ----
+obsHop(1620, 1326, 1, 35);  // terrace 3 -> zig 1
+check('zig 1 is landable', Math.abs(G().player.y - (1330 - 94)) < 3);
+obsHop(1800, 1236, 1, 35);  // zig 1 -> zag 2
+obsHop(2000, 1146, -1, 35); // zag 2 -> zig 3
+obsHop(1800, 1056, 1, 35);  // zig 3 -> zag 4
+obsHop(1990, 966, 1, 20);   // zag 4 -> the dome deck (small rise)
+frames(20, { ArrowRight: 1 });
+check('the zigzag is genuinely climbable: hero stands on the dome deck',
+  Math.abs(G().player.y - (1000 - 94)) < 3 && G().player.x > 2000);
+
+// ---- the dome: grand alignment lights the telescope ----
+put(2200, 1000 - 94); frames(10, { ArrowRight: 1 });
+check('dome fire pickup collected', G().player.power === 'fire');
+put(2300, 1000 - 94); frames(3, { ArrowRight: 1 });
+tap('Space'); frames(30);
+check('the dome crust thaws', OBS().fm4.frozen === false);
+for (let i = 0; i < 2; i++) { put(2450 - 28, 1000 - 94); tap('ArrowUp'); frames(28); }
+check('the dome mirror aims RIGHT into the plume', OBS().fm4.dir === 0 && OBS().eye.lit === false);
+put(2600, 1000 - 94); frames(10, { ArrowRight: 1 });
+check('dome ice pickup swaps to ice', G().player.power === 'ice');
+put(2620, 1000 - 94); frames(3, { ArrowRight: 1 });
+tap('Space'); frames(35);
+check('the dome vent freezes but the last mirror still aims past the eye',
+  OBS().v4.frozen === true && OBS().eye.lit === false && OBS().telescopeLit === false);
+put(3080 - 28, 1000 - 94); tap('ArrowUp'); frames(30);
+check('one diagonal aim completes the GRAND ALIGNMENT: the telescope lights',
+  OBS().m4.dir === 1 && OBS().eye.lit === true && OBS().telescopeLit === true);
 
 // ---------------- level 5: boss ----------------
 vm.runInContext('game.startLevel(5)', sandbox);
