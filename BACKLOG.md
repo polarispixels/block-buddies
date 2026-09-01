@@ -30,7 +30,7 @@ release spec. Maintenance rules:
 | 11 | Letter Blocks: Beginning Letters | Puzzle Blocks mode | ✅ shipped v1.18.0 — reusable picture-prompt framework (word bank, puzzle controller, `ExitDoor` primitive) + first instance in Block Meadow: missing-first-letter, candy reward (see CHANGELOG 1.18.0). Second iteration v1.19.0 after kid playtest: all icons redrawn with contact-sheet review, word bank 20 → 60 (see CHANGELOG 1.19.0) |
 | 12 | Puzzle Blocks framework formalization | Framework | ✅ shipped v1.19.1 — engine/mode split in `js/puzzleblocks.js` (`PuzzleBlocksMachine` generic engine; Letter Blocks becomes its first mode), framework backlog documented below (see item 11 of the doc sections + `docs/superpowers/specs/2026-08-29-puzzle-blocks-framework.md`) |
 | 13 | Ending Letter Blocks ("CA_") | Puzzle Blocks mode | ✅ shipped v1.22.0 — `EndingLetterBlocksMachine` (mode #3, a content table + ~20-line config on the untouched engine, proving prompt-structure reuse); 38-word `EL_WORDS` bank with crisp single-letter endings, 100% reused kid-verified icons (zero new art); cloud-themed room off Cloud World's start platform via a press-gated rainbow door (see CHANGELOG 1.22.0) |
-| 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | queued (after 13) |
+| 14 | Number Blocks: Count the Objects | Puzzle Blocks mode | ✅ shipped v1.24.0 — `CountBlocksMachine` (mode #4, the first QUANTITY BLOCKS mode) on the untouched engine (+ an opt-in `holdTime`); shared numeric helpers (`QB_OBJECTS`, `qbLayout` row/rows/arc/scatter, `qbDrawGroup`/`qbDrawNumeral`/`qbDrawSlot`) ready for numeral→quantity, more/fewer, missing number, +/−; invisible per-visit ladder 1-3 → 5-10 objects with closing choices; count-up with number badges; bonus party every fifth solve; mountain-themed 'countblocks' room off Mountain World's start flat; 27 reused icons + new dino and bunny (see CHANGELOG 1.24.0) |
 | 15 | Pattern Blocks (RED/BLUE/RED/BLUE/?) | Puzzle Blocks mode | ✅ shipped v1.21.0 — `PatternBlocksMachine` (complete-the-color-pattern, no reading) debuts inside the Desert Sand Slide, 3 rounds free the boogie board; a standalone replayable room can reuse it any time |
 | 17 | Desert Sand Slide + Ride Mode framework | Stage + framework | ✅ shipped v1.21.0 — world 6 opens with 'sandslide' (chain `7: ['sandslide', 7]`): pattern puzzle → boogie board → procedural heightfield ride (js/ride.js: RideMode/RideCourse/SandSlide) → 5 truck parts → victory run → mega-ramp into the rally's delivered ceremony (see CHANGELOG 1.21.0) |
 | 16 | Linear world chains | Flow/framework | ✅ shipped v1.20.0 — worlds are ordered stage lists (`WORLD_STAGES`); stage archways end stages with a light STAGE CLEAR beat, final-stage stars complete the world (full party + unlock), `ffbg_stage` title resume; spec in `docs/superpowers/specs/2026-08-29-linear-world-chains-design.md` (see CHANGELOG 1.20.0) |
@@ -394,7 +394,8 @@ MELT?") · Zombie Town = playful rhymes, night/day, memory.
 1. **Ending Letter Blocks** — cheapest extension, tests prompt-structure reuse.
    ✅ shipped v1.22.0.
 2. **Number Blocks: Count the Objects** — first non-literacy mode; numeric
-   answers, multi-object prompts.
+   answers, multi-object prompts. ✅ shipped v1.24.0 as COUNTING BLOCKS, the
+   first Quantity Blocks mode (shared numeric helpers for the C family).
 3. **Pattern Blocks** — reasoning with zero reading required; visual choices.
    ✅ shipped v1.21.0 (debuted inside the Desert Sand Slide).
 

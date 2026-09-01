@@ -28,6 +28,7 @@ const LEVEL_META = {
   cloud2: { name: 'THE WEATHER FACTORY 2-2', theme: 'cloud', music: 'cloud' }, // stage two: weather recipes
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
   endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
+  countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
   mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
@@ -253,6 +254,10 @@ function buildLevel(n) {
     addWallBreak(lv, 2640, 572, 4);
     addWallBreak(lv, 4180, 524, 4);
     pick(lv, 500, G - 90, 'ice');
+    // COUNTING BLOCKS learning room (Quantity Blocks: Count the Objects):
+    // press-gated rainbow door on the calm start flat, well short of the
+    // first spider's patrol (820 +/- 170) — rainbow = the learning-door style
+    lv.subDoors.push(new SubDoor(300, G, 'countblocks', 'rainbow', { press: true }));
     // power blocks RESPAWN (reusing the boss-pickup respawner): the crystal
     // wall must never soft-lock the mission if super mode gets spent elsewhere
     for (const px of [2000, 4020]) { // placed clear of spider patrols
@@ -1188,6 +1193,21 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(120, G));
     lv.decor.clouds = [];
     for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
+  }
+
+  if (n === 'countblocks') { // ---------------- COUNTING BLOCKS (Count the Objects)
+    // The Mountain World learning room and the first QUANTITY BLOCKS mode:
+    // same single-screen garden as the letter rooms (three bonkable number
+    // blocks, candy per solve, continuous replay, always-open EXIT door) with
+    // a group of objects to count up top and a "?" slot for the numeral.
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new CountBlocksMachine(G);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.exitDoors.push(new ExitDoor(1150, G));
+    lv.checks.push(new Checkpoint(120, G));
+    lv.decor.pines = [{ x: 40, s: 1.1 }, { x: 1240, s: 0.9 }]; lv.decor.peaks = true;
   }
 
   if (n === 'piperoom') { // ---------------- SECRET PIPE ROOM (cause & effect)

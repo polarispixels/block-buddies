@@ -8,6 +8,48 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.24.0] - 2026-09-01
+
+### Added
+
+- **COUNTING BLOCKS: Count the Objects** — Puzzle Blocks mode #4 and the
+  first **Quantity Blocks** mode (backlog #14): a group of one thing (4
+  apples, 7 fish, 10 keys) and three number blocks; count, then bump the
+  right numeral. `CountBlocksMachine` in `js/puzzleblocks.js` is a config on
+  the untouched engine (the engine gained one optional knob, `holdTime`).
+  Shared Quantity Blocks helpers — the `QB_OBJECTS` table, `qbLayout`
+  (row / rows / arc / scatter with a guaranteed gap), `qbDrawGroup`,
+  `qbDrawNumeral`, `qbDrawSlot` — are written for the modes that come next
+  (numeral → quantity, more/fewer, missing number, simple +/−).
+- **An invisible difficulty ladder per visit**: rounds 1-2 count 1-3 objects
+  in a row with far-apart choices; then 2-5 with one near and one far
+  choice; then 4-8 in two rows or an arch with both neighbors; from round 7
+  on, 5-10 objects that may be scattered, always with neighbor choices.
+  Never the same quantity or object twice in a row; every re-entry starts
+  easy again. Layouts are spaced, never cluttered — the challenge is
+  counting, not deciphering.
+- **The count-up**: the winning numeral flies into the "?" slot, then the
+  objects light up one at a time wearing gold number badges (one-to-one
+  correspondence, the actual skill), each with a chime; bigger groups hold
+  longer. Wrong numerals wobble and plop. Every fifth solve throws a bonus
+  party: fanfare, confetti, a five-star banner, and +2 extra candy — little
+  finish lines inside an endlessly replayable room.
+- **Content**: 29 objects, 27 of them reused kid-verified `LB_ICONS`
+  pictures (fish, apples, stars, ducks, cars, trucks, cake, whales...) plus
+  two new contact-sheet-reviewed icons the spec asked for, `dino` and
+  `bunny`.
+- **The room** (`'countblocks'`): Mountain World's learning room — the one
+  early world without one — a mountain-themed single screen off a
+  press-gated rainbow door on the calm start flat (x≈300), continuous
+  replay, always-open EXIT door.
+- Harness: 31 new checks — object-table integrity, engine-subclass
+  contract, layout geometry for every style × 1..10 objects, a 40-round
+  ladder drive (tier bounds, distinct sane numerals, no back-to-back repeats,
+  scatter only late, hold scaling), distractor edge cases, the count-up
+  timeline, the fifth-solve bonus, the letter rooms' untouched hold, and the
+  room ridden for real: press-gated entry, wrong/right bumps, candy, exit
+  without leaks, and a fresh ladder on re-entry.
+
 ## [1.23.0] - 2026-08-29
 
 ### Added

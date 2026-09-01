@@ -1472,6 +1472,169 @@ check('the ending room is replayable without limit (no completion flag set)', !G
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- QUANTITY BLOCKS: COUNT THE OBJECTS (v1.24.0) ----------------
+check('QB_OBJECTS: every counting object has a kid-verified icon, no duplicates',
+  vm.runInContext(`QB_OBJECTS.length >= 20 && QB_OBJECTS.every(o => typeof LB_ICONS[o.icon] === 'function') &&
+    new Set(QB_OBJECTS.map(o => o.icon)).size === QB_OBJECTS.length`, sandbox));
+check('Count the Objects is a mode of the generic engine, not a fork of it',
+  vm.runInContext('new CountBlocksMachine(620) instanceof PuzzleBlocksMachine', sandbox));
+check('qbLayout: every style places n well-spaced centers inside the group box (1..10, 5 reps)',
+  vm.runInContext(`(() => {
+    for (const style of ['row', 'rows', 'arc', 'scatter']) for (let n = 1; n <= 10; n++) for (let rep = 0; rep < 5; rep++) {
+      const s = qbIconSize(n), pos = qbLayout(n, style, QB_BOX, s);
+      if (pos.length !== n) return false;
+      for (const p of pos) if (p.x < QB_BOX.x + s * 0.4 || p.x > QB_BOX.x + QB_BOX.w - s * 0.4 ||
+        p.y < QB_BOX.y + s * 0.4 || p.y > QB_BOX.y + QB_BOX.h - s * 0.4) return false;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+        if (Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y) < s * 0.9) return false;
+    }
+    return true;
+  })()`, sandbox));
+vm.runInContext('game.testCB = new CountBlocksMachine(620);', sandbox);
+const CBT = () => vm.runInContext('game.testCB', sandbox);
+check('fresh counting machine: 3 unique numerals incl. the answer, one object drawn per count',
+  CBT().state === 'idle' && typeof CBT().answer === 'number' &&
+  new Set(CBT().slots.map(s => s.value)).size === 3 && CBT().slots.some(s => s.value === CBT().answer) &&
+  CBT().mode.cur.pos.length === CBT().answer && CBT().mode.cur.count === CBT().answer);
+check('the first round is tiny (1-3 objects in one row) with far-apart choices',
+  CBT().answer >= 1 && CBT().answer <= 3 && CBT().mode.cur.layout === 'row' &&
+  CBT().slots.every(s => s.value === CBT().answer || Math.abs(s.value - CBT().answer) >= 2));
+check('the winning numeral flies into the ? slot',
+  vm.runInContext('(() => { const t = game.testCB.mode.flyTarget(); return t.x === QB_SLOT.x && t.y === QB_SLOT.y; })()', sandbox));
+// drive 40 rounds on one machine: the invisible ladder climbs, choices stay
+// sane, and neither the quantity nor the object ever repeats back-to-back
+vm.runInContext(`
+  game.testCB2 = new CountBlocksMachine(620);
+  game.testCBLog = [];
+  for (let i = 0; i < 40; i++) {
+    const m = game.testCB2;
+    game.testCBLog.push({ count: m.answer, layout: m.mode.cur.layout, icon: m.current.icon,
+      opts: m.slots.map(s => s.value), tier: cbTier(i), hold: m.mode.holdTime });
+    m.onAnswer(m.solids[m.slots.findIndex(s => s.value === m.answer)]);
+    for (let f = 0; f < 200; f++) m.update(1 / 60);
+  }
+`, sandbox);
+const cbLog = vm.runInContext('game.testCBLog', sandbox);
+check('counting rounds: always 3 distinct numerals in 1..10 including the answer',
+  cbLog.length === 40 && cbLog.every(r => new Set(r.opts).size === 3 && r.opts.includes(r.count) &&
+    r.opts.every(v => Number.isInteger(v) && v >= 1 && v <= 10)));
+check('counting rounds: every count sits inside its tier and the ladder reaches 9-10',
+  cbLog.every(r => r.count >= r.tier.lo && r.count <= r.tier.hi) && cbLog.some(r => r.count >= 9));
+check('counting rounds: rounds 1-2 are 1-3 objects; rounds 7+ are 5-10 with neighbor choices',
+  cbLog.slice(0, 2).every(r => r.count <= 3) &&
+  cbLog.slice(6).every(r => r.count >= 5 && r.opts.every(v => v === r.count || Math.abs(v - r.count) <= 2)));
+check('counting rounds: never the same quantity twice in a row',
+  cbLog.every((r, i) => i === 0 || r.count !== cbLog[i - 1].count));
+check('counting rounds: never the same object twice in a row',
+  cbLog.every((r, i) => i === 0 || r.icon !== cbLog[i - 1].icon));
+check('counting rounds: scattered layouts only once the ladder is high, and they do appear',
+  cbLog.slice(0, 6).every(r => r.layout !== 'scatter') && cbLog.some(r => r.layout === 'scatter'));
+check('counting rounds: the solved hold lasts longer for bigger groups (the count-up needs it)',
+  cbLog.every(r => Math.abs(r.hold - (0.55 + 0.17 * r.count)) < 1e-9));
+check('cbDistractors: nearest-first fallback at the edges (10 -> 9 and 8, 1 far -> 3..5)',
+  vm.runInContext(`(() => {
+    for (let i = 0; i < 20; i++) {
+      const d10 = cbDistractors(10, 'near').sort(), d1 = cbDistractors(1, 'far');
+      if (d10[0] !== 8 || d10[1] !== 9) return false;
+      if (d1.length !== 2 || d1[0] === d1[1] || !d1.every(v => v >= 3 && v <= 5)) return false;
+    }
+    return true;
+  })()`, sandbox));
+// the count-up: numeral lands first (hold), then objects light one by one
+// with a badge each, all lit well before the hold ends; idle clears them
+vm.runInContext(`
+  game.testCB3 = new CountBlocksMachine(620);
+  const m = game.testCB3, c0 = game.candy;
+  m.onAnswer(m.solids[m.slots.findIndex(s => s.value === m.answer)]);
+  for (let f = 0; f < 37; f++) m.update(1 / 60); // the 0.6s fly
+  game.testCBa = { state: m.state, lit: m.lit };
+  for (let f = 0; f < 10; f++) m.update(1 / 60);
+  game.testCBb = { state: m.state, lit: m.lit };
+  for (let f = 0; f < 23; f++) m.update(1 / 60);
+  game.testCBc = { state: m.state, lit: m.lit, n: m.mode.cur.count, candy: game.candy - c0 };
+  for (let f = 0; f < 200; f++) m.update(1 / 60);
+  game.testCBd = { state: m.state, lit: m.lit };
+`, sandbox);
+const cba = vm.runInContext('game.testCBa', sandbox), cbb = vm.runInContext('game.testCBb', sandbox);
+const cbc = vm.runInContext('game.testCBc', sandbox), cbd = vm.runInContext('game.testCBd', sandbox);
+check('count-up: the numeral lands in the slot before any object lights',
+  cba.state === 'hold' && cba.lit === 0);
+check('count-up: the first object lights ~0.15s in, all are lit by 0.55s, candy paid once',
+  cbb.state === 'hold' && cbb.lit === 1 && cbc.state === 'hold' && cbc.lit === cbc.n && cbc.candy === 1);
+check('count-up: the next puzzle starts clean (idle, nothing lit)', cbd.state === 'idle' && cbd.lit === 0);
+// every solve pays one candy; the fifth throws the bonus party (+2, star banner)
+vm.runInContext(`
+  game.testCB4 = new CountBlocksMachine(620);
+  game.testCBBonus = [];
+  for (let i = 0; i < 5; i++) {
+    const m = game.testCB4, c0 = game.candy;
+    m.onAnswer(m.solids[m.slots.findIndex(s => s.value === m.answer)]);
+    for (let f = 0; f < 40; f++) m.update(1 / 60);
+    game.testCBBonus.push([game.candy - c0, m.bonusT > 0]);
+    for (let f = 0; f < 200; f++) m.update(1 / 60);
+  }
+`, sandbox);
+const cbBonus = vm.runInContext('game.testCBBonus', sandbox);
+check('every solve pays 1 candy; the fifth solve throws the bonus party (+2 extra, star banner)',
+  cbBonus.slice(0, 4).every(([d, b]) => d === 1 && !b) && cbBonus[4][0] === 3 && cbBonus[4][1] === true);
+check('letter rooms keep the engine default hold (holdTime is opt-in per mode)',
+  vm.runInContext('new LetterBlocksMachine(620).mode.holdTime === undefined', sandbox));
+
+// ---------------- secret: COUNTING BLOCKS (Mountain World) ----------------
+vm.runInContext('game.startLevel(4)', sandbox);
+frames(150);
+check('Mountain World hides a rainbow learning door on the calm start flat',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'countblocks' && d.press)", sandbox));
+put(220, 620 - 94);
+frames(30, { ArrowRight: 1 });
+check('walking across the mountain rainbow door never auto-enters', G().level.n === 4 && G().player.x > 340);
+put(300 - 35, 620 - 94);
+frames(10);
+tap('Space');
+frames(10);
+check('standing on the door + Space enters COUNTING BLOCKS', G().level.n === 'countblocks');
+frames(150); // clear the intro cutscene
+const CB = () => vm.runInContext('game.level.puzzle', sandbox);
+check('the counting room loads with a tiny group, 3 unique numerals, and an idle state',
+  vm.runInContext('game.level.puzzle instanceof CountBlocksMachine', sandbox) &&
+  CB().state === 'idle' && CB().answer <= 3 && new Set(CB().slots.map(s => s.value)).size === 3);
+check('the counting room is a mountain-themed single screen with an exit door and no enemies',
+  G().level.w === 1280 && G().level.exitDoors.length === 1 && G().level.spiders.length === 0);
+const cbCandy0 = G().candy;
+const cbWrong = CB().slots.find(s => s.value !== CB().answer);
+vm.runInContext(`game.player.x = ${cbWrong.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
+tap('ArrowUp');
+frames(40);
+check('a real jump into a wrong numeral wobbles it and changes nothing',
+  G().candy === cbCandy0 && CB().state === 'idle');
+const cbRight = CB().slots.find(s => s.value === CB().answer);
+const cbCountBefore = CB().answer, cbIconBefore = CB().current.icon;
+vm.runInContext(`game.player.x = ${cbRight.x} - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;`, sandbox);
+tap('ArrowUp');
+frames(40);
+check('a real jump into the correct numeral locks the round', CB().state !== 'idle');
+frames(130);
+check('counting candy is awarded exactly once through the normal economy', G().candy === cbCandy0 + 1);
+check('a new randomized counting puzzle follows automatically (new object, new quantity)',
+  CB().state === 'idle' && CB().answer !== cbCountBefore && CB().current.icon !== cbIconBefore);
+vm.runInContext('game.player.x = 1150 - game.player.w / 2; game.player.y = 620 - game.player.h; game.player.vx = 0; game.player.vy = 0;', sandbox);
+frames(5);
+check('the exit door returns to Mountain World with no puzzle leak',
+  G().level.n === 4 && G().state === 'play' && G().level.puzzle === null);
+check('the counting room is replayable without limit (no completion flag set)', !G().miniDone.countblocks);
+// re-entry rebuilds a fresh machine at the bottom of the ladder (the door
+// re-arms only after horizontal separation, so step away first)
+put(600, 620 - 94);
+frames(10);
+put(300 - 35, 620 - 94);
+frames(10);
+tap('Space');
+frames(160);
+check('re-entering COUNTING BLOCKS starts the ladder over (fresh machine, tiny group)',
+  G().level.n === 'countblocks' && CB().mode.roundNo === 1 && CB().answer <= 3 && CB().roundsWon === 0);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- beam kit (js/beams.js): raycast logic ----------------
 const BK_BOUNDS = { w: 2000, h: 2000 };
 vm.runInContext(`

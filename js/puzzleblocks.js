@@ -2447,6 +2447,67 @@ const LB_ICONS = {
       ctx.fill();
     }
     ctx.restore();
+  },
+  // ---- v1.24.0: Quantity Blocks additions (contact-sheet reviewed at s=92/66) ----
+  dino(ctx, cx, cy, s) {
+    ctx.save();
+    // tail (behind the body), sweeping right
+    ctx.strokeStyle = '#5cb85c'; ctx.lineWidth = s*0.16; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx + s*0.2, cy + s*0.22); ctx.quadraticCurveTo(cx + s*0.5, cy + s*0.2, cx + s*0.58, cy - s*0.02); ctx.stroke();
+    // legs
+    lbFill(ctx, '#4aa34a');
+    rr(ctx, cx - s*0.22, cy + s*0.22, s*0.15, s*0.24, s*0.06); ctx.fill();
+    rr(ctx, cx + s*0.06, cy + s*0.22, s*0.15, s*0.24, s*0.06); ctx.fill();
+    // body
+    lbFill(ctx, '#5cb85c');
+    lbEllipse(ctx, cx, cy + s*0.14, s*0.36, s*0.24);
+    ctx.strokeStyle = '#2f7a2f'; ctx.lineWidth = s*0.03; ctx.stroke();
+    // belly
+    lbFill(ctx, '#cfeea0');
+    lbEllipse(ctx, cx + s*0.02, cy + s*0.2, s*0.22, s*0.13);
+    // long neck up-left
+    ctx.strokeStyle = '#5cb85c'; ctx.lineWidth = s*0.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - s*0.22, cy + s*0.06); ctx.lineTo(cx - s*0.34, cy - s*0.36); ctx.stroke();
+    // head
+    lbFill(ctx, '#5cb85c');
+    lbEllipse(ctx, cx - s*0.34, cy - s*0.44, s*0.2, s*0.16);
+    ctx.strokeStyle = '#2f7a2f'; ctx.lineWidth = s*0.03; ctx.stroke();
+    // spots
+    lbFill(ctx, '#3f9a3f');
+    lbCircle(ctx, cx + s*0.12, cy + s*0.04, s*0.045);
+    lbCircle(ctx, cx - s*0.06, cy + s*0.1, s*0.035);
+    lbCircle(ctx, cx + s*0.24, cy + s*0.16, s*0.03);
+    drawFace(ctx, cx - s*0.32, cy - s*0.44, s*0.42, 'happy', 0, 4);
+    ctx.restore();
+  },
+
+  bunny(ctx, cx, cy, s) {
+    ctx.save();
+    // tall ears (outer white, inner pink), slightly splayed
+    for (const d of [-1, 1]) {
+      lbFill(ctx, '#f4f4f8');
+      lbEllipse(ctx, cx + d*s*0.18, cy - s*0.56, s*0.12, s*0.36, d*0.16);
+      ctx.strokeStyle = '#b9b0c8'; ctx.lineWidth = s*0.025; ctx.stroke();
+      lbFill(ctx, '#ffb3c6');
+      lbEllipse(ctx, cx + d*s*0.18, cy - s*0.56, s*0.055, s*0.25, d*0.16);
+    }
+    // head
+    lbFill(ctx, '#f4f4f8');
+    lbCircle(ctx, cx, cy + s*0.02, s*0.38);
+    ctx.strokeStyle = '#b9b0c8'; ctx.lineWidth = s*0.03; ctx.stroke();
+    // cheeks
+    lbFill(ctx, '#ffd0dc');
+    lbCircle(ctx, cx - s*0.22, cy + s*0.12, s*0.07);
+    lbCircle(ctx, cx + s*0.22, cy + s*0.12, s*0.07);
+    drawFace(ctx, cx, cy - s*0.06, s*0.78, 'happy', 0, 5);
+    // two buck teeth hanging from the smile (drawn after the face so they sit on it)
+    lbFill(ctx, '#fff');
+    rr(ctx, cx - s*0.065, cy + s*0.13, s*0.06, s*0.1, s*0.015); ctx.fill();
+    rr(ctx, cx + s*0.005, cy + s*0.13, s*0.06, s*0.1, s*0.015); ctx.fill();
+    ctx.strokeStyle = '#b9b0c8'; ctx.lineWidth = s*0.015;
+    rr(ctx, cx - s*0.065, cy + s*0.13, s*0.06, s*0.1, s*0.015); ctx.stroke();
+    rr(ctx, cx + s*0.005, cy + s*0.13, s*0.06, s*0.1, s*0.015); ctx.stroke();
+    ctx.restore();
   }
 };
 
@@ -2461,6 +2522,8 @@ const LB_ICONS = {
 //   cx?                                  world-x the station is centered on
 //                                        (default 640 — lets a machine live
 //                                        inside a scrolling level)
+//   holdTime?                            seconds the solved prompt stays up
+//                                        before the next puzzle (default 0.9)
 //   roundsToWin? + onWin()?              success state: after N correct
 //                                        rounds the machine locks into
 //                                        phase 'won' and fires onWin once
@@ -2550,7 +2613,7 @@ class PuzzleBlocksMachine {
       }
     } else if (this.state === 'hold') {
       this.holdT += dt;
-      if (this.holdT > 0.9) {
+      if (this.holdT > (this.mode.holdTime || 0.9)) {
         this.roundsWon++;
         if (this.mode.roundsToWin && this.roundsWon >= this.mode.roundsToWin) {
           this.state = 'won'; // locked forever — the machine's job is done
@@ -2741,5 +2804,232 @@ class PatternBlocksMachine extends PuzzleBlocksMachine {
         return { x: cx - ((n - 1) * (bs + gap)) / 2 + p.seq.length * (bs + gap), y: 200 };
       }
     });
+  }
+}
+
+// ================================================================ quantity blocks
+// QUANTITY BLOCKS (v1.24.0): the numeric branch of Puzzle Blocks. The shared
+// helpers come first — an object table, group layouts, and group/numeral
+// drawing — so later numeric modes (numeral -> quantity, which group has
+// more/fewer, missing number, simple +/-) reuse them; COUNT THE OBJECTS
+// (mode #4, `CountBlocksMachine`) is the first instance. Nothing in the
+// engine is counting-specific; the mode only asked for `holdTime`.
+
+// Objects a 5-year-old names instantly at counting size (contact-sheet
+// reviewed at s=92 and s=66): animals, fruit, stars, vehicles, dinos, the
+// game's own things. All reuse the kid-verified LB_ICONS pictures.
+const QB_OBJECTS = ['fish', 'apple', 'star', 'duck', 'frog', 'bug', 'bee', 'egg', 'car', 'truck',
+  'cake', 'ball', 'bird', 'crab', 'snail', 'boat', 'cup', 'sun', 'moon', 'cat', 'dog', 'pig',
+  'owl', 'bat', 'whale', 'bell', 'key', 'dino', 'bunny'].map(icon => ({ icon }));
+
+// the prompt area every quantity mode shares: a group box on the left, the
+// answer slot on the right, all above the answer blocks (which top out at
+// G-190-84 = 346 on a 620 floor)
+const QB_BOX = { x: 210, y: 70, w: 700, h: 220 }; // group box (objects live inside it)
+const QB_SLOT = { x: 1010, y: 180, s: 74 };        // the "?" box the winning numeral flies into
+
+// icon size by group size: fewer objects = bigger objects
+function qbIconSize(n) { return n <= 3 ? 92 : n <= 5 ? 84 : n <= 8 ? 76 : 66; }
+
+// Layouts return n centers inside `box` for icons of size s. 'row' = one
+// line; 'rows' = up to two lines (five per line at most); 'arc' = a gentle
+// rainbow arch; 'scatter' = random spots with a guaranteed gap (no clutter —
+// the challenge is counting, never deciphering). Scatter rejection-samples
+// and falls back to a jittered grid so it can never fail to place.
+function qbLayout(n, style, box, s) {
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  const pos = [];
+  const cell = Math.min(s * 1.5, box.w / Math.max(1, Math.min(n, 5)));
+  if (style === 'row' && n <= 5) {
+    for (let i = 0; i < n; i++) pos.push({ x: cx + (i - (n - 1) / 2) * cell, y: cy });
+  } else if (style === 'arc' && n <= 7) {
+    const w = Math.min(box.w - s, (n - 1) * cell);
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      pos.push({ x: cx - w / 2 + t * w, y: cy + 46 - Math.sin(t * Math.PI) * 78 });
+    }
+  } else if (style === 'scatter') {
+    const gap = s * 1.25, pad = s * 0.6;
+    let tries = 0;
+    while (pos.length < n && tries < 400) {
+      tries++;
+      const p = { x: rand(box.x + pad, box.x + box.w - pad), y: rand(box.y + pad, box.y + box.h - pad) };
+      if (pos.every(q => Math.hypot(q.x - p.x, q.y - p.y) >= gap)) pos.push(p);
+    }
+    if (pos.length < n) { // fallback: grid with a little jitter
+      pos.length = 0;
+      const g = qbLayout(n, 'rows', box, s);
+      for (const q of g) pos.push({ x: q.x + rand(-6, 6), y: q.y + rand(-8, 8) });
+    }
+  } else { // 'rows' (and any fallback): one line up to 5, else two balanced lines
+    const perRow = n <= 5 ? n : Math.ceil(n / 2);
+    const rows = n <= 5 ? 1 : 2;
+    const rowGap = Math.min(s * 1.3, box.h * 0.48);
+    let placed = 0;
+    for (let r = 0; r < rows; r++) {
+      const inRow = Math.min(perRow, n - placed);
+      const y = rows === 1 ? cy : cy + (r - 0.5) * rowGap;
+      for (let i = 0; i < inRow; i++) pos.push({ x: cx + (i - (inRow - 1) / 2) * cell, y });
+      placed += inRow;
+    }
+  }
+  return pos;
+}
+
+// a group of identical objects; `lit` = how many are highlighted (the count-up
+// animation): lit ones pop bigger and wear a gold number badge above them —
+// one-to-one correspondence, the actual skill being taught
+function qbDrawGroup(ctx, icon, pos, s, lit = 0, t = 0) {
+  for (let i = 0; i < pos.length; i++) {
+    const p = pos[i], isLit = i < lit;
+    const bob = Math.sin(t * 2 + i * 1.3) * 3;
+    ctx.save();
+    ctx.translate(p.x, p.y + bob);
+    if (isLit) ctx.scale(1.12, 1.12);
+    LB_ICONS[icon](ctx, 0, 0, s);
+    ctx.restore();
+    if (isLit) {
+      const bx = p.x, by = p.y + bob - s * 0.62;
+      ctx.fillStyle = '#ffd24a';
+      ctx.beginPath(); ctx.arc(bx, by, s * 0.19, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 2.5; ctx.stroke();
+      outlineText(ctx, String(i + 1), bx, by + 1, s * 0.24, '#fff', '#a86a10');
+    }
+  }
+}
+
+// numerals are the choice values of every quantity mode: big, white, bold
+function qbDrawNumeral(ctx, value, x, y, size, fill = '#fff', stroke = '#2a3a6a') {
+  outlineText(ctx, String(value), x, y, size * 1.25, fill, stroke);
+}
+
+// the answer slot: a pulsing "?" box until solved, then the numeral in green
+function qbDrawSlot(ctx, value, solved, t) {
+  const { x, y, s } = QB_SLOT;
+  if (solved) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    rr(ctx, x - s / 2, y - s / 2, s, s, s * 0.2); ctx.fill();
+    ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 6;
+    rr(ctx, x - s / 2 - 5, y - s / 2 - 5, s + 10, s + 10, s * 0.25); ctx.stroke();
+    qbDrawNumeral(ctx, value, x, y + 3, 50, '#57d357', '#2a5a2a');
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    rr(ctx, x - s / 2, y - s / 2, s, s, s * 0.2); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 4;
+    rr(ctx, x - s / 2, y - s / 2, s, s, s * 0.2); ctx.stroke();
+    outlineText(ctx, '?', x, y + 4, 46 + Math.sin(t * 4) * 4, '#8a7fae', '#fff');
+  }
+}
+
+// ---- difficulty ladder for Count the Objects ----
+// Invisible to the player and reset on every visit (a new machine per
+// entry): tier = rounds solved so far this visit. Quantities grow, choices
+// close in, and layouts loosen — but never trick the eye.
+const CB_TIERS = [
+  { rounds: 2, lo: 1, hi: 3,  layouts: ['row'],                    spread: 'far' },   // 1-3, choices far apart
+  { rounds: 2, lo: 2, hi: 5,  layouts: ['row', 'rows', 'arc'],     spread: 'mixed' }, // one near, one far
+  { rounds: 2, lo: 4, hi: 8,  layouts: ['rows', 'arc'],            spread: 'near' },  // both neighbors
+  { rounds: 1e9, lo: 5, hi: 10, layouts: ['rows', 'arc', 'scatter'], spread: 'near' }  // up to 10, scattered
+];
+function cbTier(roundNo) {
+  let acc = 0;
+  for (const t of CB_TIERS) { acc += t.rounds; if (roundNo < acc) return t; }
+  return CB_TIERS[CB_TIERS.length - 1];
+}
+// two wrong numerals for `c` in 1..10: 'far' prefers |d| >= 2, 'near' takes
+// both neighbors, 'mixed' one of each; always distinct, always >= 1
+function cbDistractors(c, spread) {
+  const near = [c - 1, c + 1].filter(v => v >= 1 && v <= 10);
+  const far = [c - 2, c + 2, c - 3, c + 3].filter(v => v >= 1 && v <= 10);
+  let picks;
+  if (spread === 'far') picks = shuffleLB(far).slice(0, 2);
+  else if (spread === 'near') picks = shuffleLB(near).slice(0, 2);
+  else picks = [shuffleLB(near)[0], shuffleLB(far)[0]];
+  picks = picks.filter(v => v !== undefined);
+  const pool = near.concat(far).filter(v => !picks.includes(v)).sort((a, b) => Math.abs(a - c) - Math.abs(b - c));
+  while (picks.length < 2) picks.push(pool.shift());
+  return picks;
+}
+
+// ---- mode 4: Count the Objects (the first Quantity Blocks mode) ----
+// A group of one thing — 4 apples, 7 fish — and three number blocks. Count,
+// then bump the right numeral: it flies into the "?" box and the objects
+// light up one by one with gold number badges (the count-up), each lit
+// object chiming. Every fifth solve throws a bonus candy party so a session
+// has its own little finish lines while staying endlessly replayable.
+class CountBlocksMachine extends PuzzleBlocksMachine {
+  constructor(groundY) {
+    const mode = {
+      entries: QB_OBJECTS,
+      roundNo: 0,      // rounds generated this visit (drives the tier)
+      lastCount: 0,    // never the same quantity twice in a row
+      cur: null,       // this round's layout: {count, icon, s, pos, layout}
+      holdTime: 0.9,   // recomputed per round: longer groups count longer
+      round(e) {
+        const tier = cbTier(this.roundNo++);
+        let count;
+        do count = randi(tier.lo, tier.hi); while (count === this.lastCount && tier.hi > tier.lo);
+        this.lastCount = count;
+        const layout = tier.layouts[randi(0, tier.layouts.length - 1)];
+        const s = qbIconSize(count);
+        this.cur = { count, icon: e.icon, s, layout, pos: qbLayout(count, layout, QB_BOX, s) };
+        this.holdTime = 0.55 + 0.17 * count;
+        return { correct: count, options: [count].concat(cbDistractors(count, tier.spread)) };
+      },
+      drawPrompt(ctx, e, phase) {
+        const r = this.cur, m = this.machine, t = game.t;
+        // the group card: a soft panel so the set reads as ONE set
+        ctx.fillStyle = 'rgba(255,255,255,0.42)';
+        rr(ctx, QB_BOX.x, QB_BOX.y, QB_BOX.w, QB_BOX.h, 28); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 4;
+        rr(ctx, QB_BOX.x, QB_BOX.y, QB_BOX.w, QB_BOX.h, 28); ctx.stroke();
+        qbDrawGroup(ctx, r.icon, r.pos, r.s, m ? m.lit : 0, t);
+        // the solved slot fills the instant the numeral lands (hold), not before
+        qbDrawSlot(ctx, r.count, phase === 'hold' || phase === 'won', t);
+        if (m && m.bonusT > 0) { // the every-fifth-solve star banner
+          const k = Math.min(1, (1.6 - m.bonusT) * 3);
+          for (let i = 0; i < 5; i++) {
+            const sx = 640 + (i - 2) * 90, sy = 318 - Math.sin(t * 6 + i) * 6 - (1 - k) * 60;
+            ctx.fillStyle = '#ffd24a';
+            starPath(ctx, sx, sy, 22 * k, 9 * k); ctx.fill();
+            ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 3; ctx.stroke();
+          }
+        }
+      },
+      drawChoice(ctx, v, x, y, size) { qbDrawNumeral(ctx, v, x, y, size); },
+      flyTarget: () => ({ x: QB_SLOT.x, y: QB_SLOT.y }),
+      onCorrect() { // `this` = the machine (engine calls it as a method)
+        game.candy++;
+        AudioSys.sfx('candy');
+        Particles.candyBurst(QB_SLOT.x, QB_SLOT.y, 8);
+        if ((this.roundsWon + 1) % 5 === 0) { // bonus party every fifth solve
+          game.candy += 2;
+          this.bonusT = 1.6;
+          AudioSys.sfx('fanfare');
+          Particles.candyBurst(640, 300, 14);
+          Particles.burst(640, 300, 40, { type: 'confetti', colors: RAINBOW, sp0: 120, sp1: 420, l0: 0.8, l1: 1.6, up: 200 });
+        }
+      }
+    };
+    super(groundY, mode);
+    mode.machine = this;
+    this.lit = 0;      // count-up progress (objects highlighted)
+    this.bonusT = 0;
+  }
+  update(dt) {
+    super.update(dt);
+    if (this.bonusT > 0) this.bonusT = Math.max(0, this.bonusT - dt);
+    if (this.state === 'hold') {
+      // tick the objects one by one: 0.15s in, then every 0.14s, each with
+      // a chime and a sparkle — the numeral is already sitting in the slot
+      const n = this.mode.cur.count;
+      const want = Math.min(n, Math.max(0, Math.floor((this.holdT - 0.15) / 0.14) + 1));
+      if (want > this.lit) {
+        const p = this.mode.cur.pos[want - 1];
+        this.lit = want;
+        AudioSys.sfx('collect');
+        Particles.burst(p.x, p.y, 5, { colors: ['#ffd24a', '#fff'], type: 'sparkle', sp1: 160, l1: 0.5, s1: 8 });
+      }
+    } else if (this.state === 'idle') this.lit = 0;
   }
 }
