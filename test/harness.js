@@ -1635,6 +1635,160 @@ check('re-entering COUNTING BLOCKS starts the ladder over (fresh machine, tiny g
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0) ----------------
+// a per-frame policy runner: `fn(state)` returns the keys to hold THIS frame
+function flRun(n, fn) {
+  for (let i = 0; i < n; i++) {
+    const st = vm.runInContext(`(() => { const pl = game.player, fl = game.level.puzzle; return {
+      x: pl.x, y: pl.y, w: pl.w, h: pl.h, vy: pl.vy, onGround: pl.onGround, cut: !!game.cut,
+      bubbles: fl ? fl.bubbles.filter(b => !b.broken).map(b => ({ x: b.x, y: b.y, w: b.w })) : [],
+      bumps: fl ? fl.bumps.map(b => ({ x: b.x })) : [] }; })()`, sandbox);
+    frames(1, fn(st) || {});
+  }
+}
+const FLM = () => vm.runInContext('game.level.puzzle', sandbox);
+const FLG = 1400, FLC = 600;
+vm.runInContext("game.startLevel('meadow2')", sandbox);
+frames(150);
+check('flower land: Block Meadow 0-2 has a press-gated giant FLOWER door on its calm middle flat',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'flowerland' && d.press && d.style === 'flower' && d.cx === 2900)", sandbox));
+put(2900 - 35, 620 - 94);
+frames(10);
+tap('Space');
+frames(10);
+check('flower land: standing on the flower door + Space enters RAINBOW SPIDER FLOWER LAND', G().level.n === 'flowerland');
+frames(150); // intro card
+check('flower land: a 10000x1500 storybook with a ground floor at 1400, a one-way cloud at 600, and NO enemies',
+  G().level.w === 10000 && G().level.h === 1500 && G().spiders.length === 0 &&
+  vm.runInContext('game.level.solids.some(s => s.cloud && s.oneWay && s.y === 600)', sandbox) &&
+  vm.runInContext('game.level.puzzle instanceof FlowerLand', sandbox));
+// ---- zone 1: the first mushroom follows, the giant flower blocks the route ----
+put(1690, FLG - 94);
+frames(30, { ArrowRight: 1 });
+check('flower land: the giant flower is a real wall before the spider grows', G().player.x <= 1785 - 56 + 1 && !FLM().flowerA.broken);
+put(680 - 28, FLG - 150 - 94);
+frames(10);
+check('flower land: touching the first mushroom makes it follow the hero',
+  FLM().shrooms[0].state === 'follow' && FLM().carried === FLM().shrooms[0]);
+put(1330, FLG - 94);
+frames(45, { ArrowRight: 1 });
+check('flower land: bringing the mushroom to the hungry spider starts the spider-grow cutscene',
+  !!G().cut && G().cut.name === 'spidergrow' && FLM().shrooms[0].state === 'eaten' && ['eat', 'grow'].includes(FLM().spiderA.state));
+frames(420);
+check('flower land: the spider grew to 2.2x, walked over and SMASHED the flower — the key appeared, the cutscene ended',
+  FLM().spiderA.scale === 2.2 && FLM().spiderA.state === 'happy' && FLM().flowerA.broken &&
+  FLM().flowerA.solids.every(s => s.broken) && FLM().keyItem.state === 'waiting' && !G().cut && G().state === 'play');
+put(1815 - 28, FLG - 94);
+frames(20);
+check('flower land: the magic key follows the hero', FLM().keyMission.state === 'carrying');
+put(2540, FLG - 94);
+frames(130);
+check('flower land: the key opens the secret door into the spider home',
+  FLM().keyMission.gate.state === 'open' && FLM().keyMission.gate.solid.broken);
+// ---- zone 2: the grumpy guards ----
+const flHearts0 = G().player.hearts;
+put(2990, FLG - 94);
+frames(50, { ArrowRight: 1 });
+check('flower land: the grumpy guards\' wall shoves the hero back — no damage, a grumble bubble',
+  G().player.x <= 3120 - 56 && G().player.hearts === flHearts0 && FLM().guards[0].grumbleT > 0 && !FLM().guardWall.broken);
+put(2960 - 28, FLG - 130 - 94);
+frames(10);
+check('flower land: the second mushroom follows', FLM().shrooms[1].state === 'follow');
+put(2990, FLG - 94);
+frames(30, { ArrowRight: 1 });
+check('flower land: feeding the guards makes them eat and yawn', FLM().guards.every(g => ['eat', 'yawn', 'sleep'].includes(g.state)));
+frames(200);
+check('flower land: the guards curl up asleep and their wall clears',
+  FLM().guards.every(g => g.state === 'sleep') && FLM().guardWall.broken && FLM().zzz.length > 0);
+// ---- spider B: the second grow beat pays candy ----
+const flPickups0 = G().pickups.length;
+put(3500 - 28, FLG - 150 - 94);
+frames(10);
+put(3500, FLG - 94);
+frames(40, { ArrowRight: 1 });
+check('flower land: the third mushroom starts the second spider-grow beat', !!G().cut && G().cut.name === 'spidergrow');
+frames(420);
+check('flower land: spider B smashed flower B and candy rained out', FLM().flowerB.broken && G().pickups.length === flPickups0 + 6 && !G().cut);
+// ---- zone 3: the flower person and the magic hat ----
+put(4120, FLG - 94);
+frames(60, { ArrowRight: 1 });
+check('flower land: meeting the flower person starts the hat gift', FLM().person.state !== 'wait');
+frames(200);
+check('flower land: the flower person gave the magic hat', G().player.hat === true && FLM().person.state === 'done' && !G().cut && FLM().hintT > 0);
+// ---- zone 4: hat flight, on foot ----
+put(4420, FLG - 94);
+frames(5);
+const flY0 = G().player.y;
+frames(40, { ArrowUp: 1 });
+check('flower land: holding Up with the hat flies the hero upward ON FOOT (no unicorn)',
+  G().player.y < flY0 - 120 && G().player.vehicle === 'wheel' && G().player.hatFly === true);
+frames(420, { ArrowUp: 1, ArrowRight: 1 }); // ~2100 px of sky, well past the gate but short of the bubble column
+frames(160);
+check('flower land: past the castle gate the hat rests — flight off, hero back on the ground, hat still worn',
+  G().player.x > 6250 && G().player.hatFly === false && G().player.hat === true && G().player.onGround);
+// ---- zone 5: the dragon's bubble column, bounced for real ----
+put(6900 - 28, FLG - 94);
+let flMinVy = 0, flTopY = 9999, flBounces = 0, flPrevVy = 0;
+flRun(720, st => {
+  if (st.vy < flMinVy) flMinVy = st.vy;
+  if (st.vy <= -990 && flPrevVy > -990) flBounces++;
+  flPrevVy = st.vy;
+  if (st.y < flTopY) flTopY = st.y;
+  return {}; // no input at all: standing in the column is enough — the bubbles lift you
+});
+check('flower land: the dragon keeps blowing bubbles and a landing bounces the hero (vy -1000, bubble pops)',
+  flMinVy <= -990 && flBounces >= 2 && FLM().dragon.cd <= 1.3);
+check('flower land: bouncing up the bubble column reaches the giant cloud',
+  flTopY <= FLC - 94 + 2 && G().player.y + G().player.h <= FLC + 2 && FLM().onCloud(G().player));
+// ---- zone 6: the race ----
+put(7200, FLC - 94);
+frames(70, { ArrowRight: 1 });
+check('flower land: reaching the robot starts the 3-2-1 countdown cutscene at the start line',
+  !!G().cut && G().cut.name === 'racestart' && FLM().bot.state === 'countdown' && Math.abs(G().player.x - (7450 - 56 - 10)) < 2);
+flRun(700, st => { // wait out the countdown, then RUN, jumping each bump as it comes
+  if (st.cut) return {};
+  if (!st.onGround) return { ArrowRight: 1 };
+  const ahead = st.bumps.some(b => b.x - (st.x + st.w) > -5 && b.x - (st.x + st.w) < 120);
+  return ahead ? { ArrowRight: 1, ArrowUp: 1 } : { ArrowRight: 1 };
+});
+check('flower land: GO! released the hero and the robot (countdown over, robot ran)', !G().cut && FLM().bot.x > 7600);
+check('flower land: the hero wins the race with real jumps over every cloud bump',
+  FLM().raceWon && FLM().bot.state === 'lost' && G().player.x > 8900 && FLM().chest.open && FLM().goldItem.state !== 'hidden');
+put(8990 - 28, FLC - 94);
+frames(20);
+check('flower land: the gold follows the hero (or has already flown into the door)', ['carrying', 'done'].includes(FLM().goldMission.state) && FLM().goldItem.state !== 'waiting');
+put(9000, FLC - 94);
+frames(130);
+check('flower land: the gold opens the party door and the whole cast shows up',
+  FLM().goldMission.gate.state === 'open' && FLM().party === true);
+put(9520 - 28, FLC - 94);
+frames(30);
+check('flower land: the goal star throws the SURPRISE PARTY (subWin, persisted)',
+  G().endPhase === 'party' && G().miniDone.flowerland === true);
+frames(320);
+tap('Space');
+frames(10);
+check('flower land: Space after the party returns to Block Meadow 0-2 — hat gone, host state intact',
+  G().level.n === 'meadow2' && G().player.hat === false && G().state === 'play' && G().level.puzzle === null);
+// ---- the lose path: the robot wins, walks back, and a touch restarts ----
+vm.runInContext("game.enterSub('flowerland')", sandbox);
+frames(150);
+put(7300, FLC - 94);
+frames(20);
+frames(210);
+check('flower land (rematch): a fresh race is running', FLM().bot.state === 'race');
+vm.runInContext('game.level.puzzle.bot.x = 8950', sandbox);
+frames(5);
+check('flower land (rematch): the robot crossing first is a WIN for the robot, not a loss for the hero (no penalty)',
+  FLM().bot.state === 'won' && !FLM().raceWon && G().player.hearts === 3);
+frames(700);
+check('flower land (rematch): the robot walks back to the line and waits', FLM().bot.state === 'again' && FLM().bot.x <= 7450 + 41);
+put(7470, FLC - 94);
+frames(5);
+check('flower land (rematch): touching the waiting robot restarts the countdown', !!G().cut && G().cut.name === 'racestart');
+vm.runInContext('game.cut = null; game.exitSub(); game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- beam kit (js/beams.js): raycast logic ----------------
 const BK_BOUNDS = { w: 2000, h: 2000 };
 vm.runInContext(`

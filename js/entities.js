@@ -74,6 +74,7 @@ class Player {
     this.rampCd = 0; this.dustT = 0;
     this.flapCd = 0; this.flapT = 0; this.launchT = 0;
     this.big = false; this.drawK = 1; // Big Buddy: one free hit + 1.4x size
+    this.hat = false; this.hatFly = false; // Flower Land's magic hat (level-only; flight while hatFly)
   }
   boardUnicorn() {
     if (this.vehicle === 'unicorn') return;
@@ -331,6 +332,30 @@ class Player {
       this.y = Math.max(this.y, 40);
       if (res.ground) game.lastSafe = { x: this.x, y: this.y };
       this.checkHazards(lv);
+    } else if (this.hatFly) {
+      // ---- MAGIC HAT FLIGHT (Flower Land): Sky Flight's feel, on foot ----
+      // hold Up to rise, release to drift gently down; the machine decides
+      // WHERE the hat works (pl.hatFly) so bubbles and the race stay meaningful
+      this.flapCd = Math.max(0, this.flapCd - dt);
+      if (ax) { this.vx = clamp(this.vx + ax * 1500 * dt, -300, 300); this.facing = ax; }
+      else this.vx *= Math.exp(-3.5 * dt);
+      this.duck = false;
+      if (keys.ArrowUp) {
+        this.vy -= 2300 * dt;
+        if (this.flapCd <= 0) { this.flapCd = 0.3; AudioSys.sfx('flap'); }
+        if (chance(0.5)) Particles.burst(this.cx - this.facing * 20, this.y + 4, 1, { colors: RAINBOW, type: 'sparkle', sp1: 80, grav: 140, l1: 0.7, s1: 8 });
+      }
+      this.vy += 1050 * dt; // soft gravity
+      this.vy = clamp(this.vy, -300, 330);
+      const res = moveEntity(this, lv, dt);
+      this.onGround = res.ground;
+      if (res.bounced) { AudioSys.sfx('bounce'); this.squash = 1.45; }
+      if (!this.onGround && chance(0.4)) Particles.burst(this.cx - this.facing * 30, this.cy + rand(-12, 20), 1, { colors: RAINBOW.concat(['#fff']), type: 'sparkle', sp1: 50, grav: 150, l0: 0.4, l1: 0.9, s0: 5, s1: 9, up: 0 });
+      this.squash += (1 - this.squash) * Math.min(1, dt * 8);
+      this.x = clamp(this.x, 0, lv.w - this.w);
+      this.y = Math.max(this.y, 40);
+      if (res.ground) game.lastSafe = { x: this.x, y: this.y };
+      this.checkHazards(lv);
     } else {
       this.launchT = Math.max(0, this.launchT - dt);
       if (ax) { this.vx = ax * spd; this.facing = ax; this.launchT = 0; }
@@ -521,8 +546,10 @@ class Player {
       ctx.beginPath(); ctx.arc(bx, by + 6, 19.5, Math.PI, TAU); ctx.fill();
       rr(ctx, bx + (this.facing > 0 ? 4 : -26), by - 1, 22, 7, 3); ctx.fill();
     }
+    // the magic flower hat (Flower Land only) sits where the crown would
+    if (this.hat) FL_ART.flowerHat(ctx, bx, by - (girl ? 14 : 10), 26, { t: this.t, active: this.hatFly, spin: this.t * 7 });
     // royalty wears the crown everywhere, forever
-    if (game.royal) drawCrown(ctx, bx, by - (girl ? 14 : 10), 13);
+    if (game.royal) drawCrown(ctx, bx, by - (girl ? 14 : 10) - (this.hat ? 6 : 0), 13);
     // face
     drawFace(ctx, bx, by + 13, 30, mood, t, 3, this.facing * 0.7 + this.vx / 500, this.vy / 1100);
   }
@@ -4476,7 +4503,10 @@ class SubDoor {
       ctx.translate(-cx, -g);
     }
     ctx.save();
-    if (this.style === 'rainbow') {
+    if (this.style === 'flower') {
+      // a giant pink bloom whose heart is a magical doorway (Flower Land)
+      FL_SCENE.flowerDoor(ctx, cx, g, t, { glow: !done });
+    } else if (this.style === 'rainbow') {
       // a shimmering rainbow ring standing on the ground
       for (let i = 0; i < RAINBOW.length; i++) {
         ctx.strokeStyle = RAINBOW[i];

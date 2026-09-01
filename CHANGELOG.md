@@ -8,6 +8,62 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.25.0] - 2026-09-01
+
+### Added
+
+- **RAINBOW SPIDER FLOWER LAND** — Jack's own storybook level (spec:
+  `docs/superpowers/specs/2026-09-01-rainbow-spider-flower-land-design.md`),
+  a 10000×1500 sublevel entered through a giant press-gated FLOWER door on
+  Block Meadow 0-2's calm middle flat (x≈2900). Six story beats in one
+  continuous world, no enemies and no damage anywhere:
+  1. **Flower Place** — a purple mushroom follows the hero like the mission
+     key; bring it to the hungry giant rainbow spider and a cutscene holds
+     while it eats, GROWS to 2.2×, stomps over and SMASHES the giant flower
+     blocking the route (petal confetti) — the magic key appears.
+  2. **Giant Spider Home** — the key opens the secret door (the mission-kit
+     `MissionGate`, reused verbatim). Two grumpy guard spiders own a bump
+     wall: pushing it is a harmless shove and a red "not yet" bubble. A
+     second mushroom makes them yawn, curl up and snore (Z's) — the wall
+     clears. A third mushroom lets spider B smash a second flower into a
+     candy shower.
+  3. **Flower Person** — a tiny daisy person hops with joy and gifts the
+     **magic flower hat** (`player.hat`, level-only). A wordless "hold UP"
+     bubble follows.
+  4. **Flight field** — the hat flies the hero ON FOOT (a new Player branch
+     with Sky Flight's feel) over six tall solid flowers; past the rainbow
+     castle's gate the petals fold with a plop and the hat rests, so the
+     bubbles and the race keep their meaning.
+  5. **Rainbow-block castle + silly dragon** — a teal, cross-eyed dragon
+     puffs a column of bubbles: one-way bouncy solids born under the hero's
+     feet (just standing there gets you lifted), each bounce pops one and
+     the chain carries you up THROUGH the one-way giant cloud.
+  6. **The cloud** — a parked flying pirate ship with a friendly captain
+     (thought: gold), a little robot with a race flag, a 3-2-1-GO countdown
+     cutscene, and a short race over five tiny cloud bumps (72 px, a real
+     jump). The robot rubber-bands (waits when far ahead, never faster than
+     the hero); if it wins it walks back with a "again" bubble and a touch
+     restarts. The gold bar past the finish follows the hero into the party
+     door, and behind it the whole cast dances at the SURPRISE PARTY around
+     the goal star.
+- **New files**: `js/flowerart.js` (`FL_ART` creatures: rainbow/grump
+  spiders with scale + moods, magic shroom, flower person, flower hat,
+  bubble dragon, race bot, captain, gold bar, bubble) and `js/flowerscene.js`
+  (`FL_SCENE` scenery: giant flowers incl. broken, rainbow castle, spider
+  home dome, pirate ship, cloud island, tiny clouds, flags, party decor, gold
+  chest, flower door) — both contact-sheet reviewed; `js/flowerland.js`
+  (actors + the `FlowerLand` machine on `lv.puzzle`, its own cutscene ticks).
+- Engine touches: `Player.hat`/`hatFly` + the hat-flight branch and hat
+  drawing at the crown hook; `SubDoor` style `'flower'`; cutscenes
+  `spidergrow` / `hatgift` / `racestart` delegate to the machine; meadow
+  decor flowers/trees accept a `y` anchor.
+- Harness: 32 new checks riding the whole story for real — door press-entry,
+  the flower wall, shroom follow/delivery, both grow cutscenes, key → door,
+  guard shove without damage → sleep → wall clear, the hat, on-foot flight
+  and its boundary, the bubble column bounced to the cloud with NO input,
+  the countdown, a race won with real jumps, gold → door → party → subWin →
+  exit with the hat gone, and the robot-wins rematch path.
+
 ## [1.24.0] - 2026-09-01
 
 ### Added

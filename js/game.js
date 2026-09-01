@@ -599,6 +599,11 @@ function updateCut(dt) {
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-3.5 * dt));
     const ty = clamp(pl.cy - H * 0.55, 0, game.level.h - H);
     game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'spidergrow' || c.name === 'hatgift' || c.name === 'racestart') {
+    // Flower Land's own beats: the machine ticks its actors + camera
+    game.level.puzzle.cutTick(dt, c);
+    game.player.t += dt;
+    if (c.name !== 'spidergrow') updateCamera(dt);
   } else if (c.name === 'townreveal') {
     // emerging from the cave: one slow wordless pan across the moonlit town —
     // "wait... there are PEOPLE up here?" — then back to the hero
@@ -1329,6 +1334,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
+    } else if (game.level.n === 'flowerland') {
+      outlineText(ctx, 'SURPRISE PARTY!', W / 2, 140, 80, '#ff8fb0', '#5a2a5a');
+      outlineText(ctx, 'EVERYONE CAME TO CELEBRATE!', W / 2, 212, 34, '#ffe156', '#5a2a5a');
     } else if (game.level.n === 'treehouse') {
       outlineText(ctx, 'BEST MONKEY FRIENDS!', W / 2, 140, 68, '#ffd24a', '#2f5a2a');
       outlineText(ctx, 'YOU RANG THE GREAT BANANA BELL!', W / 2, 212, 34, '#7be07b', '#2f5a2a');

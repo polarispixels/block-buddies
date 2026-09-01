@@ -29,6 +29,7 @@ const LEVEL_META = {
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
   endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
   countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
+  flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
   mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
@@ -728,6 +729,9 @@ function buildLevel(n) {
     spider(lv, 2500, G, 'walk', { range: 170 });
     addPlat(lv, 2650, 500, 200);
     candyRow(lv, 2680, 2820, 450, 3);
+    // RAINBOW SPIDER FLOWER LAND (Jack's level): a giant flower door on the
+    // calm middle flat, press-gated because it sits on the walking route
+    lv.subDoors.push(new SubDoor(2900, G, 'flowerland', 'flower', { press: true }));
     addPlat(lv, 3050, 580, 100, { bouncy: true, h: 40 }); // spring up to the sky path
     addPlat(lv, 3180, 300, 320, { oneWay: true });
     candyRow(lv, 3220, 3460, 250, 4);
@@ -1193,6 +1197,51 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(120, G));
     lv.decor.clouds = [];
     for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
+  }
+
+  if (n === 'flowerland') { // ---------------- RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0)
+    // One continuous storybook: ground floor G=1400 for the flower place,
+    // spider home, flower person and flight field up to the castle; the giant
+    // one-way CLOUD at y=600 for the ship, the robot race and the party.
+    // Every story piece lives on the FlowerLand machine (js/flowerland.js);
+    // the level adopts its solids. No enemies anywhere.
+    const GF = FL.G, C = FL.CLOUD;
+    lv.w = FL.W; lv.h = FL.H;
+    lv.playerStart = { x: 110, y: GF - 94 };
+    addGround(lv, 0, lv.w, GF);
+    lv.hints.push({ x: 300, y: GF - 190, icon: 'arrows' });
+    // ---- zone 1: flower place — the first mushroom sits on a low perch ----
+    addPlat(lv, 600, GF - 150, 170);
+    candyRow(lv, 260, 520, GF - 55, 3);
+    candyArc(lv, 900, 1300, GF - 260, GF - 70, 5);
+    lv.checks.push(new Checkpoint(300, GF));
+    candyRow(lv, 2000, 2400, GF - 55, 4);
+    lv.checks.push(new Checkpoint(2300, GF));
+    // ---- zone 2: the spider home — perches for mushrooms #2 and #3 ----
+    addPlat(lv, 2880, GF - 130, 160);
+    lv.checks.push(new Checkpoint(2800, GF));
+    addPlat(lv, 3420, GF - 150, 160);
+    candyRow(lv, 2500, 2650, GF - 55, 2);
+    // ---- zone 3/4: the flower person, then the flight field ----
+    lv.checks.push(new Checkpoint(4100, GF));
+    candyArc(lv, 4700, 5100, GF - 760, GF - 400, 6);   // sketches the flight line
+    candyArc(lv, 5250, 5700, GF - 900, GF - 500, 6);
+    candyArc(lv, 5850, 6200, GF - 820, GF - 300, 6);
+    for (const [x, y] of [[4900, GF - 640], [5450, GF - 860], [6000, GF - 760]]) pick(lv, x, y, 'star');
+    // ---- zone 5: the castle + dragon ----
+    lv.checks.push(new Checkpoint(6320, GF));
+    candyRow(lv, 6350, 6650, GF - 55, 4);
+    pick(lv, 6550, GF - 80, 'heart');
+    // ---- zone 6: the cloud — ship, race, party ----
+    lv.checks.push(new Checkpoint(7300, C)); // past the ship's stern
+    candyRow(lv, 7500, 8800, C - 60, 8);
+    lv.checks.push(new Checkpoint(8960, C));
+    lv.goalStar = { x: FL.STAR.x, y: FL.STAR.y };
+    lv.puzzle = new FlowerLand(lv);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.decor.flowers = []; lv.decor.trees = []; lv.decor.clouds = [];
+    for (let x = 60; x < 6200; x += rand(70, 160)) lv.decor.flowers.push({ x, y: GF, c: randi(0, 4), s: rand(0.9, 1.5) });
+    for (let i = 0; i < 26; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 420), s: rand(0.7, 1.6) });
   }
 
   if (n === 'countblocks') { // ---------------- COUNTING BLOCKS (Count the Objects)
@@ -2887,7 +2936,7 @@ function drawDecor(ctx, lv, cam, t) {
   if (th === 'meadow') {
     for (const tr of d.trees || []) {
       if (!visible(tr.x)) continue;
-      const s = tr.s, gy = 620;
+      const s = tr.s, gy = tr.y || 620;
       ctx.fillStyle = '#8a6a4a';
       rr(ctx, tr.x - 10 * s, gy - 110 * s, 20 * s, 110 * s, 6); ctx.fill();
       ctx.fillStyle = '#4eb84a';
@@ -2902,7 +2951,7 @@ function drawDecor(ctx, lv, cam, t) {
     }
     for (const f of d.flowers || []) {
       if (!visible(f.x)) continue;
-      const gy = 620, s = f.s;
+      const gy = f.y || 620, s = f.s;
       const cols = ['#ff5a8a', '#ffb62b', '#b06cf0', '#ff6b35', '#4aa3ff'];
       ctx.strokeStyle = '#3f9c3a'; ctx.lineWidth = 3 * s;
       ctx.beginPath(); ctx.moveTo(f.x, gy); ctx.quadraticCurveTo(f.x + Math.sin(t * 2 + f.x) * 4, gy - 12 * s, f.x + Math.sin(t * 2 + f.x) * 6, gy - 24 * s); ctx.stroke();
