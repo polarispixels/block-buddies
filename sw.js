@@ -3,7 +3,7 @@
 const CACHE = 'ffbg-v1';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
-  'js/util.js', 'js/audio.js', 'js/particles.js', 'js/entities.js', 'js/puzzleblocks.js', 'js/ride.js', 'js/beams.js', 'js/flowerart.js', 'js/flowerscene.js', 'js/flowerland.js', 'js/levels.js', 'js/game.js'
+  'js/util.js', 'js/audio.js', 'js/particles.js', 'js/entities.js', 'js/puzzleblocks.js', 'js/ride.js', 'js/beams.js', 'js/flowerart.js', 'js/flowerscene.js', 'js/flowerland.js', 'js/surfart.js', 'js/surf.js', 'js/levels.js', 'js/game.js'
 ];
 
 self.addEventListener('install', e => {
