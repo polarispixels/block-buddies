@@ -652,7 +652,9 @@ function updateCamera(dt) {
   const lead = pl.vehicle === 'truck' ? 180 : 70; // look further ahead at rally speed
   const tx = clamp(pl.cx + pl.facing * lead - W * 0.5, 0, lv.w - W);
   game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-(pl.turboT > 0 ? 10 : 6) * dt));
-  const ty = lv.h > H ? clamp(pl.cy - H * 0.52, 0, lv.h - H) : 0;
+  // skyCam (Ocean Surf): a single-screen-tall level whose camera may still
+  // rise into the sky to follow a big launch, then settle back to the water
+  const ty = lv.h > H ? clamp(pl.cy - H * 0.52, 0, lv.h - H) : lv.skyCam ? clamp(pl.cy - H * 0.52, -1400, 0) : 0;
   game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-6 * dt));
 }
 function updatePlay(dt) {
@@ -745,6 +747,7 @@ function updatePlay(dt) {
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
   if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber / Treehouse Trail)
   if (lv.ride && lv.ride.state === 'intro') lv.ride.updateIntro(dt, pl); // board pickup watch (js/ride.js)
+  else if (lv.ride && lv.ride.state === 'done' && lv.ride.updateIsland) lv.ride.updateIsland(dt, pl); // Ocean Surf: the island walk + giant chest
   if (lv.vines) for (const v of lv.vines) v.update(dt, pl, lv); // swinging jungle vines
   // steam vents (Volcano Escape): idle platform -> bubbling warning -> blast.
   // The eruption phase turns the solid bouncy, and anyone already standing on
@@ -1334,6 +1337,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
+    } else if (game.level.n === 'surf') {
+      outlineText(ctx, 'KRAKEN BUDDIES!', W / 2, 140, 76, '#7fd8ff', '#2a3a86');
+      outlineText(ctx, 'YOU SURFED THE WHOLE OCEAN!', W / 2, 212, 34, '#ffe156', '#2a3a86');
     } else if (game.level.n === 'flowerland') {
       outlineText(ctx, 'SURPRISE PARTY!', W / 2, 140, 80, '#ff8fb0', '#5a2a5a');
       outlineText(ctx, 'EVERYONE CAME TO CELEBRATE!', W / 2, 212, 34, '#ffe156', '#5a2a5a');
@@ -1405,7 +1411,8 @@ function renderWorld() {
   if (game.state === 'dead') {
     if (game.deathPos) game.player.drawSitting(ctx, game.deathPos.x, game.deathPos.y - 58);
   } else {
-    if (lv.ride && lv.ride.state !== 'intro') {
+    if (lv.ride && lv.ride.drawRider) lv.ride.drawRider(ctx, t); // rides with their own rider art (Ocean Surf)
+    else if (lv.ride && lv.ride.state !== 'intro') {
       // riding: board underfoot, whole hero spins with the trick combo
       const pl = game.player, rm = lv.ride.ride;
       ctx.save();

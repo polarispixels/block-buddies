@@ -137,7 +137,7 @@ class Player {
     const lv = game.level;
     // RIDE MODE (js/ride.js): while riding, the heightfield rider owns the
     // physics entirely — shooting/cooldown stay live, everything else waits
-    if (lv.ride && lv.ride.state !== 'intro' && lv.ride.state !== undefined) {
+    if (lv.ride && lv.ride.state !== 'intro' && lv.ride.state !== 'done' && lv.ride.state !== undefined) { // 'done' = the ride is over, walk normally
       this.cool = Math.max(0, this.cool - dt);
       this.facing = 1;
       if (justP.Space) {
@@ -4506,6 +4506,9 @@ class SubDoor {
     if (this.style === 'flower') {
       // a giant pink bloom whose heart is a magical doorway (Flower Land)
       FL_SCENE.flowerDoor(ctx, cx, g, t, { glow: !done });
+    } else if (this.style === 'surfboard') {
+      // a surfboard planted in the seafloor sand (Ocean Surf)
+      SURF_ART.surfDoor(ctx, cx, g, t, { glow: !done });
     } else if (this.style === 'rainbow') {
       // a shimmering rainbow ring standing on the ground
       for (let i = 0; i < RAINBOW.length; i++) {

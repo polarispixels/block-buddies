@@ -1789,6 +1789,154 @@ check('flower land (rematch): touching the waiting robot restarts the countdown'
 vm.runInContext('game.cut = null; game.exitSub(); game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: OCEAN SURF (the surfboard ride, v1.26.0) ----------------
+const SF = () => vm.runInContext('game.level.ride', sandbox);
+// per-frame policy runner: `fn(state)` returns the keys to hold this frame
+function sfRun(n, fn) {
+  for (let i = 0; i < n; i++) {
+    const st = vm.runInContext(`(() => { const pl = game.player, r = game.level.ride; return {
+      x: pl.x, y: pl.y, w: pl.w, h: pl.h, power: pl.power, state: r.state, grounded: r.ride.grounded, vy: r.ride.vy, cut: !!game.cut, tut: r.tutPhase,
+      d: pl.x - r.startX, boss: r.boss ? r.boss.state : null, boat: r.boat ? { state: r.boat.state, x: r.boat.x } : null,
+      ahead: r.course.things.filter(t => !t.dead && !t.friendly && (t.kind === 'wave' || t.kind === 'shark' || t.kind === 'rock') && t.x + t.w > pl.x).slice(0, 3).map(t => ({ kind: t.kind, dx: t.x - (pl.x + pl.w) })),
+      endPhase: game.endPhase, lvl: game.level.n }; })()`, sandbox);
+    const hold = fn(st, i);
+    if (hold === 'stop') break;
+    frames(1, hold || {});
+  }
+}
+// the surfing policy a five-year-old could follow: jump when trouble is close,
+// mash for tricks in the air, shoot whenever there is a rainbow to shoot
+const surfPolicy = (st, i) => {
+  if (st.tut) return i % 2 === 0 ? { ArrowUp: 1 } : {};
+  if (st.state !== 'riding' && st.state !== 'launched') return {};
+  const hold = {};
+  if (st.state === 'launched') { if (i % 12 === 0) hold.ArrowUp = 1; return hold; }
+  if (st.grounded) {
+    const near = st.ahead.some(a => (a.kind === 'shark' ? a.dx > 40 && a.dx < 260 : a.dx > 40 && a.dx < 190));
+    const ram = st.boat && st.boat.state === 'ram' && st.boat.x - 120 - (st.x + st.w) > 30 && st.boat.x - 120 - (st.x + st.w) < 300;
+    if (near || ram) hold.ArrowUp = 1;
+  } else if (i % 9 === 0 && st.vy > -600) hold.ArrowUp = 1; // tricks
+  if (st.boss && st.power === 'rainbow' && i % 14 === 0) hold.Space = 1;
+  return hold;
+};
+vm.runInContext('game.startLevel(2)', sandbox);
+frames(150);
+check('surf: Underwater World has a press-gated SURFBOARD door on the seafloor near the start',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'surf' && d.press && d.style === 'surfboard' && d.cx === 450)", sandbox));
+put(450 - 28, 1130 - 94);
+frames(12);
+tap('Space');
+frames(10);
+check('surf: touching the surfboard + Space enters OCEAN SURF', G().level.n === 'surf');
+frames(150);
+check('surf: a beach on foot, the board waiting at the waterline, OceanSurf on lv.ride over the generic RideMode',
+  SF().state === 'intro' && vm.runInContext('game.level.ride instanceof OceanSurf && game.level.ride.ride instanceof RideMode && game.level.ride.course instanceof RideCourse', sandbox));
+put(SF().boardX - 28, 620 - 94);
+frames(10);
+check('surf: grabbing the board starts the ride and drops the beach wall',
+  SF().state === 'riding' && vm.runInContext('game.level.solids.find(s => s.surfWall).broken', sandbox) === true);
+frames(40);
+check('surf: the JUMP lesson freezes the ride (the slide\'s freeze-frame, reused)', SF().tutPhase === 'jump');
+tap('ArrowUp');
+let sfTrick = false;
+for (let i = 0; i < 70 && !sfTrick; i++) { frames(1); sfTrick = SF().tutPhase === 'trick'; }
+check('surf: the TRICK lesson waits for the apex of the taught jump', sfTrick);
+tap('ArrowUp');
+frames(5);
+check('surf: the taught trick spins the rider', SF().ride.spinTarget > 6 && SF().ride.trickN === 1);
+// ---- phase 1-2: ride for real; a forced wave hit teaches the wipeout ----
+sfRun(300, surfPolicy);
+check('surf: riding forward on flat water at the learn-phase speed', SF().state !== 'intro' && G().player.x > SF().startX + 900 && SF().ride.speed === 400);
+const sfCandy0 = G().candy;
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; pl.inv = 0; r.course.add('wave', pl.x + 60, 620 - 120, 90, 120, { big: true }); })()`, sandbox);
+sfRun(4, () => ({}));
+check('surf: hitting a big wave is a WIPEOUT — off the board, no hearts lost',
+  SF().state === 'swim' && SF().wipeouts === 1 && G().player.hearts === 3 && SF().boardX > G().player.x);
+let sfRemounted = false, sfSwimX0 = G().player.x;
+for (let i = 0; i < 200 && !sfRemounted; i++) { frames(1); sfRemounted = SF().state === 'riding'; }
+check('surf: the hero swims after the drifting board and remounts within ~3 s, still moving forward',
+  sfRemounted && G().player.x > sfSwimX0 + 100 && G().player.y + G().player.h === 620);
+// a shark: same wipeout; a floating chest: a candy bundle
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; pl.inv = 0; r.course.add('shark', pl.x + 90, 620 - 50, 110, 50, { vx: -130, dir: -1 }); })()`, sandbox);
+sfRun(4, () => ({}));
+check('surf: a shark hit is the same funny wipeout', SF().state === 'swim' && SF().wipeouts === 2);
+for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.add('chest', pl.x + 80, r.course.groundY(pl.x + 115) - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox);
+const sfCandy1 = G().candy;
+sfRun(14, () => ({}));
+check('surf: a floating treasure chest opens on touch for a 6-candy bundle',
+  G().candy >= sfCandy1 + 6 && vm.runInContext("game.level.ride.course.things.some(t => t.kind === 'chest' && t.open)", sandbox));
+// ---- ramps launch, tricks pay (ride up to the sharks phase, short of the first boat mark) ----
+sfRun(900, (st, i) => st.d > 5600 ? 'stop' : surfPolicy(st, i));
+check('surf: red ramps launch the rider off their lips (natural ramp launches counted)', SF().launches >= 1);
+check('surf: the ride escalates — sharks phase reached at its faster speed', G().player.x - SF().startX > 2600 && SF().ride.speed >= 440);
+// ---- the pirate boat ----
+vm.runInContext('game.player.x = game.level.ride.startX + 6810; game.player.inv = 0;', sandbox);
+sfRun(3, () => ({}));
+check('surf: crossing the first encounter mark drives in the MONSTER-TRUCK PIRATE BOAT', !!SF().boat && SF().boat.state === 'enter');
+let sfBalls = 0, sfFloat = false, sfTargetAhead = true, sfRam = false, sfRamAhead = false;
+sfRun(700, (st, i) => {
+  const r = SF();
+  if (r.balls.length) { sfBalls = Math.max(sfBalls, r.boat ? r.boat.shots : sfBalls); for (const c of r.balls) { if (c.state === 'float') sfFloat = true; if (c.state === 'fly' && c.tx < st.x) sfTargetAhead = false; } }
+  if (st.boat && st.boat.state === 'ram') { sfRam = true; if (st.boat.x > st.x) sfRamAhead = true; }
+  return surfPolicy(st, i);
+});
+check('surf: the boat fires three cannonballs that splash and float, each aimed AHEAD of the hero (readable)', sfBalls === 3 && sfFloat && sfTargetAhead);
+check('surf: then it revs, honks, and RAMS left through the lane, and finally leaves', sfRam && sfRamAhead && SF().boatsDone >= 1);
+// a cannonball is a wipeout too
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; const by = r.course.groundY(pl.x + pl.w / 2 + 30) - 12; r.balls.push({ x: pl.x + 30, y: by, vx: 0, vy: 0, grav: 900, state: 'float', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox);
+sfRun(3, () => ({}));
+check('surf: a cannonball hit is a wipeout, never damage', SF().state === 'swim' && G().player.hearts === 3);
+for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
+// ---- the Kraken ----
+vm.runInContext('game.player.x = game.level.ride.startX + 14010; game.player.power = "none"; game.player.inv = 1; game.level.ride.state = "riding"; game.level.ride.ride.grounded = true; game.player.y = 620 - game.player.h;', sandbox);
+sfRun(3, () => ({}));
+check('surf: past the rush the KRAKEN rises at screen-right while the surf keeps going', !!SF().boss && SF().boss.state === 'rise' && ['riding', 'swim'].includes(SF().state));
+let sfRocks = 0, sfRockAhead = true, sfFloatRock = false, sfRainbowSeen = false, sfShots = 0, sfHpMin = 5;
+sfRun(1400, (st, i) => {
+  const r = SF();
+  if (r.boss && r.boss.rocks.length) { sfRocks = Math.max(sfRocks, r.boss.rocks.length); for (const rk of r.boss.rocks) if (rk.tx < st.x) sfRockAhead = false; }
+  if (r.course.things.some(t => t.kind === 'rock' && !t.dead)) sfFloatRock = true;
+  if (r.course.things.some(t => t.kind === 'rainbow' && !t.dead)) sfRainbowSeen = true;
+  if (r.boss) sfHpMin = Math.min(sfHpMin, r.boss.hp);
+  if (r.boss && r.boss.state === 'throw' && st.power === 'rainbow' && i % 14 === 0) sfShots++;
+  if (r.boss && r.boss.state !== 'rise' && r.boss.state !== 'throw') return 'stop'; // befriended: the victory script takes over
+  return surfPolicy(st, i);
+});
+check('surf: the Kraken throws rocks aimed ahead of the hero that splash and float as jumpable obstacles', sfRocks >= 1 && sfRockAhead && sfFloatRock);
+check('surf: the RAINBOW block re-spawns ahead (the slide\'s friendship-block pattern) and the hero got the power', sfRainbowSeen && vm.runInContext("game.player.power === 'rainbow'", sandbox));
+check('surf: real rainbow shots wear the Kraken down to zero hearts — it becomes a FRIEND (never hurt)',
+  sfShots >= 5 && sfHpMin === 0 && SF().boss && ['friend', 'boatgrab', 'pickup', 'launch'].includes(SF().boss.state));
+// ---- the oversized victory ----
+let sfFlung = false, sfHeld = false, sfLaunched = false, sfTricksAir = 0, sfMaxHeight = 720;
+sfRun(1000, (st, i) => {
+  const r = SF();
+  if (r.boat && r.boat.state === 'flung') sfFlung = true;
+  if (st.state === 'held') sfHeld = true;
+  if (st.state === 'launched') { sfLaunched = true; sfTricksAir = Math.max(sfTricksAir, r.ride.trickN); sfMaxHeight = Math.min(sfMaxHeight, st.y); }
+  if (st.state === 'done') return 'stop';
+  return st.state === 'coast' ? { } : surfPolicy(st, i);
+});
+check('surf: the friendly Kraken seizes the pirate boat and FLINGS it away', sfFlung);
+check('surf: a tentacle scoops the hero and LAUNCHES them sky-high — the biggest trick window in the game',
+  sfHeld && sfLaunched && sfTricksAir >= 6 && sfMaxHeight < 120 && SF().launchTricks >= 6);
+frames(5);
+check('surf: the flight splashes down, coasts onto the ISLAND, the ride ends, and normal walking resumes', SF().state === 'done' && !!SF().island && G().player.onGround && G().player.x > SF().island.x0 + 300);
+// walk to the giant chest, Space opens it: +100 candy, then the party
+const sfCandy2 = G().candy;
+vm.runInContext('game.player.x = game.level.ride.chest.x - 120 - game.player.w / 2; game.player.vx = 0;', sandbox);
+frames(10);
+tap('Space');
+frames(200);
+check('surf: Space at the GIANT chest opens it and pays out 100 candy (rolling counter), then subWin',
+  SF().chest.open && G().candy >= sfCandy2 + 100 && G().endPhase === 'party' && G().miniDone.surf === true);
+frames(320);
+tap('Space');
+frames(10);
+check('surf: Space after the party returns to Underwater World with the host intact', G().level.n === 2 && G().state === 'play' && G().level.ride === null);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- beam kit (js/beams.js): raycast logic ----------------
 const BK_BOUNDS = { w: 2000, h: 2000 };
 vm.runInContext(`

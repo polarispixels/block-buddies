@@ -30,6 +30,7 @@ const LEVEL_META = {
   endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
   countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
   flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
+  surf: { name: 'OCEAN SURF', theme: 'ocean', music: 'dirt' }, // the surfboard ride (js/surf.js); 'ocean' = sky + clouds only
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
   mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
@@ -170,6 +171,9 @@ function buildLevel(n) {
     addPlat(lv, 2550, 900, 300);
     addPlat(lv, 3400, 620, 260);
     lv.hints.push({ x: 330, y: 330, icon: 'updown' });
+    // OCEAN SURF: a surfboard planted in the sand near the start — press-gated
+    // (Space/★ while touching) so swimming past never swallows anyone
+    lv.subDoors.push(new SubDoor(450, 1130, 'surf', 'surfboard', { press: true }));
     pick(lv, 700, 900, 'ice');
     pick(lv, 2500, 990, 'ice');
     pick(lv, 2400, 560, 'heart');
@@ -1199,6 +1203,22 @@ function buildLevel(n) {
     for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
   }
 
+  if (n === 'surf') { // ---------------- OCEAN SURF (the surfboard ride, v1.26.0)
+    // A short beach on foot, the board waiting at the waterline, then the
+    // procedural surf (js/surf.js on lv.ride): sharks, waves, red ramps,
+    // chests, the monster-truck pirate boat, the Kraken, the island.
+    lv.w = 60000; lv.h = 720; lv.skyCam = true; // virtual width; the camera may follow the launch into the sky
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, SURF.START, G); // the beach (normal physics)
+    lv.solids[lv.solids.length - 1].skipDraw = true; // the ride paints the sand itself
+    lv.solids.push({ x: SURF.START - 20, y: 0, w: 20, h: 720, surfWall: true, skipDraw: true }); // until the board is claimed
+    lv.hints.push({ x: 240, y: G - 190, icon: 'arrows' });
+    lv.ride = new OceanSurf(G, SURF.START);
+    lv.checks.push(new Checkpoint(140, G));
+    lv.decor.clouds = [];
+    for (let i = 0; i < 40; i++) lv.decor.clouds.push({ x: rand(0, 16000), y: rand(40, 260), s: rand(0.7, 1.6) });
+  }
+
   if (n === 'flowerland') { // ---------------- RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0)
     // One continuous storybook: ground floor G=1400 for the flower place,
     // spider home, flower person and flight field up to the castle; the giant
@@ -1484,7 +1504,7 @@ function inLava(lv, cx) {
 function drawBG(ctx, lv, cam, t) {
   const th = lv.theme;
   let g;
-  if (th === 'meadow' || th === 'cloud') {
+  if (th === 'meadow' || th === 'cloud' || th === 'ocean') {
     g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#6ec6ff'); g.addColorStop(1, th === 'cloud' ? '#bfe8ff' : '#c9f0ff');
   } else if (th === 'water') {
@@ -1570,6 +1590,8 @@ function drawBG(ctx, lv, cam, t) {
     }
     // ambient rising bubbles
     if (chance(0.3)) Particles.burst(cam.x + rand(0, W), cam.y + H + 10, 1, { color: 'rgba(255,255,255,0.5)', type: 'bubble', sp1: 20, grav: -160, l0: 2, l1: 3.5, up: 0, s1: 10 });
+  } else if (th === 'ocean') {
+    drawBGClouds(ctx, lv, cam, t, 0.4); // open sky over the surf (Ocean Surf paints its own sea)
   } else if (th === 'cloud') {
     drawBGClouds(ctx, lv, cam, t, 0.4);
     // background rainbow arcs

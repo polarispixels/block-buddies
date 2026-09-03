@@ -8,6 +8,61 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.26.0] - 2026-09-02
+
+### Added
+
+- **OCEAN SURF** — a scrolling surfboard ride off Underwater World (press-
+  gated SURFBOARD door on the seafloor near the start), built on RIDE MODE
+  exactly the way the Desert Sand Slide is (`RideMode` physics + `RideCourse`
+  procgen, untouched; spec `docs/superpowers/specs/2026-09-02-ocean-surf-
+  design.md`). A short beach on foot, grab the board, then five escalating
+  phases by distance: learn (candy, ripples, the first red ramp) → sharks →
+  big waves and ramp-over-wave combos → the pirate boat → the high-speed
+  rush → the Kraken.
+- **Red water-ski ramps** are terrain whose lips drop straight back to the
+  water, so the ride's own natural launch fires and the machine boosts it
+  high (candy arcs over every one). **Big waves**, **sharks** (a rainbow shot
+  befriends one), **floating treasure chests** (+6 candy), the slide's two
+  freeze-frame lessons (JUMP!, TRICK!), and mash-for-tricks in the air with
+  candy for 3+ and 5+ trick landings.
+- **The WIPEOUT**: waves, sharks, cannonballs, rams and rocks never hurt —
+  the hero pops off, paddles half-submerged after the drifting board,
+  remounts in about a second and a half, and keeps going.
+- **The MONSTER-TRUCK PIRATE BOAT**: a pirate hull on four monster-truck
+  wheels drives in from the right, settles ahead of the hero, fires three
+  cannonballs (each lands on a bobbing target ring aimed ahead of the hero —
+  readable), revs, HONKs, and rams left through the lane (a jump or a ramp
+  clears it), then leaves. Three encounters; a ramp is laid near every one.
+- **The KRAKEN**: rises at screen-right after the rush and surfs along;
+  raises a tentacle (the telegraph) and lobs rocks onto target rings that
+  then float as jumpable obstacles. The RAINBOW block re-spawns ahead
+  whenever the hero lacks the power (the slide's friendship-block pattern);
+  five real rainbow shots (five hearts, wrong powers get the bosses' hint
+  bubble) make it a FRIEND — never hurt.
+- **The oversized victory**: the friendly Kraken seizes the pirate boat,
+  lifts it upside down and FLINGS it over the horizon; scoops the hero and
+  board in a tentacle and LAUNCHES them sky-high (the camera follows into
+  the sky — new `lv.skyCam`), flips auto-stack every half second and every
+  Up press adds one, a rainbow star trail; splashdown, coast onto the
+  ISLAND (its beach laid from the launch parabola so the flight lands
+  there), walk to the GIANT chest, Space opens it: +100 candy with a rolling
+  counter and a candy storm, then subWin.
+- New files: `js/surfart.js` (`SURF_ART`, contact-sheet reviewed) and
+  `js/surf.js` (`OceanSurf` on `lv.ride`). Engine touches: the ride gate
+  releases on state `'done'` (normal walking on the island), rides may draw
+  their own rider (`drawRider`), a new `'ocean'` sky-only theme, `SubDoor`
+  style `'surfboard'`, meadow-style decor untouched.
+- Harness: 27 new checks riding the whole surf for real with a five-year-
+  old's policy (jump when trouble is close, mash in the air, shoot when
+  there is a rainbow): door, board, both lessons, a wave and a shark
+  wipeout with the swim and remount, chest bundles, ramp launches, the
+  escalation, the boat's three aimed cannonballs, honk, ram and exit, a
+  cannonball wipeout, the Kraken's rise, aimed floating rocks, the rainbow
+  re-spawner, five real shots to friendship, the fling, the scoop and
+  launch with 6+ tricks above the screen top, the island landing, the giant
+  chest's 100 candy and subWin, and the exit.
+
 ## [1.25.0] - 2026-09-01
 
 ### Added

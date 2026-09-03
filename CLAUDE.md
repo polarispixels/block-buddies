@@ -54,6 +54,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/puzzleblocks.js` | The PUZZLE BLOCKS educational mini-game framework (BACKLOG.md item 11), three layers: `PuzzleBlocksMachine` (generic ENGINE — pool shuffle/no-repeat, `puzzleBlock` answer solids, lock/cooldown, wobble/fly/hold phases, reward hook; attached as `lv.puzzle` like other secret-room machines), MODE config objects (round generation + prompt/choice rendering + optional `roundsToWin`/`onWin` success state and `cx` placement for scrolling levels; `LetterBlocksMachine` is mode #1, `PatternBlocksMachine` — complete-the-color-pattern, no reading — is mode #2, debuting in the Sand Slide; `EndingLetterBlocksMachine` — the blank moves to the END of the word, "CA_"→T — is mode #3, in the 'endingblocks' cloud room; `CountBlocksMachine` — COUNT THE OBJECTS, the first QUANTITY BLOCKS mode, is mode #4 in Mountain World's 'countblocks' room, built on shared numeric helpers `QB_OBJECTS`/`qbLayout`/`qbDrawGroup`/`qbDrawNumeral`/`qbDrawSlot` meant for numeral→quantity, more/fewer, missing-number and +/− modes later; per-visit difficulty ladder `CB_TIERS`, count-up with number badges, bonus party every fifth solve; the engine's only addition was an opt-in `mode.holdTime`), and CONTENT tables (`LB_WORDS` 60-word bank, `EL_WORDS` 38-word ending bank — crisp single-letter endings only, icons 100% reused, `LB_ICONS` procedural icons — every icon must pass a contact-sheet screenshot review at in-game size; that's what caught v1's four-eyed frog; counting reuses 27 of them at s=66-92 plus `dino`/`bunny`) |
 | `js/ride.js` | RIDE MODE, the reusable automatic-traversal framework: `RideMode` (generic heightfield rider — auto-forward, gravity, jump+coyote, natural ramp launches off falling-away lips, airborne trick combos; nothing desert-specific — future snowboards/minecarts/lava surfing reuse it), `RideCourse` (template procgen: terrain nodes + things, speed-scaled breather-flat constraint after every template), `SandSlide` (desert content + orchestration on `lv.ride`: pattern-puzzle→board handoff, friendship cactus, 5 truck parts with loss/re-queue that can never soft-lock, victory run, mega-ramp `stageClear(7)` with `game.partsDelivered`), plus the contact-sheet-reviewed desert art pack |
 | `js/beams.js` | The reusable LIGHT-BEAM puzzle kit: `castBeams` 8-direction raycast (recomputed every frame), `BeamLantern`, `BeamMirror` (redirector dish — bump underside rotates 45° CCW, face+gold pointer show the aim; `fixed` gold relays for high routing; `frozen` = ground-reaching ice crust, one fire shot thaws), `BeamVent` (steam plume scatters beams; one ice shot freezes forever), `BeamSensor` (lights + latches forever, fires a reward hook), the `FrozenObservatory` machine (`lv.puzzle` for 'mountain2': four stations, respawning fire/ice pickups via `bossKind` = never-soft-lock, `telescopeLit` → the 'telescope' cutscene), the observatory art pack + `drawTelescopeCutscene` |
+| `js/surfart.js` / `js/surf.js` | OCEAN SURF (v1.26.0), Ride Mode's second instance: `SURF_ART` (surfboard, sea, waves, shark, red ski ramps, floating chest, the monster-truck pirate boat, cannonball/splash/target ring, the Kraken with a controllable arm tentacle returning its tip, rock, island props, giant chest, surfboard door) and `OceanSurf` on `lv.ride` (phases by distance, wipeout→swim→remount, boat encounters enter→shoot→rev→ram→leave, the Kraken boss with rocks + the re-spawning rainbow block, the victory script friend→boatgrab→pickup→launch→coast→done, the island's giant chest paying `SURF.BIG_CANDY`). Engine: ride gate releases on `state === 'done'`, rides may supply `drawRider`, `lv.skyCam` lets a 720-tall level's camera rise for a launch, theme `'ocean'` = sky + clouds only. |
 | `js/flowerart.js` / `js/flowerscene.js` | Art packs for RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0): `FL_ART` creatures (rainbow/grump giant spiders with `scale` + moods, magic shroom, flower person, flower hat, bubble dragon, race bot, captain, gold bar, bubble) and `FL_SCENE` scenery (giant flowers incl. broken, rainbow-block castle, spider-home dome, pirate ship + `SHIP_DECK`, cloud island, tiny clouds, flags, party decor, gold chest, the meadow's flower door). Pure drawing functions, contact-sheet reviewed; no game-state reads. |
 | `js/flowerland.js` | `FL` constants + actors (`MagicShroom` follow-item, `GiantFlower` smashable solids, `RainbowSpider` kinds rainbow/grump with eat→grow→walk→smash / eat→yawn→sleep, `FlowerPerson`, `GoldItem` (a `MissionItem`), `RaceBot` rubber-band racer) and the `FlowerLand` machine on `lv.puzzle`: two `Mission`s (key door, gold door) it updates itself, the dragon's bubble pool (one-way bouncy solids that lift a standing hero), the race + countdown, the party cast; `cutTick(dt, c)` runs its own cutscenes (`spidergrow`, `hatgift`, `racestart`) since updatePlay skips machines during cuts. |
 | `js/levels.js` | `LEVEL_META`, `buildLevel(n)` (all level data), `buildSpaceMaze()`, theme rendering: `drawBG`, `drawSolids` (incl. lava pools, ramps, turbo pads, goal star), `drawDecor` (incl. castle, grandstand, royals) |
@@ -72,7 +73,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | # (internal n) | Name | Theme key | Gimmick | Ending |
 |---|---|---|---|---|
 | 1 | Block Meadow | meadow | tutorial, fire block; Letter Blocks learning room (SubDoor x=2700, rainbow style) — a reusable picture-prompt mini-game framework, first instance Beginning Letters | stage archway (x=4230) → BLOCK MEADOW 0-2 ('meadow2': 6800px, bigBrick walls + refill buddy blocks; a press-gated FLOWER door at x=2900 opens Jack's RAINBOW SPIDER FLOWER LAND sublevel); its finale star completes the world |
-| 2 | Underwater World | water | 4-dir swim (`lv.water`) | stage archway (x=3880) → SUNKEN TEMPLE 1-2; its treasure star completes the world |
+| 2 | Underwater World | water | 4-dir swim (`lv.water`); OCEAN SURF ride via a press-gated surfboard door on the seafloor (x=450) | stage archway (x=3880) → SUNKEN TEMPLE 1-2; its treasure star completes the world |
 | 3 | Cloud World | cloud | one-way clouds, rainbow bridges, cloud-catch; Ending Blocks learning room (press-gated rainbow SubDoor x=460 on the start platform) — Puzzle Blocks mode #3, ending letters | stage archway (x=4700 island) → WEATHER FACTORY 2-2; its lonely star completes the world |
 | 4 | Mountain World | mountain | power block smashes breakable walls; Golden Key mission (locked door + collect 3 Mountain Crystals: easy / spring-launch / wall-smash); Counting Blocks learning room (press-gated rainbow SubDoor x=300 on the start flat) — Puzzle Blocks mode #4, Count the Objects | stage archway (x=4700) → THE FROZEN OBSERVATORY 3-2 ('mountain2', js/beams.js): three beam-routing terraces (bump-rotate mirror dishes, fire-thaw frozen mirrors, ice-freeze steam vents, latching sensors thaw snow staircases) → dome grand alignment → telescope cutscene (Space Maze aliens wave back, gift the star) completes the world |
 | 5 | Zombie Cave | cave | darkness overlay + lights; ZOMBIE boss (fire→ice→rainbow) | Golden Candy Treasure chest |
@@ -170,7 +171,7 @@ via `drawBoy`/`drawHead`).
 - **Mini-games/sublevels**: levels with STRING ids in `LEVEL_META`/`buildLevel`
   ('cloudclimb', 'ascent', 'skyflight', 'volcanoescape', 'bubblemaze',
   'piperoom', 'torchcave', 'zerog', 'treehouse', 'beatbash', 'zombietown',
-  'meadow2', 'water2', 'cloud2', 'mountain2', 'letterblocks', 'endingblocks', 'countblocks', 'flowerland'; since v1.20.0
+  'meadow2', 'water2', 'cloud2', 'mountain2', 'letterblocks', 'endingblocks', 'countblocks', 'flowerland', 'surf'; since v1.20.0
   meadow2/water2/cloud2/mountain2 are CHAIN STAGES started via `startLevel`, not
   sublevels — the rest are true sublevels), entered
   via `SubDoor` in `lv.subDoors` (styles cloud/cave/rainbow/crack/bubble/
@@ -211,6 +212,13 @@ via `drawBoy`/`drawHead`).
   pan cut 'townreveal', four NPCs with a need->solved->walk->square state
   model, four different solve verbs incl. spending a HUD candy with Space,
   and a clock-tower festival finale gated on all four reaching the square).
+  OCEAN SURF ('surf', off Underwater World, v1.26.0) is Ride Mode's second
+  instance (js/surf.js + js/surfart.js): a beach, the board, five surf phases
+  by distance (waves/sharks/red ramps/chests/the monster-truck pirate boat),
+  the surf-along Kraken befriended with the re-spawning rainbow block, and
+  the oversized victory (boat flung, hero launched with `lv.skyCam`, island,
+  giant chest +100 candy → subWin). Wipeouts (wave/shark/cannonball/ram/
+  rock) are swim-and-remount, never damage.
   RAINBOW SPIDER FLOWER LAND ('flowerland', off Block Meadow 0-2, v1.25.0) is
   JACK'S OWN storybook level (spec in docs/superpowers/specs/): a 10000×1500
   world with ground floor G=1400 and a one-way giant cloud at y=600 — six
@@ -265,7 +273,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 727 checks; must print
+  actual badge/footer values). 754 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).
