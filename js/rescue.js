@@ -118,8 +118,8 @@ class DinoRescue {
     this.volcValve = { x: DR.VOLC_VALVE, y: G - 260, on: false };
     this.fire = new BabyDino('fire', DR.FIRE_X, G, { mood: 'scared', facing: -1 });
     this.breath = null; this.hintFire = 0;
-    this.pen = { solid: { x: DR.FIRE_X + 260, y: G - 260, w: 60, h: 260, skipDraw: true, thorn: true } };
-    this.solids.push(this.pen.solid);
+    this.pen = { burn: 0, solid: { x: DR.FIRE_X + 260, y: G - 260, w: 60, h: 260, skipDraw: true, thorn: true } }; // the pen's back wall: the rescued baby torches it itself (v1.28.4 — it used to stay solid forever)
+    this.solids.push(this.pen.solid); this.penBurn = null;
     // ---- the barrier + the reunion + the run ----
     const B = DR.BARRIER;
     this.barrier = {
@@ -156,6 +156,7 @@ class DinoRescue {
     for (let i = 0; i < 4; i++) { const c = new Pickup(baby.cx, baby.cy, 'candy'); c.vx = rand(-260, 260); c.vy = rand(-560, -300); c.physics = true; game.pickups.push(c); }
     game.candy += 5;
     this.calm = this.parade.length / 5;
+    if (baby.kind === 'fire') { this.penBurn = { t: 0 }; baby.facing = 1; baby.setMood('breathe', 1.6, 0); } // free at last, it turns and burns its own pen open: the way on
     if (this.parade.length === 5) { this.rescuedAll = true; AudioSys.sfx('bells'); }
   }
   paradeHas(kind) { return this.parade.some(b => b.kind === kind); }
@@ -258,6 +259,17 @@ class DinoRescue {
       }
     }
     // ---- rescue 5: the fire baby ----
+    if (this.penBurn) { // the freed baby breathes RIGHT through its pen's back wall
+      const pb = this.penBurn, fb = this.fire; pb.t += dt;
+      fb.facing = 1; fb.k = clamp(pb.t / 0.5, 0, 1);
+      if (pb.t > 0.35) {
+        if (pb.t < 0.4) { AudioSys.sfx('fire'); game.shake = Math.max(game.shake, 0.12); }
+        if (chance(0.8)) Particles.burst(fb.cx + rand(40, 320), G - rand(20, 80), 2, { colors: ['#ff9f43', '#ffe156', '#ff5a5a'], type: 'flame', sp1: 160, grav: -120, l1: 0.5, s1: 12 });
+        this.pen.burn = Math.min(1, this.pen.burn + dt * 1.2);
+        if (this.pen.burn >= 1 && !this.pen.solid.broken) { this.pen.solid.broken = true; AudioSys.sfx('poof'); Particles.burst(this.pen.solid.x + 30, G - 130, 20, { colors: ['#3a2a1a', '#ff9f43', '#8a8a8a'], type: 'block', sp1: 260, l1: 1, s1: 10, grav: 300, up: 120 }); }
+      }
+      if (pb.t > 1.6) { this.penBurn = null; fb.k = 0; fb.setMood('happy', 1); }
+    }
     if (this.fire.state !== 'rescued') {
       const fb = this.fire, near = Math.abs(pl.cx - fb.cx) < 520 && pl.cx < fb.cx;
       fb.facing = pl.cx < fb.cx ? -1 : 1;
@@ -444,7 +456,7 @@ class DinoRescue {
       JG_SCENE.stream(ctx, [{ x: this.volcValve.x + 50, y: this.volcValve.y - 30 }, { x: this.patch.x0 + 60, y: G - 40 }], t, this.volcValve.on ? 1 : 0);
       JG_SCENE.firePatch(ctx, this.patch.x0, G, this.patch.x1 - this.patch.x0, t, { on: this.patch.on ? 1 : 0, steam: this.patch.steam });
       JG_SCENE.thornWall(ctx, this.thorn.x, G, 120, 260, t, { burn: this.thorn.burn });
-      JG_SCENE.thornWall(ctx, this.pen.solid.x + 30, G, 120, 260, t, { burn: 0 }); // the pen's back wall
+      JG_SCENE.thornWall(ctx, this.pen.solid.x + 30, G, 120, 260, t, { burn: this.pen.burn }); // the pen's back wall
     }
     // the barrier + reunion dressing + the run's finish
     if (x1 > DR.BARRIER - 300 && x0 < DR.BARRIER + 1200) {

@@ -8,6 +8,24 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.28.4] - 2026-09-04
+
+### Fixed
+- **The Dinosaur Rescue's fire-baby pen no longer traps Jack** (Ryan's
+  playtest: "there is a giant cactus, some water gets sprayed on it and it
+  opens, and then there is a second cactus — we are stuck on that second
+  cactus"). The pen's back thorn wall (260 px tall, east of the fire baby)
+  was a permanent solid with nothing over it, so after the fifth rescue the
+  level was unfinishable. Now the freed baby turns around and BREATHES FIRE
+  through its own pen: the back wall chars and crumbles like the front one
+  (`DinoRescue.penBurn`), and the way on to the landslide is open.
+- Harness: after rescue 5 the pen burn is watched to its end and Jack
+  WALKS east through the wall's spot for real (the old checks teleported
+  past it — how this shipped). Three more surf checks stopped forcing the
+  rider to the water line before dropping a chest, shark or cannonball on
+  him (on a ramp lip that snapped him 140 px away from the thing — the
+  source of the long-running "surf chest" flake).
+
 ## [1.28.3] - 2026-09-04
 
 ### Fixed

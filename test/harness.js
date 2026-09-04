@@ -1859,11 +1859,13 @@ for (let i = 0; i < 200 && !sfRemounted; i++) { frames(1); sfRemounted = SF().st
 check('surf: the hero swims after the drifting board and remounts within ~3 s, still moving forward',
   sfRemounted && G().player.x > sfSwimX0 + 100 && G().player.y + G().player.h === 620);
 // a shark: same wipeout; a floating chest: a candy bundle
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; pl.inv = 0; r.course.add('shark', pl.x + 90, 620 - 50, 110, 50, { vx: -130, dir: -1 }); })()`, sandbox);
-sfRun(4, () => ({}));
-check('surf: a shark hit is the same funny wipeout', SF().state === 'swim' && SF().wipeouts === 2);
 for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.add('chest', pl.x + 10, pl.y + pl.h - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox); // dropped onto the rider, whatever the terrain
+const sfWipe0 = SF().wipeouts;
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.course.things = r.course.things.filter(t => !(t.kind === 'wave' || t.kind === 'shark') || Math.abs(t.x - pl.x) > 600); r.course.add('shark', pl.x + 10, pl.y + pl.h - 50, 110, 50, { vx: -130, dir: -1 }); })()`, sandbox); // on the rider's CURRENT box, no wave nearby to claim the wipeout first
+sfRun(4, () => ({}));
+check('surf: a shark hit is the same funny wipeout', SF().state === 'swim' && SF().swim && SF().swim.why === 'shark' && SF().wipeouts === sfWipe0 + 1);
+for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.course.add('chest', pl.x + 10, pl.y + pl.h - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox); // dropped onto the rider's CURRENT box, wherever it is (forcing pl.y to the water line on a ramp lip snapped the rider 140 px away from it — a real flake)
 const sfCandy1 = G().candy;
 sfRun(30, () => ({}));
 if (!(G().candy >= sfCandy1 + 6)) console.log('   CHEST-STATE ' + vm.runInContext(`(() => { const pl = game.player, r = game.level.ride; const ch = r.course.things.filter(t => t.kind === 'chest').map(t => [Math.round(t.x - pl.x), Math.round(t.y - pl.y), t.open, t.dead]); return JSON.stringify({st: r.state, y: Math.round(pl.y), inv: +pl.inv.toFixed(2), tut: r.tutPhase, gs: game.state, ch, n: r.course.things.length}); })()`, sandbox));
@@ -1887,7 +1889,7 @@ sfRun(700, (st, i) => {
 check('surf: the boat fires three cannonballs that splash and float, each aimed AHEAD of the hero (readable)', sfBalls === 3 && sfFloat && sfTargetAhead);
 check('surf: then it revs, honks, and RAMS left through the lane, and finally leaves', sfRam && sfRamAhead && SF().boatsDone >= 1);
 // a cannonball is a wipeout too
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.things = r.course.things.filter(t => !(t.kind === 'wave' || t.kind === 'shark') || Math.abs(t.x - pl.x) > 600); r.balls.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h / 2, vx: 0, vy: 0, grav: 900, state: 'fly', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox); // dropped right onto the rider, whatever the terrain — with no wave/shark nearby to claim the wipeout first (that was a real flake)
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.course.things = r.course.things.filter(t => !(t.kind === 'wave' || t.kind === 'shark') || Math.abs(t.x - pl.x) > 600); r.balls.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h / 2, vx: 0, vy: 0, grav: 900, state: 'fly', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox); // dropped right onto the rider, whatever the terrain — with no wave/shark nearby to claim the wipeout first (that was a real flake)
 const sfHearts0 = G().player.hearts;
 sfRun(3, () => ({}));
 if (!(SF().state === 'swim' && SF().swim && SF().swim.why === 'cannonball')) console.log('   BALL-STATE ' + vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; return JSON.stringify({st: r.state, why: r.swim && r.swim.why, inv: +pl.inv.toFixed(2), hearts: pl.hearts, gs: game.state, cut: !!game.cut, balls: r.balls.map(c => [c.state, Math.round(c.x - pl.x), Math.round(c.y - pl.y)]), boss: r.boss && r.boss.state, boat: r.boat && r.boat.state, grounded: r.ride.grounded}); })()`, sandbox));
@@ -2214,6 +2216,13 @@ check('rescue 5: the ledge valve pours water: the patch steams out for good', RS
 rsPut(9820, RG - 94); frames(60);
 check('rescue 5: the fire baby joins — ALL FIVE rescued, the nursery is alive, jungle music plays',
   RS().parade.length === 5 && RS().rescuedAll && RS().calm === 1 && RS().music === 'jungle');
+check('rescue 5: the freed baby turns and BURNS ITS OWN PEN open (v1.28.4: the back wall used to stay solid forever)', RS().pen.burn > 0);
+frames(100);
+check('rescue 5: the pen wall is gone', RS().pen.burn >= 1 && RS().pen.solid.broken && !RS().penBurn);
+vm.runInContext('game.spiders = game.spiders.filter(s => Math.abs(s.x - 10450) > 200);', sandbox); // the clearing's walk spider wanders down to 10330 and bites (not what this check is about)
+rsPut(9900, RG - 94); frames(3); frames(80, { ArrowRight: 1 }); // 80 frames = 400 px: through the wall's spot (10160-10220), short of the walk spider at 10450
+if (!(G().player.x > 10250 && G().player.onGround)) console.log('   WALK-STATE ' + vm.runInContext(`JSON.stringify({x: Math.round(game.player.x), y: Math.round(game.player.y), og: game.player.onGround, hearts: game.player.hearts, inv: +game.player.inv.toFixed(2), cut: game.cut && game.cut.name, gs: game.state, solids: game.level.solids.filter(s => !s.broken && s.x > 9950 && s.x < 10400).map(s => [s.x, s.y, s.w, s.h, s.thorn]), sp: game.spiders.filter(s => Math.abs(s.x - game.player.x) < 300).map(s => [Math.round(s.x), s.kind, s.state])})`, sandbox));
+check('rescue 5: Jack WALKS on east through where the pen wall stood (the real playtest soft-lock)', G().player.x > 10250 && G().player.onGround);
 // ---- the barrier: five moments, one per baby ----
 for (const sp of RS().spots) { rsPut(sp.x - 28, RG - 94); frames(110); }
 check('rescue: at the landslide each baby does its move — charge, lever, smash, rope, fire — and every obstacle clears',
