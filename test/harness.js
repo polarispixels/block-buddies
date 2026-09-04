@@ -1981,9 +1981,9 @@ stPut(4500 - 28, 1400 - 94);
 frames(8);
 check('station: touching a glowing battery makes it follow the hero (one at a time)', STG().carried && STG().carried.state === 'follow' && STG().batteries[0].state === 'follow');
 stPut(4830, 1400 - 94);
-frames(70);
+frames(5); tap('Space'); frames(70); // Space plugs it in (never automatic since v1.28.1)
 const stD1 = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'door' && m.cx === 4900)", sandbox);
-check('station: the battery snaps into the door socket and the BLAST DOOR opens (its solid clears)',
+check('station: Space plugs the battery into the door socket and the BLAST DOOR opens (its solid clears)',
   !STG().carried && stD1().on && stD1().solids[0].broken === true);
 stPut(4960, 1400 - 94); // past the door: the socket reaches both sides
 frames(5);
@@ -1991,9 +1991,13 @@ tap('Space');
 frames(70);
 check('station: Space at the socket pulls the battery back out — the door closes behind (undoing to move on)',
   STG().carried && STG().carried.id === 0 && !stD1().on && stD1().solids[0].broken === false);
+// Ryan's playtest bug: walking back and forth through the socket zone with the pulled cell must never re-plug it
+stPut(4830, 1400 - 94); frames(20); stPut(4960, 1400 - 94); frames(20); stPut(4900 - 28, 1400 - 94); frames(20);
+check('station: a pulled cell stays with Jack while he walks through the socket zone (plugging is Space only)',
+  STG().carried && STG().carried.id === 0 && !stD1().on && STG().sockets[0].hint === true);
 // the elevator carries the hero up
 stPut(5330, 1400 - 94);
-frames(10);
+frames(5); tap('Space'); frames(10);
 const stEl = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'elevator')", sandbox);
 check('station: the elevator socket powers the car', stEl().on && !STG().carried);
 vm.runInContext("(() => { const m = game.level.puzzle.grid.machines.find(m => m.kind === 'elevator'); game.player.x = 5500 - 28; game.player.y = m.car.y - game.player.h; game.player.vx = 0; game.player.vy = 0; })()", sandbox);
@@ -2009,12 +2013,12 @@ check('station: pulling the hologram\'s cell fizzles the alien face and the cell
   !vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'hologram').on", sandbox));
 const stPick1 = G().pickups.length;
 stPut(5820, 950 - 94);
-frames(200);
+frames(5); tap('Space'); frames(200);
 check('station: the vending machine spits real candy while powered (a funny experiment)', G().pickups.length >= stPick1 + 1 &&
   vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'vending').spat", sandbox) >= 1);
 tap('Space'); frames(10);
 stPut(7340, 950 - 94);
-frames(70);
+frames(5); tap('Space'); frames(70);
 const stD2 = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'door' && m.cx === 7400)", sandbox);
 check('station: door 2 opens for the relocated cell', stD2().on && stD2().solids[0].broken);
 stPut(7460, 950 - 94); frames(5); tap('Space'); frames(60);
@@ -2031,7 +2035,7 @@ check('station: the hand\'s cell can be pulled (one carried at a time — the pr
 // gravity: jump height with and without the machine
 stPut(8380, 950 - 94); frames(5);
 tap('ArrowUp'); let stApex0 = 950; for (let i = 0; i < 60; i++) { frames(1); stApex0 = Math.min(stApex0, G().player.y + G().player.h); }
-stPut(7760, 950 - 94); frames(10);
+stPut(7760, 950 - 94); frames(5); tap('Space'); frames(10);
 check('station: the gravity machine powers up and lowers gravity', G().level.gravK < 0.5 && !STG().carried);
 stPut(8380, 950 - 94); frames(5);
 let stApex1 = 950, stOnLedge = false;
@@ -2040,7 +2044,7 @@ check('station: low gravity turns a normal jump into a float that reaches the hi
   950 - stApex0 < 200 && 950 - stApex1 > 380 && stOnLedge);
 // the bridge: fetch a cell (the hand's, idle on the deck) — teleport-free would need the elevator; carry the one left by the hologram
 vm.runInContext(`(() => { const g = game.level.puzzle.grid; const b = g.batteries[1]; b.state = 'follow'; g.carried = b; })()`, sandbox);
-stPut(8600 - 28, 530 - 94); frames(90);
+stPut(8600 - 28, 530 - 94); frames(5); tap('Space'); frames(90);
 const stBr = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'bridge')", sandbox);
 check('station: the bridge machine slides its plates across the gap', stBr().on && stBr().plates.every(p => !p.broken));
 stPut(8760, 530 - 94);
@@ -2058,7 +2062,7 @@ tap('Space'); frames(80);
 check('station: shots bounce off the shield — the boss cannot simply be shot', STN().boss.hp === 6);
 stPut(9600 - 28, 530 - 94); frames(8);
 check('station: the arena\'s spare cell follows', STG().carried && STG().carried.id === 3);
-stPut(9450, 530 - 94); frames(10);
+stPut(9450, 530 - 94); frames(5); tap('Space'); frames(10);
 check('station: powering the FAN starts a burst that drops the shield', STN().fan.bursting && STN().boss.shield === false);
 vm.runInContext('game.player.x = 9700; game.player.facing = 1; game.player.inv = 60;', sandbox);
 tap('Space'); frames(75); tap('Space'); frames(75);
@@ -2070,7 +2074,7 @@ check('station: the boss throws spiders that land and fight', vm.runInContext("g
 // finish it with the laser
 vm.runInContext('game.level.puzzle.boss.hp = 1;', sandbox);
 vm.runInContext(`(() => { const g = game.level.puzzle.grid, b = g.batteries[3]; b.state = 'follow'; g.carried = b; })()`, sandbox);
-stPut(9800, 530 - 94); frames(10);
+stPut(9800, 530 - 94); frames(5); tap('Space'); frames(10);
 check('station: the LASER burst opens the shield again', STN().laser.bursting && STN().boss.shield === false);
 vm.runInContext('game.player.x = 9900; game.player.facing = 1; game.player.inv = 60;', sandbox);
 const stPick2 = G().pickups.length;

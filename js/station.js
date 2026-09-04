@@ -54,7 +54,7 @@ class Socket {
     this.zoneW = opts.zoneW || 120;
     this.cable = opts.cable || [{ x: cx, y: groundY - 30 }, { x: machine.cx, y: machine.gy - 40 }];
     this.battery = null; this.cooldown = 0; this.t = rand(9); this.flashT = 0;
-    this.armed = true; // a pulled cell is not swallowed again until the hero steps out of the zone
+    this.hint = false; // Space plugs a carried cell in and pulls it out — never automatic (Ryan's playtest: an auto-plug re-grabbed a cell Jack had just pulled)
     machine.socket = this;
   }
   get powered() { return !!this.battery && this.cooldown <= 0; }
@@ -96,14 +96,16 @@ class Socket {
       return;
     }
     const near = overlaps(this.zone(), pl);
-    if (Math.abs(pl.cx - this.cx) > this.zoneW / 2 + 24) this.armed = true; // re-arm needs walking away, not a hop
-    if (!this.battery && grid.carried && near && this.armed) this.insert(grid.carried, grid);
-    else if (this.battery && near && justP.Space && !this.machine.locked) { this.eject(grid, 'pull'); this.armed = false; }
+    this.hint = near && ((!this.battery && !!grid.carried) || (!!this.battery && !this.machine.locked));
+    if (!near || !justP.Space) return;
+    if (!this.battery && grid.carried) this.insert(grid.carried, grid);
+    else if (this.battery && !this.machine.locked) this.eject(grid, 'pull');
   }
   draw(ctx, t) {
     ST_SCENE.cable(ctx, this.cable, t, this.powered ? 1 : 0);
     ST_SCENE.socket(ctx, this.cx, this.gy, 90, t, { powered: this.powered, hasBattery: !!this.battery, cooldown: Math.min(1, this.cooldown / 5) });
     if (this.battery) this.battery.draw(ctx, t);
+    if (this.hint && this.cooldown <= 0) drawSpacebar(ctx, this.cx, this.gy - 120 + Math.sin(t * 3) * 5, 110, t); // the press-door language: Space plugs / unplugs
   }
   lights() {
     const L = [];

@@ -8,6 +8,19 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.28.1] - 2026-09-04
+
+### Changed (Ryan's playtest of the Alien Space Station)
+
+- **Battery sockets are manual now.** A carried cell used to plug itself in
+  the moment Jack entered a socket's zone, so a cell he had just pulled out
+  re-plugged whenever he walked back through the zone (only a perfectly
+  timed jump avoided it). Now Space plugs a carried cell in and Space pulls
+  it out — never automatic — and the press-door spacebar hint bobs over
+  the socket whenever Jack stands in its zone with something to do.
+- Harness: every station socket check now presses Space, plus a regression
+  check that walks a pulled cell back and forth through its socket's zone.
+
 ## [1.28.0] - 2026-09-04
 
 ### Added
