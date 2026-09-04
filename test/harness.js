@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
