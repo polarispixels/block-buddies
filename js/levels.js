@@ -32,6 +32,7 @@ const LEVEL_META = {
   flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
   surf: { name: 'OCEAN SURF', theme: 'ocean', music: 'dirt' }, // the surfboard ride (js/surf.js); 'ocean' = sky + clouds only
   space2: { name: 'THE ALIEN SPACE STATION 8-2', theme: 'space', music: '' }, // stage two of the Space Maze (js/station.js)
+  jungle2: { name: 'THE GREAT DINOSAUR RESCUE', theme: 'jungle', music: '' }, // Dino Jungle's stage ONE: the crash + five rescues (js/rescue.js)
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
   mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
@@ -41,7 +42,7 @@ const LEVEL_META = {
 // next, and the final stage's finale completes the WORLD. Worlds absent from
 // this table are single-stage chains (future stage-2s slot in by editing it).
 // Secret rooms are NOT chain members — they stay optional enterSub sublevels.
-const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 4: [4, 'mountain2'], 7: ['sandslide', 7], 9: [9, 'space2'] };
+const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 4: [4, 'mountain2'], 7: ['sandslide', 7], 9: [9, 'space2'], 10: ['jungle2', 10] };
 function stageChain(w) { return WORLD_STAGES[w] || [w]; }
 function stageInfo(id) { // -> {world, stage} for chain members, null otherwise
   for (const w in WORLD_STAGES) {
@@ -1203,6 +1204,68 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(120, G));
     lv.decor.clouds = [];
     for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
+  }
+
+  if (n === 'jungle2') { // ---------------- THE GREAT DINOSAUR RESCUE (Dino Jungle stage 1, v1.28.0)
+    // The pod crash opens a storm-damaged jungle: crash site, the nursery hub
+    // with a pit to the echo caves, the muddy river trail, the fruit grove,
+    // the broken canopy climb, the volcanic clearing, the landslide barrier,
+    // the reunion, and the T-rex victory run (js/rescue.js: DinoRescue on
+    // lv.puzzle + DinoRun on lv.ride). Solids carry `plate` kinds the machine
+    // paints; nothing draws through the classic jungle decor (fixed to 620).
+    const GJ = DR.G, C = DR.C;
+    lv.w = DR.W; lv.h = DR.H;
+    lv.playerStart = { x: 420, y: GJ - 94 };
+    const plate = (x, y, w, h, kind, extra) => { const s = Object.assign({ x, y, w, h, skipDraw: true, plate: kind }, extra || {}); lv.solids.push(s); return s; };
+    // ---- the ground, with the cave pit (1440-1560) and the cave exit hole (4250-4400) ----
+    plate(0, GJ, 1440, 100, 'mud'); plate(1560, GJ, 2690, 100, 'grass'); plate(4400, GJ, 8000, 100, 'grass'); // runs on under the reunion to the T-rex
+    plate(2900, GJ - 24, 320, 30, 'mud', { oneWay: true }); // the washed-out ford's mud bank
+    // ---- the echo caves: corridor at C with a ceiling, upper lanes, dead ends ----
+    plate(900, C, 3500, 220, 'cave');
+    plate(900, GJ + 100, 540, 60, 'cave'); plate(1560, GJ + 100, 2690, 60, 'cave'); // cave roof right under the deck, open at the pit and past 4250
+    plate(1800, C - 200, 500, 30, 'cave', { oneWay: true });    // fork 1 upper lane (true): leads on
+    plate(2300, C - 260, 60, 60, 'cave');                        // upper lane step down (one-way ledge to the floor)
+    plate(2440, C - 120, 140, 20, 'cave', { oneWay: true });
+    plate(2500, C - 200, 60, 200, 'cave');                        // fork 1 lower lane dead end wall (bat + candy behind... in front)
+    plate(2700, C - 200, 420, 30, 'cave', { oneWay: true });    // fork 2 upper lane (dead end)
+    plate(3100, GJ + 160, 60, 140, 'cave');                       // its back wall (hangs from the roof)
+    plate(3450, C - 200, 420, 30, 'cave', { oneWay: true });    // fork 3 upper lane (true)
+    plate(3500, C - 200, 60, 200, 'cave');                        // fork 3 lower lane dead end wall
+    plate(3880, C - 260, 60, 60, 'cave');                        // step down into the chamber
+    plate(4180, C - 120, 120, 20, 'cave', { oneWay: true }); plate(4280, C - 240, 120, 20, 'cave', { oneWay: true }); // the exit climb
+    plate(4180, C - 360, 120, 20, 'cave', { oneWay: true }); plate(4280, GJ, 120, 20, 'cave', { oneWay: true });
+    candyRow(lv, 2380, 2480, C - 60, 2); candyRow(lv, 2760, 3040, C - 250, 3); candyRow(lv, 3560, 3760, C - 60, 3);
+    // ---- the river trail + the grove ----
+    plate(5450, GJ - 160, 300, 30, 'leaf', { oneWay: true }); // the longneck's ledge
+    plate(5380, GJ - 80, 70, 30, 'leaf', { oneWay: true });
+    candyRow(lv, 2400, 2800, GJ - 60, 4); candyArc(lv, 3300, 3700, GJ - 250, GJ - 70, 4); candyRow(lv, 4550, 5000, GJ - 60, 4);
+    // ---- the broken canopy: leaves, mushrooms, vines, the bud, the ptero's branch ----
+    plate(5900, GJ - 150, 160, 24, 'leaf', { oneWay: true }); plate(6150, GJ - 320, 160, 24, 'leaf', { oneWay: true });
+    plate(6300, GJ - 40, 90, 40, 'grass', { bouncy: true, bounceVy: -1150 }); // mushroom up to the leaf at -480
+    plate(6420, GJ - 480, 170, 24, 'leaf', { oneWay: true }); plate(6650, GJ - 620, 150, 24, 'branch', { oneWay: true });
+    plate(7000, GJ - 700, 200, 30, 'branch', { oneWay: true }); plate(7250, GJ - 850, 160, 24, 'leaf', { oneWay: true });
+    plate(7050, GJ - 900, 140, 24, 'leaf', { oneWay: true });   // the valve's leaf
+    plate(7400, GJ - 950, 260, 30, 'branch', { oneWay: true }); // the bud's branch
+    plate(7850, GJ - 1250, 420, 30, 'branch', { oneWay: true }); // the ptero's broken branch
+    plate(DR.PAD_X - 50, GJ - 1250 - 30, 100, 30, 'leaf', { bouncy: true, bounceVy: -1300, pad: true }); // the launch pad (super)
+    plate(8350, GJ - 700, 150, 24, 'leaf', { oneWay: true }); plate(8300, GJ - 350, 150, 24, 'leaf', { oneWay: true }); // the way down
+    lv.vines = [new Vine(6700, GJ - 1000, 300, { phase: 0 })];
+    candyArc(lv, 5950, 6450, GJ - 700, GJ - 200, 5); candyRow(lv, 7030, 7150, GJ - 760, 2); candyArc(lv, 7880, 8250, GJ - 1420, GJ - 1290, 4);
+    // ---- the volcanic clearing ----
+    plate(8900, GJ - 130, 140, 30, 'rock', { oneWay: true }); plate(9040, GJ - 260, 200, 30, 'rock', { oneWay: true }); // up to the valve
+    candyRow(lv, 8500, 8800, GJ - 60, 3); candyRow(lv, 10300, 10700, GJ - 60, 4);
+    // ---- the run's approach ----
+    candyRow(lv, DR.BARRIER + 800, DR.BARRIER + 1000, GJ - 60, 3);
+    for (const [x, y] of [[2200, GJ - 80], [6000, GJ - 80], [8600, GJ - 80]]) { const p = new Pickup(x, y, 'fire'); p.bossKind = 'fire'; lv.pickups.push(p); }
+    pick(lv, 7100, GJ - 990, 'heart'); pick(lv, 3000, C - 70, 'heart');
+    for (const [x, y] of [[420, GJ], [1300, GJ], [2200, GJ], [4450, GJ], [5900, GJ], [7420, GJ - 950], [8500, GJ], [10900, GJ], [3900, C], [1650, C]]) lv.checks.push(new Checkpoint(x, y));
+    lv.puzzle = new DinoRescue(lv);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.ride = new DinoRun(GJ, DR.RUN_START);
+    // a few vine spiders far from every puzzle (the jungle's own enemy)
+    spider(lv, 3050, GJ, 'hang', { webTop: GJ - 300 });
+    spider(lv, 6250, GJ, 'walk', { range: 100 });
+    spider(lv, 10450, GJ, 'walk', { range: 120 });
   }
 
   if (n === 'space2') { // ---------------- THE ALIEN SPACE STATION 8-2 (v1.27.0)

@@ -8,6 +8,58 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.28.0] - 2026-09-04
+
+### Added
+
+- **THE GREAT DINOSAUR RESCUE** (backlog #5, Ryan's "Dino Jungle 9-2" spec;
+  design `docs/superpowers/specs/2026-09-04-great-dinosaur-rescue-
+  design.md`). Because the spec wants the level to open with the pod crash
+  straight out of the station, world 10 becomes the chain
+  `10: ['jungle2', 10]`: the rescue is stage ONE and the classic Dino Jungle
+  (dino key, Spinosaurus, golden star) is stage two and the world win.
+- **The crash**: a fullscreen cinematic (fireball, treetops with startled
+  dinos, the bounce-skid-tumble to an upside-down wreck, Jack crawling out;
+  Space skips after 2 s) — the wreck stays as a landmark.
+- **A storm-damaged, semi-open jungle** (17000×2600): the nursery hub with
+  five ghost-silhouette nests and a pit to the caves; the muddy river trail;
+  the fruit grove; the echo caves; the broken canopy climb; the volcanic
+  clearing; the landslide barrier; the reunion; the run.
+- **Five different rescues**: (1) FOLLOW THE EVIDENCE — footprints to a
+  washed-out ford, then shaking bushes, mud splashes, a broken plant and a
+  call; a fireball breaks the weak log pinning the baby triceratops.
+  (2) THE FRUIT PUZZLE — three fruit trees hand Jack a floating fruit; berry
+  peels under the ledge say what the longneck eats; apple = spat out, banana
+  = a sneeze storm, berry = dinner. (3) THE ECHO CAVES — sound rings drift
+  from the true tunnel at each fork (wrong tunnels are candy dead ends with
+  a hiccuping bat); the crystal chamber plays a glow pattern on three
+  bonkable crystals (the Puzzle Blocks `puzzleBlock` head-bonk reused): a
+  wrong bonk buzzes and replays, two rounds wake the ankylosaurus. (4) THE
+  BROKEN CANOPY — leaves, mushrooms, a vine, a bamboo valve that redirects
+  the stream onto a giant bud which BLOOMS into a platform, and a launch
+  pad beside the scared ptero: bounce, and it loops the screen and joins.
+  (5) THE FIRE-BREATHER — the penned baby breathes fire whenever Jack jumps
+  or shoots nearby, burning the thorn wall (the tool) but lighting the
+  grass (the problem); a ledge valve steams it out.
+- **The parade**: rescued babies follow in a chain, hop when Jack hops,
+  never get lost; each rescue fills its nursery nest, the clearing brightens
+  and the music grows from silence to jungle.
+- **The teamwork finale**: five ghost spots at the landslide — the trike
+  charges the log, the longneck pulls the lever, the anky smashes the
+  rocks, the ptero hoists the rope, the fire baby burns the curtain — in
+  any order; then the REUNION cutscene (parents stomp in, babies run to
+  them, roars, candy, a rainbow after the storm, blooms).
+- **The victory run** (`DinoRun`, Ride Mode's third instance): Jack rides
+  the T-rex over ramps, bouncing plants and collapsing logs with pteros
+  overhead, the mega ramp flings him sky-high (mash for flips) onto the
+  candy platform: +30 candy, the JUNGLE HERO party, and Space plays the
+  stage-clear beat into Dino Jungle 9-2.
+- New files: `js/dinoart.js` (`DINO_ART`), `js/junglescene.js`
+  (`JG_SCENE`), `js/rescue.js` (`BabyDino`, `DinoRescue`, `DinoRun`).
+  Harness: 43 new checks ride every rescue for real, the barrier, the
+  reunion, the run with tricks and the landing, the stage hand-off, and the
+  title resume.
+
 ## [1.27.0] - 2026-09-04
 
 ### Added

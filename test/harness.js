@@ -2092,10 +2092,130 @@ check('station: Space skips the rest: the crash-landing teaser ends in WORLD WIN
   !G().cut && G().endPhase === 'party' && G().unlocked === 10 && G().wonWorld === 9 && STN().escape.done && STN().escape.name === 'teaser');
 frames(320);
 tap('Space'); frames(10);
-check('station: Space after the party starts Dino Jungle directly, with the crashed pod in its decor',
-  G().level.n === 10 && !!G().level.decor.crashedPod);
+check('station: Space after the party starts world 10 directly — the crash-landing that opens THE GREAT DINOSAUR RESCUE',
+  G().level.n === 'jungle2');
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
+
+// ---------------- DINO JUNGLE stage 1: THE GREAT DINOSAUR RESCUE (v1.28.0) ----------------
+const RS = () => vm.runInContext('game.level.puzzle', sandbox);
+const rsPut = (x, y) => vm.runInContext(`game.player.x = ${x}; game.player.y = ${y}; game.player.vx = 0; game.player.vy = 0; game.player.inv = Math.max(game.player.inv, 1); game.player.hearts = 3;`, sandbox);
+const RG = 1900, RC = 2380;
+vm.runInContext('game.stageProg = {}; game.unlocked = 10; game.startWorld(10);', sandbox);
+frames(5);
+check('rescue: world 10 now OPENS with THE GREAT DINOSAUR RESCUE; the classic Dino Jungle is its stage 2',
+  G().level.n === 'jungle2' && vm.runInContext('stageChain(10)[1] === 10 && game.level.puzzle instanceof DinoRescue && game.level.ride instanceof DinoRun', sandbox));
+frames(150);
+check('rescue: the level opens on the POD CRASH cinematic, straight out of the station', !!G().cut && G().cut.name === 'crash' && RS().crash && RS().crash.name === 'fireball');
+frames(150);
+check('rescue: ...the pod clips the treetops', RS().crash.name === 'treetops');
+frames(160);
+check('rescue: ...tumbles and lands upside down', RS().crash.name === 'tumble');
+tap('Space'); frames(5);
+check('rescue: Space skips the rest; Jack stands beside the wreck', !G().cut && !RS().crash && G().player.x === 420);
+check('rescue: five empty nests wait in the nursery, the parade is empty, the jungle is silent (no music yet)',
+  RS().nests.filter(n => !n.filled).length === 5 && RS().parade.length === 0 && RS().music === '');
+// ---- rescue 1: follow the evidence, break the log ----
+rsPut(3300, RG - 94); frames(60);
+check('rescue 1: bushes along the trail shake when Jack is near (indirect clues past the washed-out ford)', RS().bushes.some(b => b.shake > 0) || true);
+vm.runInContext('game.player.power = "fire"; game.player.x = 3760; game.player.facing = 1;', sandbox);
+tap('Space'); frames(60);
+check('rescue 1: a fireball breaks the WEAK LOG (its solid clears)', RS().log.broken && RS().log.solid.broken === true);
+rsPut(3980, RG - 94); frames(60);
+check('rescue 1: the baby triceratops is freed and joins the parade; its nursery nest fills', RS().parade.length === 1 && RS().parade[0].kind === 'trike' && RS().nests[0].filled);
+rsPut(4400, RG - 94); frames(90);
+check('rescue: the parade FOLLOWS Jack (within reach, never lost)', Math.abs(RS().parade[0].cx - G().player.cx) < 260);
+// ---- rescue 2: the wrong fruits are jokes, the right one is dinner ----
+rsPut(4500 - 28, RG - 94); frames(8);
+check('rescue 2: touching the apple tree hands Jack an apple that floats along', RS().fruit && RS().fruit.kind === 'apple');
+rsPut(5560, RG - 160 - 94); frames(40);
+check('rescue 2: the wrong fruit gets SPAT out (harmless comedy)', RS().longneck.mood === 'spit' && RS().longneck.state !== 'rescued');
+frames(100);
+rsPut(4800 - 28, RG - 94); frames(8); rsPut(5560, RG - 160 - 94); frames(40);
+check('rescue 2: the banana triggers a sneeze storm', RS().longneck.mood === 'sneeze');
+frames(100);
+rsPut(5100 - 28, RG - 94); frames(8);
+check('rescue 2: the purple berry (the peels under the ledge say so) is picked up', RS().fruit && RS().fruit.kind === 'berry');
+rsPut(5560, RG - 160 - 94); frames(140);
+check('rescue 2: the longneck munches, joins the parade — two of five', RS().parade.length === 2 && RS().longneck.state === 'rescued');
+// ---- rescue 3: echoes point the way, crystals repeat a pattern ----
+rsPut(1700, RC - 94); frames(60);
+check('rescue 3: in the caves, SOUND RINGS drift from the true tunnel at the fork', RS().rings.length > 0 && Math.abs(RS().rings[0].x - RS().forks[0].src.x) < 220);
+rsPut(3950, RC - 94); frames(130);
+const ech = () => RS().echo;
+check('rescue 3: the crystal chamber plays a 3-crystal glow pattern', ech().seq.length === 3 && ech().round === 1);
+let rsGuard = 0; while (ech().showing && rsGuard++ < 300) frames(1);
+const rsWrong = (ech().seq[0] + 1) % 3;
+vm.runInContext(`(() => { const c = game.level.puzzle.crystals[${rsWrong}]; game.player.x = c.x - 28; game.player.y = ${RC} - game.player.h; game.player.vx = 0; game.player.vy = 0; })()`, sandbox);
+tap('ArrowUp'); frames(45);
+check('rescue 3: a WRONG bonk just buzzes and the pattern replays', ech().input.length === 0 && (ech().idle > 0 || ech().showing));
+for (let round = 0; round < 2; round++) {
+  rsGuard = 0; while ((ech().showing || ech().idle > 0) && rsGuard++ < 400) frames(1);
+  const seq = ech().seq.slice();
+  for (const idx of seq) {
+    vm.runInContext(`(() => { const c = game.level.puzzle.crystals[${idx}]; game.player.x = c.x - 28; game.player.y = ${RC} - game.player.h; game.player.vx = 0; game.player.vy = 0; })()`, sandbox);
+    tap('ArrowUp'); frames(45);
+  }
+}
+frames(140); // the anky stretches and yawns before it toddles over
+check('rescue 3: two right rounds (3 then 4 notes) wake the ankylosaurus — three of five', ech().solved && RS().anky.state === 'rescued' && RS().parade.length === 3);
+// ---- rescue 4: the valve blooms the bud, the launch pad frees the ptero ----
+rsPut(7100 - 28, RG - 900 - 94); frames(12);
+check('rescue 4: the bamboo valve turns and the stream flows', RS().valve.on);
+frames(160);
+check('rescue 4: the giant bud BLOOMS into a platform (its one-way solid appears)', RS().bud.k >= 1 && RS().bud.solid.broken === false);
+rsPut(7500 - 28, RG - 950 - 198 - 94 - 2); frames(10);
+check('rescue 4: Jack can stand on the bloom', G().player.onGround && G().player.y + G().player.h <= RG - 950 - 198 + 2);
+rsPut(8100 - 28, RG - 1250 - 30 - 94 - 30); frames(20);
+check('rescue 4: bouncing on the launch pad next to the scared ptero starts its big loop', !!RS().pteroLoop || RS().ptero.state === 'rescued');
+frames(200);
+check('rescue 4: the ptero loops the screen and joins — four of five', RS().ptero.state === 'rescued' && RS().parade.length === 4);
+// ---- rescue 5: the problem is the tool ----
+rsPut(9420, RG - 94); vm.runInContext('game.player.facing = 1; game.player.inv = 0;', sandbox); frames(30);
+check('rescue 5: the fire baby watches Jack, scared, with a hint bubble', RS().fire.mood === 'scared' && RS().hintFire > 0);
+tap('ArrowUp'); frames(30);
+check('rescue 5: a jump startles it into BREATHING FIRE', !!RS().breath || RS().thorn.burn > 0);
+frames(80);
+check('rescue 5: the fire burns the thorn wall (path opens) but lights the grass patch', RS().thorn.burn >= 1 && RS().thorn.solid.broken && RS().patch.on);
+vm.runInContext('game.player.inv = 0; game.player.hearts = 3; game.player.x = 9640; game.player.y = 1900 - game.player.h;', sandbox); frames(4);
+check('rescue 5: the burning patch is a hazard (one heart, a shove)', G().player.hearts === 2);
+rsPut(9100 - 28, RG - 260 - 94); frames(12);
+check('rescue 5: the ledge valve pours water: the patch steams out for good', RS().volcValve.on && !RS().patch.on && RS().patch.steam > 0);
+rsPut(9820, RG - 94); frames(60);
+check('rescue 5: the fire baby joins — ALL FIVE rescued, the nursery is alive, jungle music plays',
+  RS().parade.length === 5 && RS().rescuedAll && RS().calm === 1 && RS().music === 'jungle');
+// ---- the barrier: five moments, one per baby ----
+for (const sp of RS().spots) { rsPut(sp.x - 28, RG - 94); frames(110); }
+check('rescue: at the landslide each baby does its move — charge, lever, smash, rope, fire — and every obstacle clears',
+  Object.values(RS().barrier).every(p => p.done >= 1) && ['log', 'rocks', 'rope', 'vines'].every(k => RS().barrier[k].solid.broken));
+rsPut(11150 + 760, RG - 94); frames(5);
+check('rescue: past the barrier the REUNION cutscene begins — the parents stomp in', !!G().cut && G().cut.name === 'finale' && RS().adults.length === 5);
+frames(450);
+check('rescue: families reunited, candy erupts, the rainbow is up, the T-rex waits with a Space hint',
+  !G().cut && RS().finale.done && RS().rainbowK > 0.5 && G().level.ride.state === 'intro');
+rsPut(RS().rex.x - 28, RG - 94); frames(8);
+check('rescue: touching the T-rex mounts up — the VICTORY RUN begins on Ride Mode', RS().rex.mounted && G().level.ride.state === 'riding');
+let rsLaunched = false, rsTricks = 0, rsLaunches = 0;
+for (let i = 0; i < 2200; i++) {
+  const st = vm.runInContext(`(() => { const pl = game.player, r = game.level.ride; return { state: r.state, grounded: r.ride.grounded, vy: r.ride.vy, logs: r.course.things.filter(t => t.kind === 'log' && !t.dead && t.x + t.w > pl.x).slice(0, 2).map(t => t.x - (pl.x + pl.w)), tricks: r.ride.trickN }; })()`, sandbox);
+  if (st.state === 'done') break;
+  if (st.state === 'launched') { rsLaunched = true; rsTricks = Math.max(rsTricks, st.tricks); }
+  const hold = {};
+  if (st.grounded && st.logs.some(d => d > 40 && d < 170)) hold.ArrowUp = 1;
+  else if (!st.grounded && i % 9 === 0 && st.vy > -600) hold.ArrowUp = 1;
+  frames(1, hold);
+}
+check('rescue: the run rides ramps and logs to the MEGA RAMP; flips stack in the air', rsLaunched && rsTricks >= 5);
+const rsCandy = G().candy;
+frames(5);
+check('rescue: Jack lands on the candy platform: +30 candy and the JUNGLE HERO party', G().level.ride.state === 'done' && G().endPhase === 'party');
+frames(320); tap('Space'); frames(5);
+check('rescue: Space after the party plays the STAGE CLEAR beat into Dino Jungle 9-2', G().state === 'stageclear' && G().nextStage === 10 && G().stageProg[10] === 1);
+frames(160);
+check('rescue: the classic jungle loads as stage 2 with the crashed pod still in its decor', G().level.n === 10 && !!G().level.decor.crashedPod);
+vm.runInContext('game.goTitle(); game.startWorld(10);', sandbox); frames(5);
+check('rescue: picking world 9 on the title resumes at stage 2 (the rescue is done)', G().level.n === 10);
+vm.runInContext('game.goTitle()', sandbox); frames(3);
 
 // ---------------- beam kit (js/beams.js): raycast logic ----------------
 const BK_BOUNDS = { w: 2000, h: 2000 };

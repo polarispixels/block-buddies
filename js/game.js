@@ -604,6 +604,9 @@ function updateCut(dt) {
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-3.5 * dt));
     const ty = clamp(pl.cy - H * 0.55, 0, game.level.h - H);
     game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'crash' || c.name === 'finale') {
+    game.level.puzzle.cutTick(dt, c); // the Great Dinosaur Rescue's own beats
+    game.player.t += dt;
   } else if (c.name === 'stationboss' || c.name === 'escape') {
     game.level.puzzle.cutTick(dt, c); // the Alien Space Station's own beats
     game.player.t += dt;
@@ -863,6 +866,7 @@ function updatePlay(dt) {
     if (game.partyT > 5 && justP.Space) {
       if (game.subReturn) game.exitSub(); // mini-game over — back to the world
       else if (game.wonWorld) { const w = game.wonWorld; game.wonWorld = 0; if (w < 10) game.startWorld(w + 1); else game.goTitle(); }
+      else if (lv.n === 'jungle2') { game.endPhase = null; game.partyT = 0; game.stageClear(10); } // the rescue's party leads into Dino Jungle 9-2
       else if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
       else if (lv.n === 6) game.startWorld(7); // and another one! (via the SAND SLIDE — world 6's chain)
       else if (lv.n === 7) game.startLevel(8); // and one more!
@@ -1345,6 +1349,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
+    } else if (game.level.n === 'jungle2') {
+      outlineText(ctx, 'JUNGLE HERO!', W / 2, 140, 84, '#7be07b', '#2f5a2a');
+      outlineText(ctx, 'YOU BUILT A DINO TEAM!', W / 2, 212, 36, '#ffe156', '#2f5a2a');
     } else if (game.level.n === 'space2') {
       outlineText(ctx, 'ESCAPED!', W / 2, 140, 84, '#a8ff3c', '#1a1a40');
       outlineText(ctx, 'NEXT STOP: DINO JUNGLE!', W / 2, 212, 36, '#ffe156', '#1a1a40');
