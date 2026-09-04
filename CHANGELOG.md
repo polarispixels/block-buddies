@@ -8,6 +8,63 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.27.0] - 2026-09-04
+
+### Added
+
+- **THE ALIEN SPACE STATION 8-2** (backlog #4; spec
+  `docs/superpowers/specs/2026-09-04-alien-space-station-design.md`) — the
+  Space Maze becomes a chain (`9: [9, 'space2']`): the maze star keeps its
+  alien party, and Space after it now advances into the station
+  (`game.advanceStage`); the station's escape pod is the world's ending
+  (`worldWin(9)` unlocks Dino Jungle, Space goes straight there).
+- **Act 1, the Black Hallway**: nearly pitch dark (the darkness overlay now
+  reads `lv.darkAlpha` and `lv.playerLight`, both driven by the station's
+  lighting director — darkness is the mechanic, no flashlight to find),
+  faint red emergency lights, flickering ceiling strips, tiny glyphs,
+  sparks, creaks in the silence, a long corridor with steps, a bend,
+  alcoves, vents, broken doors and a lit doorway far ahead. Ambushes: a
+  ceiling lurker (glowing eyes drawn ABOVE the darkness via a new
+  `drawFront` hook) drops when you walk under it, vents pop, a shooter
+  spits web globs.
+- **Alien spiders** (`AlienSpider`, in `lv.spiders` so every enemy loop
+  works): biomechanical neon bugs, kinds crawl / jump / drop / vent /
+  shooter / thrown; any shot pops them into a candy burst with REAL candy
+  pickups (2 small / 5 big). Web globs only STICK the hero (`pl.webT`: 35%
+  speed, no jump, shake free with Left/Right) — never damage. Fire pickups
+  respawn everywhere (`bossKind`) so shooting never runs out.
+- **The PowerGrid kit** (`js/station.js`, reusable): `Battery` (the
+  follow-item pattern), `Socket` (a floor pedestal that swallows a carried
+  cell and powers its machine; Space pulls it back; re-arms only when you
+  walk away; overheated sockets eject and smoke), `Machine` (door,
+  elevator that waits for a passenger and carries him, gravity (`lv.gravK`
+  in the on-foot branch), sliding bridge plates, vending, hologram,
+  high-five hand, dance robot, fan, laser, magnet, bay door). Not enough
+  cells for everything: pull the door's cell to run the elevator, pull the
+  hologram's cell to open door 2, pull the hand's cell for the bridge.
+- **Acts 2-3**: webs, goo, broken robots, pods, panels, glowing pipes; the
+  station brightens with depth and with every machine powered NEAR the hero
+  (machinery coming alive lights its room); music off → cave → space →
+  boss → win.
+- **The Giant Alien Spider**: drops in when the arena seals; a spider
+  factory behind an energy shield; three battery machines (fan, laser,
+  magnet) each open the shield for a 5 s burst, then eject the cell hot
+  (5 s cooldown) — move it to the next machine; six hits; defeat = a candy
+  STORM (60 real candies + bursts + confetti) and the bay door opens.
+- **The escape**: touching the pod starts a fullscreen cinematic (hatch,
+  launch, space with the station receding and the green planet growing,
+  re-entry glow and shake, the jungle crash, the teaser: trees shake, a
+  giant dino silhouette walks by, a baby dino peeks; Space skips after 3 s)
+  → WORLD WIN. Dino Jungle now shows the crashed pod near its start.
+- New files: `js/stationart.js` (`ST_ART`), `js/stationscene.js`
+  (`ST_SCENE`), `js/station.js`. Harness: 41 new checks ride the station
+  for real (dark values, lurker drop, a real fireball pop, the web trap and
+  the shake-free, every battery move, the elevator ride, vending candy, the
+  hand slap, the gravity float onto the ledge, the bridge walk, the sealed
+  arena, shield blocks, fan/laser bursts, hot ejects, thrown spiders, the
+  candy storm, the cinematic phases, the skip, the world win, the jungle
+  hand-off with the crashed pod) and the maze exit change.
+
 ## [1.26.0] - 2026-09-02
 
 ### Added

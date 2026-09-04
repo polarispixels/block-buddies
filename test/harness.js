@@ -848,7 +848,9 @@ check('touching the star wins the maze', G().mazeDone === true && G().endPhase =
 frames(320);
 tap('Space');
 frames(5);
-check('maze party exit leads into DINO JUNGLE', G().level.n === 10 && sandbox.localStorage.getItem('ffbg_unlocked') === '10');
+check('maze party exit now leads into THE ALIEN SPACE STATION 8-2 (progress saved; the jungle stays locked until the escape pod)',
+  G().level.n === 'space2' && G().stageProg[9] === 1 && sandbox.localStorage.getItem('ffbg_unlocked') !== '10');
+vm.runInContext('game.startLevel(10)', sandbox);
 frames(150);
 check('jungle loaded and playing', G().state === 'play' && G().level.theme === 'jungle');
 const MIS2 = () => vm.runInContext('game.level.mission', sandbox);
@@ -1861,7 +1863,7 @@ vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.gr
 sfRun(4, () => ({}));
 check('surf: a shark hit is the same funny wipeout', SF().state === 'swim' && SF().wipeouts === 2);
 for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.add('chest', pl.x + 80, r.course.groundY(pl.x + 115) - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox);
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.add('chest', pl.x + 10, pl.y + pl.h - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox); // dropped onto the rider, whatever the terrain
 const sfCandy1 = G().candy;
 sfRun(14, () => ({}));
 check('surf: a floating treasure chest opens on touch for a 6-candy bundle',
@@ -1884,7 +1886,7 @@ sfRun(700, (st, i) => {
 check('surf: the boat fires three cannonballs that splash and float, each aimed AHEAD of the hero (readable)', sfBalls === 3 && sfFloat && sfTargetAhead);
 check('surf: then it revs, honks, and RAMS left through the lane, and finally leaves', sfRam && sfRamAhead && SF().boatsDone >= 1);
 // a cannonball is a wipeout too
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; const by = r.course.groundY(pl.x + pl.w / 2 + 30) - 12; r.balls.push({ x: pl.x + 30, y: by, vx: 0, vy: 0, grav: 900, state: 'float', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox);
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.balls.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h / 2, vx: 0, vy: 0, grav: 900, state: 'fly', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox); // dropped right onto the rider, whatever the terrain
 sfRun(3, () => ({}));
 check('surf: a cannonball hit is a wipeout, never damage', SF().state === 'swim' && G().player.hearts === 3);
 for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
@@ -1934,6 +1936,164 @@ frames(320);
 tap('Space');
 frames(10);
 check('surf: Space after the party returns to Underwater World with the host intact', G().level.n === 2 && G().state === 'play' && G().level.ride === null);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
+// ---------------- SPACE 8-2: THE ALIEN SPACE STATION (v1.27.0) ----------------
+const STN = () => vm.runInContext('game.level.puzzle', sandbox);
+const stPut = (x, y) => vm.runInContext(`game.player.x = ${x}; game.player.y = ${y}; game.player.vx = 0; game.player.vy = 0; game.player.inv = Math.max(game.player.inv, 1); game.player.hearts = 3;`, sandbox);
+vm.runInContext("game.stageProg = {}; game.unlocked = 9; game.startLevel('space2')", sandbox);
+frames(150);
+check('station: pitch dark on arrival — heavy darkness, a tiny personal glow, no music, no flashlight to find',
+  G().level.dark && G().level.darkAlpha >= 0.95 && G().level.playerLight <= 160 &&
+  vm.runInContext('game.level.puzzle instanceof AlienStation && game.level.puzzle.grid instanceof PowerGrid', sandbox));
+check('station: alien spiders live in lv.spiders and ambushers lurk as harmless glowing eyes',
+  vm.runInContext("game.spiders.filter(s => s instanceof AlienSpider).length >= 12 && game.spiders.some(s => s instanceof AlienSpider && s.state === 'lurk')", sandbox));
+check('station: fire pickups are everywhere and respawn (bossKind) — shooting never runs out',
+  vm.runInContext("game.pickups.filter(p => p.kind === 'fire' && p.bossKind === 'fire').length >= 8", sandbox));
+// the first ceiling lurker drops when the hero walks under it
+stPut(760, 1400 - 94);
+frames(50, { ArrowRight: 1 });
+check('station: a ceiling lurker DROPS on the hero who walks beneath it (a playful jump scare)',
+  vm.runInContext("(() => { const s = game.spiders.find(s => s instanceof AlienSpider && s.kind === 'drop'); return s.state !== 'lurk'; })()", sandbox));
+frames(60);
+// a real fireball pops it into candy
+const stPick0 = G().pickups.length;
+vm.runInContext(`(() => { const pl = game.player, s = game.spiders.find(s => s instanceof AlienSpider && s.kind === 'drop'); pl.power = 'fire'; pl.x = s.x - 220; pl.y = s.y + s.h - pl.h; pl.facing = 1; pl.vx = 0; pl.vy = 0; pl.inv = 2; game.stSp = s; })()`, sandbox);
+tap('Space');
+frames(45);
+check('station: a fireball pops an alien spider into a candy burst with REAL candy pickups',
+  vm.runInContext('game.stSp.dead', sandbox) === true && G().pickups.length >= stPick0 + 2);
+// the web trap: a glob sticks the hero (slow, no jump), shaking frees him
+vm.runInContext(`(() => { const pl = game.player, st = game.level.puzzle, sh = game.spiders.find(s => s instanceof AlienSpider && s.kind === 'shooter'); pl.x = sh.x - 120; pl.y = 1400 - pl.h; pl.vx = 0; pl.vy = 0; pl.inv = 2; pl.webT = 0; st.shootWeb(sh); })()`, sandbox);
+let stStuck = false;
+for (let i = 0; i < 50 && !stStuck; i++) { frames(1); stStuck = G().player.webT > 0; }
+check('station: a web glob STICKS the hero', stStuck);
+const stX0 = G().player.x;
+key('ArrowRight', true); frames(20); key('ArrowRight', false); // a real HOLD (frames() would re-press every frame = shaking)
+tap('ArrowUp'); frames(3);
+check('station: stuck = slow and no jump', G().player.x - stX0 < 60 && G().player.onGround && G().player.webT > 0);
+for (let i = 0; i < 4; i++) { tap('ArrowLeft'); tap('ArrowRight'); frames(2); }
+check('station: shaking Left/Right frees him fast', G().player.webT <= 0);
+// ---- act 2: the battery kit ----
+const STG = () => vm.runInContext('game.level.puzzle.grid', sandbox);
+stPut(4500 - 28, 1400 - 94);
+frames(8);
+check('station: touching a glowing battery makes it follow the hero (one at a time)', STG().carried && STG().carried.state === 'follow' && STG().batteries[0].state === 'follow');
+stPut(4830, 1400 - 94);
+frames(70);
+const stD1 = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'door' && m.cx === 4900)", sandbox);
+check('station: the battery snaps into the door socket and the BLAST DOOR opens (its solid clears)',
+  !STG().carried && stD1().on && stD1().solids[0].broken === true);
+stPut(4960, 1400 - 94); // past the door: the socket reaches both sides
+frames(5);
+tap('Space');
+frames(70);
+check('station: Space at the socket pulls the battery back out — the door closes behind (undoing to move on)',
+  STG().carried && STG().carried.id === 0 && !stD1().on && stD1().solids[0].broken === false);
+// the elevator carries the hero up
+stPut(5330, 1400 - 94);
+frames(10);
+const stEl = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'elevator')", sandbox);
+check('station: the elevator socket powers the car', stEl().on && !STG().carried);
+vm.runInContext("(() => { const m = game.level.puzzle.grid.machines.find(m => m.kind === 'elevator'); game.player.x = 5500 - 28; game.player.y = m.car.y - game.player.h; game.player.vx = 0; game.player.vy = 0; })()", sandbox);
+let stTop = false;
+for (let i = 0; i < 420 && !stTop; i++) { frames(1); stTop = G().player.y + G().player.h <= 950 + 4; }
+check('station: the powered elevator CARRIES the hero up to the upper deck', stTop);
+// upper deck: pull the hologram's battery, feed the vending machine
+stPut(6260 - 28, 950 - 94);
+frames(5);
+tap('Space');
+frames(10);
+check('station: pulling the hologram\'s cell fizzles the alien face and the cell follows', STG().carried && STG().carried.id === 1 &&
+  !vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'hologram').on", sandbox));
+const stPick1 = G().pickups.length;
+stPut(5820, 950 - 94);
+frames(200);
+check('station: the vending machine spits real candy while powered (a funny experiment)', G().pickups.length >= stPick1 + 1 &&
+  vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'vending').spat", sandbox) >= 1);
+tap('Space'); frames(10);
+stPut(7340, 950 - 94);
+frames(70);
+const stD2 = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'door' && m.cx === 7400)", sandbox);
+check('station: door 2 opens for the relocated cell', stD2().on && stD2().solids[0].broken);
+stPut(7460, 950 - 94); frames(5); tap('Space'); frames(60);
+check('station: ...and closes behind once the cell is pulled through', STG().carried && !stD2().on);
+// ---- act 3: the hand slaps, gravity floats, the bridge slides ----
+const stHand = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'hand')", sandbox);
+stPut(8190 - 28, 950 - 94);
+let stSlapped = false;
+for (let i = 0; i < 120 && !stSlapped; i++) { frames(1); stSlapped = G().player.vy < -300; }
+check('station: the powered HIGH-FIVE hand slaps the hero into a harmless hop (hearts untouched)', stSlapped && G().player.hearts === 3);
+stPut(8420 - 28, 950 - 94); frames(5); tap('Space'); frames(10);
+check('station: the hand\'s cell can be pulled (one carried at a time — the previous one drops nearby)',
+  STG().carried && STG().carried.id === 2 && STG().batteries[1].state === 'idle');
+// gravity: jump height with and without the machine
+stPut(8380, 950 - 94); frames(5);
+tap('ArrowUp'); let stApex0 = 950; for (let i = 0; i < 60; i++) { frames(1); stApex0 = Math.min(stApex0, G().player.y + G().player.h); }
+stPut(7760, 950 - 94); frames(10);
+check('station: the gravity machine powers up and lowers gravity', G().level.gravK < 0.5 && !STG().carried);
+stPut(8380, 950 - 94); frames(5);
+let stApex1 = 950, stOnLedge = false;
+for (let i = 0; i < 200 && !stOnLedge; i++) { frames(1, i === 0 ? { ArrowUp: 1, ArrowRight: 1 } : { ArrowRight: 1 }); stApex1 = Math.min(stApex1, G().player.y + G().player.h); if (G().player.onGround && G().player.y + G().player.h <= 530 + 2) stOnLedge = true; }
+check('station: low gravity turns a normal jump into a float that reaches the high ledge (normal jump cannot)',
+  950 - stApex0 < 200 && 950 - stApex1 > 380 && stOnLedge);
+// the bridge: fetch a cell (the hand's, idle on the deck) — teleport-free would need the elevator; carry the one left by the hologram
+vm.runInContext(`(() => { const g = game.level.puzzle.grid; const b = g.batteries[1]; b.state = 'follow'; g.carried = b; })()`, sandbox);
+stPut(8600 - 28, 530 - 94); frames(90);
+const stBr = () => vm.runInContext("game.level.puzzle.grid.machines.find(m => m.kind === 'bridge')", sandbox);
+check('station: the bridge machine slides its plates across the gap', stBr().on && stBr().plates.every(p => !p.broken));
+stPut(8760, 530 - 94);
+frames(90, { ArrowRight: 1 });
+check('station: the hero walks the plates across without falling', G().player.x > 9150 && G().player.y + G().player.h <= 530 + 2);
+// ---- the arena ----
+stPut(9330, 530 - 94);
+vm.runInContext('game.player.inv = 60;', sandbox); // the thrown spiders are the hero\'s problem, not the test\'s
+frames(5);
+check('station: entering the arena seals it and the GIANT SPIDER drops in (cutscene)', !!G().cut && G().cut.name === 'stationboss' && STN().arenaWall !== null);
+frames(150);
+check('station: the boss is up with its energy shield and a spider-factory timer', !G().cut && STN().boss.state === 'fight' && STN().boss.shield === true);
+vm.runInContext('game.player.power = "fire"; game.player.x = 9550; game.player.facing = 1; game.player.inv = 60;', sandbox);
+tap('Space'); frames(80);
+check('station: shots bounce off the shield — the boss cannot simply be shot', STN().boss.hp === 6);
+stPut(9600 - 28, 530 - 94); frames(8);
+check('station: the arena\'s spare cell follows', STG().carried && STG().carried.id === 3);
+stPut(9450, 530 - 94); frames(10);
+check('station: powering the FAN starts a burst that drops the shield', STN().fan.bursting && STN().boss.shield === false);
+vm.runInContext('game.player.x = 9700; game.player.facing = 1; game.player.inv = 60;', sandbox);
+tap('Space'); frames(75); tap('Space'); frames(75);
+check('station: shots land while the shield is down (candy per hit)', STN().boss.hp <= 4);
+frames(330);
+check('station: the burst ends — the overheated socket EJECTS the cell (cooldown, smoke) and the shield returns',
+  !STN().fan.on && STN().boss.shield === true && STG().sockets.find(s => s.machine.kind === 'fan').cooldown > 0 && STG().batteries[3].state === 'idle');
+check('station: the boss throws spiders that land and fight', vm.runInContext("game.spiders.some(s => s instanceof AlienSpider && s.kind === 'thrown')", sandbox));
+// finish it with the laser
+vm.runInContext('game.level.puzzle.boss.hp = 1;', sandbox);
+vm.runInContext(`(() => { const g = game.level.puzzle.grid, b = g.batteries[3]; b.state = 'follow'; g.carried = b; })()`, sandbox);
+stPut(9800, 530 - 94); frames(10);
+check('station: the LASER burst opens the shield again', STN().laser.bursting && STN().boss.shield === false);
+vm.runInContext('game.player.x = 9900; game.player.facing = 1; game.player.inv = 60;', sandbox);
+const stPick2 = G().pickups.length;
+tap('Space'); frames(60);
+check('station: the last hit makes the boss inflate (pop phase)', STN().boss.state === 'pop' || STN().boss.state === 'gone');
+frames(90);
+check('station: the boss EXPLODES into a candy storm (60+ real candies) and the bay door opens',
+  STN().boss.state === 'gone' && G().pickups.length >= stPick2 + 60 && STN().bossDown && STN().bayDoor.on);
+frames(80);
+// ---- the escape pod into Dino Jungle ----
+stPut(11100 - 28, 530 - 94); frames(5);
+check('station: touching the escape pod starts the cinematic', !!G().cut && G().cut.name === 'escape');
+frames(160);
+check('station: the pod launches (phase 2 of the cinematic)', STN().escape.name === 'launch');
+frames(200);
+check('station: ...flies through space toward the green planet', STN().escape.name === 'space');
+tap('Space'); frames(5);
+check('station: Space skips the rest: the crash-landing teaser ends in WORLD WIN — Dino Jungle unlocked',
+  !G().cut && G().endPhase === 'party' && G().unlocked === 10 && G().wonWorld === 9 && STN().escape.done && STN().escape.name === 'teaser');
+frames(320);
+tap('Space'); frames(10);
+check('station: Space after the party starts Dino Jungle directly, with the crashed pod in its decor',
+  G().level.n === 10 && !!G().level.decor.crashedPod);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

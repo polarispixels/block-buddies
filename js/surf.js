@@ -175,6 +175,7 @@ class OceanSurf {
     Particles.burst(x0, y0, 10, { colors: ['#ffe156', '#ff9f43', '#fff'], type: 'flame', sp1: 200, l1: 0.4, s1: 10 });
   }
   updateBoat(dt) {
+    this.updateBalls(dt); // cannonballs outlive the boat that fired them
     const b = this.boat, pl = game.player, g = this.g;
     if (!b) return;
     b.t += dt; b.fire = Math.max(0, b.fire - dt * 3); b.honkT = Math.max(0, b.honkT - dt);
@@ -208,7 +209,9 @@ class OceanSurf {
       b.x += b.fvx * dt; b.y += b.fvy * dt; b.fvy += 500 * dt; b.spin += dt * 9;
       if (b.y > g + 400 || b.t > 4) { this.boat = null; }
     }
-    // cannonballs
+  }
+  updateBalls(dt) {
+    const pl = game.player, g = this.g;
     for (const c of this.balls) {
       c.t += dt;
       if (c.state === 'fly') {

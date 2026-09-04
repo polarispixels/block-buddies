@@ -31,6 +31,7 @@ const LEVEL_META = {
   countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
   flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
   surf: { name: 'OCEAN SURF', theme: 'ocean', music: 'dirt' }, // the surfboard ride (js/surf.js); 'ocean' = sky + clouds only
+  space2: { name: 'THE ALIEN SPACE STATION 8-2', theme: 'space', music: '' }, // stage two of the Space Maze (js/station.js)
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
   mountain2: { name: 'THE FROZEN OBSERVATORY 3-2', theme: 'mountain', music: 'mountain' } // stage two: beam routing
 };
@@ -40,7 +41,7 @@ const LEVEL_META = {
 // next, and the final stage's finale completes the WORLD. Worlds absent from
 // this table are single-stage chains (future stage-2s slot in by editing it).
 // Secret rooms are NOT chain members — they stay optional enterSub sublevels.
-const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 4: [4, 'mountain2'], 7: ['sandslide', 7] };
+const WORLD_STAGES = { 1: [1, 'meadow2'], 2: [2, 'water2'], 3: [3, 'cloud2'], 4: [4, 'mountain2'], 7: ['sandslide', 7], 9: [9, 'space2'] };
 function stageChain(w) { return WORLD_STAGES[w] || [w]; }
 function stageInfo(id) { // -> {world, stage} for chain members, null otherwise
   for (const w in WORLD_STAGES) {
@@ -629,6 +630,7 @@ function buildLevel(n) {
 
   if (n === 10) { // ---------------- DINO JUNGLE (bonus)
     lv.w = 5800;
+    lv.decor.crashedPod = { x: 200 }; // continuity: the escape pod from the Alien Space Station (8-2)
     addGround(lv, 0, lv.w, G);
     // canopy platforming (giant leaf platforms)
     addPlat(lv, 1150, 500, 150, { oneWay: true });
@@ -1201,6 +1203,54 @@ function buildLevel(n) {
     lv.checks.push(new Checkpoint(120, G));
     lv.decor.clouds = [];
     for (let i = 0; i < 8; i++) lv.decor.clouds.push({ x: rand(0, lv.w), y: rand(60, 400), s: rand(0.6, 1.4) });
+  }
+
+  if (n === 'space2') { // ---------------- THE ALIEN SPACE STATION 8-2 (v1.27.0)
+    // Pitch-dark hallway (act 1) -> webbed interior with the battery kit
+    // (act 2) -> bright machine rooms (act 3) -> the giant spider arena ->
+    // the escape pod into Dino Jungle. Everything lives on AlienStation
+    // (js/station.js); the level adopts its solids and draws none itself
+    // (station: true solids are painted by the machine as deck plates).
+    const GS = ST.G, U = ST.U, A = ST.A;
+    lv.w = ST.W; lv.h = ST.H; lv.dark = true; lv.darkAlpha = 0.97; lv.playerLight = 150;
+    lv.playerStart = { x: 110, y: GS - 94 };
+    const floor = (x, w, top) => { const s = { x, y: top, w, h: 60, station: true, skipDraw: true }; lv.solids.push(s); return s; };
+    const ceil = (x, w, bottom) => { const s = { x, y: bottom - 40, w, h: 40, station: true, ceil: true, skipDraw: true }; lv.solids.push(s); return s; };
+    // ---- act 1: the black hallway (floor steps, a bend, alcoves, ceiling gaps) ----
+    floor(0, 1500, GS); floor(1500, 100, GS - 48); floor(1600, 100, GS - 96); floor(1700, 900, GS - 150);
+    floor(2600, 1600, GS); floor(4200, 3500, GS);
+    ceil(0, 900, GS - 300); ceil(1100, 1300, GS - 300); ceil(2400, 100, GS - 450); ceil(2700, 500, GS - 300); ceil(3400, 800, GS - 300);
+    // alcove ledges under the ceiling gaps (candy nooks) + the dead end
+    addPlat(lv, 930, GS - 130, 140, { oneWay: true }); Object.assign(lv.solids[lv.solids.length - 1], { station: true, skipDraw: true }); candyRow(lv, 950, 1050, GS - 190, 2);
+    addPlat(lv, 3230, GS - 120, 150, { oneWay: true }); Object.assign(lv.solids[lv.solids.length - 1], { station: true, skipDraw: true }); candyRow(lv, 3240, 3360, GS - 180, 3);
+    lv.solids.push({ x: 3380, y: GS - 300, w: 20, h: 180, station: true, skipDraw: true }); // the dead end's back wall
+    candyRow(lv, 400, 700, GS - 60, 3); candyRow(lv, 1800, 2200, GS - 210, 4); candyRow(lv, 2800, 3100, GS - 60, 3);
+    lv.hints.push({ x: 260, y: GS - 190, icon: 'arrows' });
+    // fire power, everywhere, forever (bossKind = the respawning pickup rule)
+    for (const [px, py] of [[160, GS - 80], [1400, GS - 80], [2800, GS - 80], [3800, GS - 80], [5200, GS - 80], [6600, U - 80], [8000, U - 80], [9300, A - 80], [9950, A - 80]]) {
+      const p = new Pickup(px, py, 'fire'); p.bossKind = 'fire'; lv.pickups.push(p);
+    }
+    lv.checks.push(new Checkpoint(140, GS)); lv.checks.push(new Checkpoint(2650, GS)); lv.checks.push(new Checkpoint(4300, GS));
+    // ---- act 2: lower deck to the elevator, the upper deck ----
+    lv.solids.push({ x: 7680, y: GS - 320, w: 40, h: 320, station: true, skipDraw: true }); // lower deck ends
+    floor(5300, 100, U); floor(5580, 3120, U); // upper deck (the elevator shaft gap at 5400-5580)
+    lv.solids.push({ x: 5280, y: U - 520, w: 20, h: 300, station: true, skipDraw: true }); // upper deck back wall
+    candyRow(lv, 4400, 4700, GS - 60, 3); candyArc(lv, 5050, 5300, GS - 260, GS - 70, 4);
+    candyRow(lv, 5650, 5900, U - 60, 3); candyRow(lv, 6500, 6750, U - 60, 3); candyRow(lv, 7000, 7300, U - 60, 3);
+    pick(lv, 6650, U - 70, 'heart');
+    lv.checks.push(new Checkpoint(5150, GS)); lv.checks.push(new Checkpoint(5700, U)); lv.checks.push(new Checkpoint(7550, U));
+    // ---- act 3: the gravity room, the ledge, the bridge gap, the arena, the bay ----
+    floor(8500, 650, A).oneWay = true; // the exit ledge (420 above the deck: only a low-gravity float reaches it; one-way so the float rises THROUGH it)
+    lv.solids.push({ x: 8700, y: A + 60, w: 20, h: U - A - 60, station: true, skipDraw: true }); // under-ledge wall: a float drifts up it and over
+    candyArc(lv, 7950, 8350, U - 380, U - 80, 5); candyRow(lv, 8550, 8750, A - 60, 3);
+    floor(9150, 1450, A); floor(ST.BAY + 30, 800, A); // arena + bay
+    lv.solids.push({ x: 11400, y: A - 600, w: 40, h: 600, station: true, skipDraw: true }); // the end of the station
+    candyRow(lv, 9300, 9500, A - 60, 3); candyRow(lv, 10700, 11000, A - 60, 4);
+    lv.checks.push(new Checkpoint(8560, A)); lv.checks.push(new Checkpoint(9270, A)); lv.checks.push(new Checkpoint(10700, A));
+    lv.puzzle = new AlienStation(lv);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.puzzle.spawnEnemies(lv);
+    lv.decor.stars = []; for (let i = 0; i < 60; i++) lv.decor.stars.push({ x: rand(0, lv.w), y: rand(0, lv.h), s: rand(1, 3) });
   }
 
   if (n === 'surf') { // ---------------- OCEAN SURF (the surfboard ride, v1.26.0)
@@ -2955,6 +3005,7 @@ function drawDecor(ctx, lv, cam, t) {
   const th = lv.theme, d = lv.decor;
   const visible = x => x > cam.x - 150 && x < cam.x + W + 150;
   drawSubDecor(ctx, lv, cam, t, d, visible); // mini-game landmarks & easter eggs
+  if (d.crashedPod && visible(d.crashedPod.x)) ST_ART.crashedPod(ctx, d.crashedPod.x, 620, t); // the jungle's crash site (8-2 continuity)
   if (th === 'meadow') {
     for (const tr of d.trees || []) {
       if (!visible(tr.x)) continue;

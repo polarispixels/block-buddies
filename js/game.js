@@ -443,8 +443,13 @@ game.mazeWin = function () {
   Particles.candyBurst(gs.x, gs.y - 30, 14);
   // the star's magic befriends every alien in the maze — party for all!
   for (const sp of game.spiders) if (sp.kind === 'alien' && sp.state === 'angry') sp.befriend();
-  game.unlocked = Math.max(game.unlocked, 10); // the maze star opens the jungle
-  try { localStorage.setItem('ffbg_unlocked', String(game.unlocked)); } catch (e) {}
+  // (since v1.27.0 the jungle is unlocked by the station's escape pod, stage 8-2)
+};
+// a party's Space press advances into the next chain stage (records progress like an archway)
+game.advanceStage = function (nextId) {
+  const info = stageInfo(nextId);
+  if (info && (game.stageProg[info.world] || 0) < info.stage) { game.stageProg[info.world] = info.stage; game.saveStageProg(); }
+  game.startLevel(nextId);
 };
 game.jungleWin = function () {
   if (game.mazeDone) return; // shares the goal-star guard flag
@@ -599,6 +604,9 @@ function updateCut(dt) {
     game.cam.x = lerp(game.cam.x, tx, 1 - Math.exp(-3.5 * dt));
     const ty = clamp(pl.cy - H * 0.55, 0, game.level.h - H);
     game.cam.y = lerp(game.cam.y, ty, 1 - Math.exp(-4 * dt));
+  } else if (c.name === 'stationboss' || c.name === 'escape') {
+    game.level.puzzle.cutTick(dt, c); // the Alien Space Station's own beats
+    game.player.t += dt;
   } else if (c.name === 'spidergrow' || c.name === 'hatgift' || c.name === 'racestart') {
     // Flower Land's own beats: the machine ticks its actors + camera
     game.level.puzzle.cutTick(dt, c);
@@ -859,7 +867,7 @@ function updatePlay(dt) {
       else if (lv.n === 6) game.startWorld(7); // and another one! (via the SAND SLIDE — world 6's chain)
       else if (lv.n === 7) game.startLevel(8); // and one more!
       else if (lv.n === 8) game.startLevel(9); // to infinity!
-      else if (lv.n === 9) game.startLevel(10); // ...and beyond, to the dinosaurs!
+      else if (lv.n === 9) game.advanceStage('space2'); // ...and beyond: the abandoned alien station (8-2)
       else game.goTitle();
     }
   }
@@ -1127,7 +1135,7 @@ function drawDarkness() {
   const cam = game.cam, lv = game.level;
   lctx.globalCompositeOperation = 'source-over';
   lctx.clearRect(0, 0, W, H);
-  lctx.fillStyle = 'rgba(8,4,22,0.84)';
+  lctx.fillStyle = 'rgba(8,4,22,' + (lv.darkAlpha ?? 0.84) + ')'; // levels may dim/brighten (the station wakes up)
   lctx.fillRect(0, 0, W, H);
   lctx.globalCompositeOperation = 'destination-out';
   const light = (wx, wy, r, a = 1) => {
@@ -1140,7 +1148,7 @@ function drawDarkness() {
     lctx.beginPath(); lctx.arc(x, y, r, 0, TAU); lctx.fill();
   };
   const pl = game.player;
-  light(pl.cx, pl.cy, 310);
+  light(pl.cx, pl.cy, lv.playerLight || 310);
   for (const c of lv.decor.crystals || []) light(c.x, c.y - 20, 155, 0.85);
   for (const p of game.pickups) if (!p.dead) light(p.cx, p.cy, 130, 0.9);
   for (const pr of game.projectiles) light(pr.cx, pr.cy, 150);
@@ -1337,6 +1345,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
+    } else if (game.level.n === 'space2') {
+      outlineText(ctx, 'ESCAPED!', W / 2, 140, 84, '#a8ff3c', '#1a1a40');
+      outlineText(ctx, 'NEXT STOP: DINO JUNGLE!', W / 2, 212, 36, '#ffe156', '#1a1a40');
     } else if (game.level.n === 'surf') {
       outlineText(ctx, 'KRAKEN BUDDIES!', W / 2, 140, 76, '#7fd8ff', '#2a3a86');
       outlineText(ctx, 'YOU SURFED THE WHOLE OCEAN!', W / 2, 212, 34, '#ffe156', '#2a3a86');
@@ -1471,6 +1482,10 @@ function renderWorld() {
   }
   ctx.restore();
   if (lv.dark) drawDarkness();
+  if (lv.puzzle && lv.puzzle.drawFront) { // glow that must beat the darkness (lurking eyes, the web on the hero)
+    ctx.save(); ctx.translate(-Math.round(game.cam.x), -Math.round(game.cam.y)); lv.puzzle.drawFront(ctx, t); ctx.restore();
+  }
+  if (lv.puzzle && lv.puzzle.drawCinematic) lv.puzzle.drawCinematic(ctx, t); // fullscreen story frames (the escape pod)
   drawHUD();
   if (game.state === 'intro') drawIntroCard();
   if (game.state === 'dead') drawDeadOverlay();

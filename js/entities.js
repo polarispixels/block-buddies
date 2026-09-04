@@ -75,6 +75,7 @@ class Player {
     this.flapCd = 0; this.flapT = 0; this.launchT = 0;
     this.big = false; this.drawK = 1; // Big Buddy: one free hit + 1.4x size
     this.hat = false; this.hatFly = false; // Flower Land's magic hat (level-only; flight while hatFly)
+    this.webT = 0; // stuck in alien web (Space Station): slow, no jump, shake free with Left/Right
   }
   boardUnicorn() {
     if (this.vehicle === 'unicorn') return;
@@ -161,7 +162,8 @@ class Player {
       if (chance(0.4)) Particles.burst(this.cx, this.cy + 20, 1, { colors: RAINBOW, type: 'sparkle', sp1: 90, grav: -100, l1: 0.5, s1: 8, up: 0 });
     }
     if (this.moodT > 0) { this.moodT -= dt; if (this.moodT <= 0) this.mood = 'happy'; }
-    const spd = this.superT > 0 ? 440 : 300;
+    if (this.webT > 0) { this.webT -= dt; if (justP.ArrowLeft || justP.ArrowRight) this.webT -= 0.3; }
+    const spd = (this.superT > 0 ? 440 : 300) * (this.webT > 0 ? 0.35 : 1);
     const ax = (keys.ArrowLeft ? -1 : 0) + (keys.ArrowRight ? 1 : 0);
 
     if (lv.water) {
@@ -366,7 +368,7 @@ class Player {
       if (this.duck) this.vx *= 0.5;
       if (this.onGround) this.coyote = 0.12; else this.coyote -= dt;
       if (justP.ArrowUp) this.jbuf = 0.14; else this.jbuf = Math.max(0, this.jbuf - dt);
-      if (this.jbuf > 0 && this.coyote > 0) {
+      if (this.jbuf > 0 && this.coyote > 0 && this.webT <= 0) {
         this.jbuf = 0; this.coyote = 0;
         this.vy = this.superT > 0 ? -800 : -690;
         this.onGround = false;
@@ -374,7 +376,7 @@ class Player {
         AudioSys.sfx('jump');
         Particles.burst(this.cx, this.y + this.h, 6, { colors: ['#fff', '#ffe9c9'], sp1: 130, l1: 0.35, grav: 250, up: 0, s1: 7 });
       }
-      this.vy += 1600 * dt;
+      this.vy += 1600 * (lv.gravK || 1) * dt; // gravK: alien gravity machines (Space Station)
       if (this.vy > 950) this.vy = 950;
       const wasGround = this.onGround;
       const res = moveEntity(this, lv, dt);
