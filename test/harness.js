@@ -1865,7 +1865,8 @@ check('surf: a shark hit is the same funny wipeout', SF().state === 'swim' && SF
 for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
 vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.add('chest', pl.x + 10, pl.y + pl.h - 60, 70, 60, { open: false, openT: 0 }); })()`, sandbox); // dropped onto the rider, whatever the terrain
 const sfCandy1 = G().candy;
-sfRun(14, () => ({}));
+sfRun(30, () => ({}));
+if (!(G().candy >= sfCandy1 + 6)) console.log('   CHEST-STATE ' + vm.runInContext(`(() => { const pl = game.player, r = game.level.ride; const ch = r.course.things.filter(t => t.kind === 'chest').map(t => [Math.round(t.x - pl.x), Math.round(t.y - pl.y), t.open, t.dead]); return JSON.stringify({st: r.state, y: Math.round(pl.y), inv: +pl.inv.toFixed(2), tut: r.tutPhase, gs: game.state, ch, n: r.course.things.length}); })()`, sandbox));
 check('surf: a floating treasure chest opens on touch for a 6-candy bundle',
   G().candy >= sfCandy1 + 6 && vm.runInContext("game.level.ride.course.things.some(t => t.kind === 'chest' && t.open)", sandbox));
 // ---- ramps launch, tricks pay (ride up to the sharks phase, short of the first boat mark) ----
@@ -2076,11 +2077,11 @@ vm.runInContext('game.level.puzzle.boss.hp = 1;', sandbox);
 vm.runInContext(`(() => { const g = game.level.puzzle.grid, b = g.batteries[3]; b.state = 'follow'; g.carried = b; })()`, sandbox);
 stPut(9800, 530 - 94); frames(5); tap('Space'); frames(10);
 check('station: the LASER burst opens the shield again', STN().laser.bursting && STN().boss.shield === false);
-vm.runInContext('game.player.x = 9900; game.player.facing = 1; game.player.inv = 60;', sandbox);
+vm.runInContext("game.player.x = 9900; game.player.facing = 1; game.player.inv = 60; for (const s of game.spiders) if (s instanceof AlienSpider && !s.dead) s.pop(); game.projectiles = [];", sandbox); // a clear lane: thrown spiders would soak the shot
 const stPick2 = G().pickups.length;
-tap('Space'); frames(60);
+tap('Space'); frames(45); tap('Space'); frames(45);
 check('station: the last hit makes the boss inflate (pop phase)', STN().boss.state === 'pop' || STN().boss.state === 'gone');
-frames(90);
+for (let i = 0; i < 120 && STN().boss.state !== 'gone'; i++) frames(1); // count the storm the frame it bursts (a candy flung at Jack gets eaten within a second)
 check('station: the boss EXPLODES into a candy storm (60+ real candies) and the bay door opens',
   STN().boss.state === 'gone' && G().pickups.length >= stPick2 + 60 && STN().bossDown && STN().bayDoor.on);
 frames(80);
@@ -2163,13 +2164,32 @@ for (let round = 0; round < 2; round++) {
 }
 frames(140); // the anky stretches and yawns before it toddles over
 check('rescue 3: two right rounds (3 then 4 notes) wake the ankylosaurus — three of five', ech().solved && RS().anky.state === 'rescued' && RS().parade.length === 3);
-// ---- rescue 4: the valve blooms the bud, the launch pad frees the ptero ----
+// ---- rescue 4: first the canopy climb, hop by hop, with real jumps (Jack's playtest: two hops were too high) ----
+const rsHop = (x, y, dir, n) => { rsPut(x, y - 94); frames(3); for (let i = 0; i < n; i++) frames(1, i === 0 ? { ArrowUp: 1, [dir]: 1 } : { [dir]: 1 }); frames(30); return { feet: G().player.y + G().player.h, x: G().player.x, og: G().player.onGround }; }; // a short push, then let him land and stand
+const rsClimb = [
+  ['ground -> leaf 1', 5850, RG, 'ArrowRight', 32, RG - 120, 5900, 6060],
+  ['leaf 1 -> leaf 2', 6010, RG - 120, 'ArrowRight', 32, RG - 240, 6150, 6310],
+  ['leaf 3 -> branch', 6580, RG - 420, 'ArrowRight', 32, RG - 540, 6650, 6800],
+  ['branch -> branch', 6760, RG - 540, 'ArrowRight', 36, RG - 660, 6900, 7100],
+  ['branch -> leaf 4', 7060, RG - 660, 'ArrowRight', 32, RG - 780, 7150, 7310],
+  ['leaf 4 -> valve leaf', 7200, RG - 780, 'ArrowLeft', 32, RG - 900, 7050, 7190],
+  ['valve leaf -> bud branch', 7150, RG - 900, 'ArrowRight', 36, RG - 950, 7300, 7560]
+];
+for (const [name, x, y, dir, n, toY, x0, x1] of rsClimb) {
+  const r = rsHop(x, y, dir, n);
+  check('rescue 4 climb: ' + name + ' is a real jump', r.og && Math.abs(r.feet - toY) < 3 && r.x + 28 > x0 && r.x + 28 < x1);
+}
+rsPut(6345 - 28, RG - 40 - 94 - 6); let rsBounced = false, rsOnLeaf = false;
+for (let i = 0; i < 90; i++) { frames(1, { ArrowRight: 1 }); if (G().player.vy < -1000) rsBounced = true; if (G().player.onGround && Math.abs(G().player.y + G().player.h - (RG - 420)) < 3) { rsOnLeaf = true; break; } }
+check('rescue 4 climb: the mushroom bounce lands on the leaf above it', rsBounced && rsOnLeaf);
 rsPut(7100 - 28, RG - 900 - 94); frames(12);
 check('rescue 4: the bamboo valve turns and the stream flows', RS().valve.on);
 frames(160);
 check('rescue 4: the giant bud BLOOMS into a platform (its one-way solid appears)', RS().bud.k >= 1 && RS().bud.solid.broken === false);
 rsPut(7500 - 28, RG - 950 - 198 - 94 - 2); frames(10);
 check('rescue 4: Jack can stand on the bloom', G().player.onGround && G().player.y + G().player.h <= RG - 950 - 198 + 2);
+const rsToBranch = rsHop(7500, RG - 950 - 198, 'ArrowRight', 46);
+check('rescue 4 climb: from the bloom a real jump reaches the ptero\'s branch', rsToBranch.og && Math.abs(rsToBranch.feet - (RG - 1250)) < 3 && rsToBranch.x >= 7690);
 rsPut(8100 - 28, RG - 1250 - 30 - 94 - 30); frames(20);
 check('rescue 4: bouncing on the launch pad next to the scared ptero starts its big loop', !!RS().pteroLoop || RS().ptero.state === 'rescued');
 frames(200);

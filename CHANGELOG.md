@@ -8,6 +8,23 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.28.2] - 2026-09-04
+
+### Fixed
+- **The Great Dinosaur Rescue's Broken Canopy is climbable again** (Ryan's
+  playtest: past the fruit trees "one of the platforms is too high and it
+  is not possible to jump up to it"). The leaf/branch ladder above the
+  mushroom bouncer had two 150–170 px hops (a jump rises 148) and the
+  mushroom's target leaf sat 440 px up (its bounce rises 413). Every hop is
+  now ≤ 120 px up and ≤ 160 px across, the bounce leaf is a 280 px-wide
+  landing 380 px above the mushroom, the ptero's broken branch starts 120 px
+  past the bloom, and the swinging vine that swept through the hop path
+  (and grabbed Jack mid-climb) is gone.
+- Harness: the whole canopy is now ridden hop by hop with REAL jumps
+  (seven hops + the mushroom bounce + bloom → branch), the station's
+  finishing shot clears the arena lane first (a thrown spider could soak
+  it), and the surf chest check waits a little longer.
+
 ## [1.28.1] - 2026-09-04
 
 ### Changed (Ryan's playtest of the Alien Space Station)

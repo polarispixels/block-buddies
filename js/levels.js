@@ -1240,17 +1240,20 @@ function buildLevel(n) {
     plate(5380, GJ - 80, 70, 30, 'leaf', { oneWay: true });
     candyRow(lv, 2400, 2800, GJ - 60, 4); candyArc(lv, 3300, 3700, GJ - 250, GJ - 70, 4); candyRow(lv, 4550, 5000, GJ - 60, 4);
     // ---- the broken canopy: leaves, mushrooms, vines, the bud, the ptero's branch ----
-    plate(5900, GJ - 150, 160, 24, 'leaf', { oneWay: true }); plate(6150, GJ - 320, 160, 24, 'leaf', { oneWay: true });
-    plate(6300, GJ - 40, 90, 40, 'grass', { bouncy: true, bounceVy: -1150 }); // mushroom up to the leaf at -480
-    plate(6420, GJ - 480, 170, 24, 'leaf', { oneWay: true }); plate(6650, GJ - 620, 150, 24, 'branch', { oneWay: true });
-    plate(7000, GJ - 700, 200, 30, 'branch', { oneWay: true }); plate(7250, GJ - 850, 160, 24, 'leaf', { oneWay: true });
-    plate(7050, GJ - 900, 140, 24, 'leaf', { oneWay: true });   // the valve's leaf
-    plate(7400, GJ - 950, 260, 30, 'branch', { oneWay: true }); // the bud's branch
-    plate(7850, GJ - 1250, 420, 30, 'branch', { oneWay: true }); // the ptero's broken branch
+    // every hop is <= 120 px up (a jump rises 148) and <= 160 px across; the
+    // mushroom's bounce rises 413 and its leaf sits 380 above it (v1.28.2:
+    // Jack's playtest found the old 150/170-px hops and a 440-px bounce target)
+    plate(5900, GJ - 120, 160, 24, 'leaf', { oneWay: true }); plate(6150, GJ - 240, 160, 24, 'leaf', { oneWay: true });
+    plate(6300, GJ - 40, 90, 40, 'grass', { bouncy: true, bounceVy: -1150 }); // mushroom up to the leaf at -420
+    plate(6420, GJ - 420, 280, 24, 'leaf', { oneWay: true }); plate(6650, GJ - 540, 150, 24, 'branch', { oneWay: true }); // a WIDE landing leaf: a full bounce with Right held still lands on it
+    plate(6900, GJ - 660, 200, 30, 'branch', { oneWay: true }); plate(7150, GJ - 780, 160, 24, 'leaf', { oneWay: true });
+    plate(7050, GJ - 900, 140, 24, 'leaf', { oneWay: true });   // the valve's leaf (a hop up-left)
+    plate(7300, GJ - 950, 260, 30, 'branch', { oneWay: true }); // the bud's branch
+    plate(7680, GJ - 1250, 520, 30, 'branch', { oneWay: true }); // the ptero's broken branch (120 px past the bloom)
     plate(DR.PAD_X - 50, GJ - 1250 - 30, 100, 30, 'leaf', { bouncy: true, bounceVy: -1300, pad: true }); // the launch pad (super)
     plate(8350, GJ - 700, 150, 24, 'leaf', { oneWay: true }); plate(8300, GJ - 350, 150, 24, 'leaf', { oneWay: true }); // the way down
-    lv.vines = [new Vine(6700, GJ - 1000, 300, { phase: 0 })];
-    candyArc(lv, 5950, 6450, GJ - 700, GJ - 200, 5); candyRow(lv, 7030, 7150, GJ - 760, 2); candyArc(lv, 7880, 8250, GJ - 1420, GJ - 1290, 4);
+    // (no swinging vine here since v1.28.2: its sweep crossed the hop path and grabbed Jack mid-climb)
+    candyArc(lv, 5950, 6450, GJ - 640, GJ - 200, 5); candyRow(lv, 6920, 7080, GJ - 720, 3); candyArc(lv, 7760, 8150, GJ - 1420, GJ - 1290, 4);
     // ---- the volcanic clearing ----
     plate(8900, GJ - 130, 140, 30, 'rock', { oneWay: true }); plate(9040, GJ - 260, 200, 30, 'rock', { oneWay: true }); // up to the valve
     candyRow(lv, 8500, 8800, GJ - 60, 3); candyRow(lv, 10300, 10700, GJ - 60, 4);
