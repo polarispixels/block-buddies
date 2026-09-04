@@ -1887,9 +1887,11 @@ sfRun(700, (st, i) => {
 check('surf: the boat fires three cannonballs that splash and float, each aimed AHEAD of the hero (readable)', sfBalls === 3 && sfFloat && sfTargetAhead);
 check('surf: then it revs, honks, and RAMS left through the lane, and finally leaves', sfRam && sfRamAhead && SF().boatsDone >= 1);
 // a cannonball is a wipeout too
-vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.balls.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h / 2, vx: 0, vy: 0, grav: 900, state: 'fly', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox); // dropped right onto the rider, whatever the terrain
+vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; pl.inv = 0; r.state = 'riding'; r.ride.grounded = true; r.ride.vy = 0; pl.y = 620 - pl.h; r.course.things = r.course.things.filter(t => !(t.kind === 'wave' || t.kind === 'shark') || Math.abs(t.x - pl.x) > 600); r.balls.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h / 2, vx: 0, vy: 0, grav: 900, state: 'fly', t: 0, tx: pl.x + 30, r: 22 }); })()`, sandbox); // dropped right onto the rider, whatever the terrain — with no wave/shark nearby to claim the wipeout first (that was a real flake)
+const sfHearts0 = G().player.hearts;
 sfRun(3, () => ({}));
-check('surf: a cannonball hit is a wipeout, never damage', SF().state === 'swim' && G().player.hearts === 3);
+if (!(SF().state === 'swim' && SF().swim && SF().swim.why === 'cannonball')) console.log('   BALL-STATE ' + vm.runInContext(`(() => { const r = game.level.ride, pl = game.player; return JSON.stringify({st: r.state, why: r.swim && r.swim.why, inv: +pl.inv.toFixed(2), hearts: pl.hearts, gs: game.state, cut: !!game.cut, balls: r.balls.map(c => [c.state, Math.round(c.x - pl.x), Math.round(c.y - pl.y)]), boss: r.boss && r.boss.state, boat: r.boat && r.boat.state, grounded: r.ride.grounded}); })()`, sandbox));
+check('surf: a cannonball hit is a wipeout, never damage', SF().state === 'swim' && SF().swim && SF().swim.why === 'cannonball' && G().player.hearts === sfHearts0);
 for (let i = 0; i < 200 && SF().state !== 'riding'; i++) frames(1);
 // ---- the Kraken ----
 vm.runInContext('game.player.x = game.level.ride.startX + 14010; game.player.power = "none"; game.player.inv = 1; game.level.ride.state = "riding"; game.level.ride.ride.grounded = true; game.player.y = 620 - game.player.h;', sandbox);
@@ -2077,7 +2079,7 @@ vm.runInContext('game.level.puzzle.boss.hp = 1;', sandbox);
 vm.runInContext(`(() => { const g = game.level.puzzle.grid, b = g.batteries[3]; b.state = 'follow'; g.carried = b; })()`, sandbox);
 stPut(9800, 530 - 94); frames(5); tap('Space'); frames(10);
 check('station: the LASER burst opens the shield again', STN().laser.bursting && STN().boss.shield === false);
-vm.runInContext("game.player.x = 9900; game.player.facing = 1; game.player.inv = 60; for (const s of game.spiders) if (s instanceof AlienSpider && !s.dead) s.pop(); game.projectiles = [];", sandbox); // a clear lane: thrown spiders would soak the shot
+vm.runInContext("game.player.x = 9900; game.player.facing = 1; game.player.inv = 60; for (const s of game.spiders) if (s instanceof AlienSpider && !s.dead) s.pop(); game.projectiles = []; game.pickups = game.pickups.filter(p => p.kind !== 'candy');", sandbox); // a clear lane: thrown spiders would soak the shot; no loose candy in the baseline (Jack eats what lands near him)
 const stPick2 = G().pickups.length;
 tap('Space'); frames(45); tap('Space'); frames(45);
 check('station: the last hit makes the boss inflate (pop phase)', STN().boss.state === 'pop' || STN().boss.state === 'gone');
@@ -2186,11 +2188,15 @@ rsPut(7100 - 28, RG - 900 - 94); frames(12);
 check('rescue 4: the bamboo valve turns and the stream flows', RS().valve.on);
 frames(160);
 check('rescue 4: the giant bud BLOOMS into a platform (its one-way solid appears)', RS().bud.k >= 1 && RS().bud.solid.broken === false);
-rsPut(7500 - 28, RG - 950 - 198 - 94 - 2); frames(10);
-check('rescue 4: Jack can stand on the bloom', G().player.onGround && G().player.y + G().player.h <= RG - 950 - 198 + 2);
-const rsToBranch = rsHop(7500, RG - 950 - 198, 'ArrowRight', 46);
-check('rescue 4 climb: from the bloom a real jump reaches the ptero\'s branch', rsToBranch.og && Math.abs(rsToBranch.feet - (RG - 1250)) < 3 && rsToBranch.x >= 7690);
-rsPut(8100 - 28, RG - 1250 - 30 - 94 - 30); frames(20);
+rsPut(7500 - 28, RG - 950 - 119 - 94 - 2); frames(10);
+check('rescue 4: Jack can stand on the bloom', G().player.onGround && G().player.y + G().player.h <= RG - 950 - 119 + 2);
+const RDR = vm.runInContext('DR', sandbox);
+check('rescue 4: the bloom\'s top is within a jump of its branch (v1.28.3: it was 198 up)', RDR.BLOOM_UP <= 120 && Math.abs(RDR.BLOOM_S * 0.9 - RDR.BLOOM_UP) < 1 && RDR.BRANCH_UP - 950 - RDR.BLOOM_UP <= 120);
+const rsToBloom = rsHop(7330, RG - 950, 'ArrowRight', 36);
+check('rescue 4 climb: from the bud\'s branch a real jump lands ON the bloom', rsToBloom.og && Math.abs(rsToBloom.feet - (RG - 950 - 119)) < 3 && rsToBloom.x + 28 > 7440 && rsToBloom.x + 28 < 7560);
+const rsToBranch = rsHop(7500, RG - 950 - 119, 'ArrowRight', 46);
+check('rescue 4 climb: from the bloom a real jump reaches the ptero\'s branch', rsToBranch.og && Math.abs(rsToBranch.feet - (RG - RDR.BRANCH_UP)) < 3 && rsToBranch.x >= 7690);
+rsPut(8100 - 28, RG - RDR.BRANCH_UP - 30 - 94 - 30); frames(20);
 check('rescue 4: bouncing on the launch pad next to the scared ptero starts its big loop', !!RS().pteroLoop || RS().ptero.state === 'rescued');
 frames(200);
 check('rescue 4: the ptero loops the screen and joins — four of five', RS().ptero.state === 'rescued' && RS().parade.length === 4);

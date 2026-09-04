@@ -1249,11 +1249,12 @@ function buildLevel(n) {
     plate(6900, GJ - 660, 200, 30, 'branch', { oneWay: true }); plate(7150, GJ - 780, 160, 24, 'leaf', { oneWay: true });
     plate(7050, GJ - 900, 140, 24, 'leaf', { oneWay: true });   // the valve's leaf (a hop up-left)
     plate(7300, GJ - 950, 260, 30, 'branch', { oneWay: true }); // the bud's branch
-    plate(7680, GJ - 1250, 520, 30, 'branch', { oneWay: true }); // the ptero's broken branch (120 px past the bloom)
-    plate(DR.PAD_X - 50, GJ - 1250 - 30, 100, 30, 'leaf', { bouncy: true, bounceVy: -1300, pad: true }); // the launch pad (super)
+    // the bud's branch -> the bloom's top (DR.BLOOM_UP = 119 up) -> the ptero's branch (116 up, 120 px past the bloom): v1.28.3 playtest fix — the bloom used to be 198 tall
+    plate(7680, GJ - DR.BRANCH_UP, 520, 30, 'branch', { oneWay: true }); // the ptero's broken branch
+    plate(DR.PAD_X - 50, GJ - DR.BRANCH_UP - 30, 100, 30, 'leaf', { bouncy: true, bounceVy: -1300, pad: true }); // the launch pad (super)
     plate(8350, GJ - 700, 150, 24, 'leaf', { oneWay: true }); plate(8300, GJ - 350, 150, 24, 'leaf', { oneWay: true }); // the way down
     // (no swinging vine here since v1.28.2: its sweep crossed the hop path and grabbed Jack mid-climb)
-    candyArc(lv, 5950, 6450, GJ - 640, GJ - 200, 5); candyRow(lv, 6920, 7080, GJ - 720, 3); candyArc(lv, 7760, 8150, GJ - 1420, GJ - 1290, 4);
+    candyArc(lv, 5950, 6450, GJ - 640, GJ - 200, 5); candyRow(lv, 6920, 7080, GJ - 720, 3); candyArc(lv, 7760, 8150, GJ - DR.BRANCH_UP - 170, GJ - DR.BRANCH_UP - 40, 4);
     // ---- the volcanic clearing ----
     plate(8900, GJ - 130, 140, 30, 'rock', { oneWay: true }); plate(9040, GJ - 260, 200, 30, 'rock', { oneWay: true }); // up to the valve
     candyRow(lv, 8500, 8800, GJ - 60, 3); candyRow(lv, 10300, 10700, GJ - 60, 4);

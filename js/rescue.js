@@ -18,7 +18,7 @@ const DR = {
   NESTS: [1000, 1200, 1400, 1650, 1850],   // the nursery's five empty nests
   KINDS: ['trike', 'longneck', 'anky', 'ptero', 'fire'],
   LOG_X: 4000, LEDGE_X: 5600, CHAMBER: [3900, 4000, 4100],
-  VALVE_X: 7100, BUD_X: 7500, PAD_X: 8100, PTERO_X: 8000,
+  VALVE_X: 7100, BUD_X: 7500, PAD_X: 8100, PTERO_X: 8000, BLOOM_S: 132, BLOOM_UP: 119, BRANCH_UP: 1185, // bloom top 119 above its branch; the ptero's branch 116 above the bloom (a jump rises 148)
   FIRE_X: 9900, THORN_X: 9500, PATCH: [9540, 9800], VOLC_VALVE: 9100,
   BARRIER: 11150, RUN_START: 12300
 };
@@ -107,9 +107,9 @@ class DinoRescue {
     this.anky = new BabyDino('anky', 4180, C, { mood: 'sleep', facing: -1 });
     // ---- rescue 4: the canopy, the bloom, the scared ptero ----
     this.valve = { x: DR.VALVE_X, y: G - 900, on: false };
-    this.bud = { x: DR.BUD_X, y: G - 950, k: 0, solid: { x: DR.BUD_X - 60, y: G - 950 - 198, w: 120, h: 20, oneWay: true, skipDraw: true, broken: true } };
+    this.bud = { x: DR.BUD_X, y: G - 950, k: 0, solid: { x: DR.BUD_X - 60, y: G - 950 - DR.BLOOM_UP, w: 120, h: 20, oneWay: true, skipDraw: true, broken: true } }; // the bloom's top = 0.9 × its drawn size, a real jump above its branch (v1.28.3)
     this.solids.push(this.bud.solid);
-    this.ptero = new BabyDino('ptero', DR.PTERO_X, G - 1250, { mood: 'scared', facing: -1, fixed: true });
+    this.ptero = new BabyDino('ptero', DR.PTERO_X, G - DR.BRANCH_UP, { mood: 'scared', facing: -1, fixed: true });
     this.pteroLoop = null;
     // ---- rescue 5: the fire baby, the thorns, the patch, the valve ----
     this.thorn = { x: DR.THORN_X, burn: 0, solid: { x: DR.THORN_X - 30, y: G - 260, w: 60, h: 260, skipDraw: true, thorn: true } };
@@ -435,8 +435,8 @@ class DinoRescue {
     if (x1 > 5800 && x0 < 8500) {
       JG_SCENE.valve(ctx, this.valve.x, this.valve.y, 90, t, this.valve.on ? 1 : 0);
       JG_SCENE.stream(ctx, [{ x: this.valve.x + 50, y: this.valve.y - 30 }, { x: this.valve.x + 200, y: this.valve.y + 20 }, { x: this.bud.x, y: this.bud.y - 60 }], t, this.valve.on ? 1 : 0);
-      JG_SCENE.bud(ctx, this.bud.x, this.bud.y, 220, t, this.bud.k);
-      JG_SCENE.launchPad(ctx, DR.PAD_X, G - 1250, 100, t);
+      JG_SCENE.bud(ctx, this.bud.x, this.bud.y, DR.BLOOM_S, t, this.bud.k);
+      JG_SCENE.launchPad(ctx, DR.PAD_X, G - DR.BRANCH_UP, 100, t);
     }
     // rescue 5: thorns, patch, valve, pen
     if (x1 > 8400 && x0 < 10800) {

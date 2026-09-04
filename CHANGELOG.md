@@ -8,6 +8,22 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.28.3] - 2026-09-04
+
+### Fixed
+- **The Dinosaur Rescue's big pink bloom is climbable** (Ryan's playtest,
+  right after the v1.28.2 canopy fix: "there is a big pink flower and then
+  it's not possible to jump up to the next level"). The bud bloomed into a
+  flower whose top sat 198 px above its branch — a jump rises 148 — so the
+  route to the scared ptero was a wall. The bloom is now drawn at 132 px
+  (top 119 px above its branch, `DR.BLOOM_S`/`DR.BLOOM_UP`) and the
+  ptero's broken branch, its launch pad and candy arc came down to 116 px
+  above the bloom (`DR.BRANCH_UP`).
+- Harness: the bud's branch → bloom hop is now a real jump (the old check
+  teleported onto the bloom, which is how this shipped), plus a geometry
+  proof that the bloom's drawn height matches its solid and every step of
+  the bud → bloom → branch chain is within a jump.
+
 ## [1.28.2] - 2026-09-04
 
 ### Fixed
