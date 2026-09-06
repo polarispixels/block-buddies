@@ -81,7 +81,10 @@ want to play again?
 - Collision: substepped sweep (≤ 8 px per substep) circle-vs-AABB against
   blocks, walls, ceiling, paddle, junkbot, junk net. Resolve by pushing out
   along the axis of least penetration and reflecting that axis. One block hit
-  per substep. Harness runs 200 randomised max-speed shots at block edges and
+  per substep. A block the hit DESTROYS does not deflect the ball — it plows
+  on through (columns chain, combos build); only a block that survives the
+  hit (tough, runner's first hit) bounces it. Rainbow mode additionally
+  pierces surviving blocks. Harness runs 200 randomised max-speed shots at block edges and
   truck corners: zero tunnels.
 - MISS: the ball splats into the junk floor (dizzy face, junk + a random
   hubcap / boot / rubber duck fly up, `crash` + `muffhonk`), the truck shows
