@@ -74,11 +74,11 @@ entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
   playthroughs — a pure "track the ball" policy (no aim bias) clears all
   four waves + JUNKBOT + victory in roughly 190-265s across repeated
   randomised runs (well inside the 360s/6 sim-minute ceiling, landing in
-  the 3-5 minute target window), and a clumsy policy (wrong or idle on 40%
-  of frames) still finishes in roughly 230-245s (well inside the 480s/8
-  sim-minute ceiling) — run repeatedly with no flakes, alongside a
-  dedicated 200+200-shot anti-tunnel stress test at block edges and truck
-  corners.
+  the 3-5 minute target — the check asserts 120-330s), and a clumsy policy
+  (wrong or idle on 40% of frames) still finishes in roughly 230-245s (well
+  inside the 600s/10 sim-minute ceiling) — run repeatedly with no flakes,
+  alongside a dedicated 200+200-shot anti-tunnel stress test at block edges
+  and truck corners.
 
 ### Changed
 - Docs/backlog cleanup: BACKLOG.md's Status board now shows both the Alien

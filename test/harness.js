@@ -2916,6 +2916,16 @@ for (let bbF = 0; bbF < 150; bbF++) {
 }
 check('blockbash: the crane fling releases the ball moving upward (vy < 0)', bbReleaseVy !== null && bbReleaseVy < 0);
 check('blockbash: the crane SNATCH grabs the ball and flings it — never lost', bbS().balls.length === 1 && !bbS().splat);
+// timeout: a ball teleported far away from the crane every single frame can
+// never let the chase close within its 6px catch radius — an unlucky chase
+// must give up (never disabling the crane's own never-stall rule) rather
+// than chasing forever with craneClearOne() locked out by mode !== 'idle'
+vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 0; b.vy = 0; b.rest = false; b.held = false; a.eventSnatch(); })()", sandbox);
+for (let bbTF = 0; bbTF < 300; bbTF++) { // 5 simulated seconds
+  vm.runInContext(`(() => { const b = game.level.arcade.balls[0]; if (b) { b.x = ${bbTF % 2 === 0 ? 60 : 1220}; b.y = ${bbTF % 2 === 0 ? 200 : 500}; b.held = false; } })()`, sandbox);
+  frames(1);
+}
+check('blockbash: an unlucky snatch chase times out to idle (crane never locked, ball never stuck held)', vm.runInContext("game.level.arcade.crane.mode === 'idle' && !game.level.arcade.balls[0].held", sandbox));
 vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; for (let c = 0; c < 4; c++) a.addBlock(c, 1, 'plain'); a.eventConveyor(1); })()", sandbox); const cvx = vm.runInContext('game.level.arcade.blocks[0].x', sandbox); frames(30);
 check('blockbash: a CONVEYOR slides a whole row', vm.runInContext('game.level.arcade.blocks[0].x', sandbox) !== cvx && vm.runInContext('game.level.arcade.blocks.every(b => b.vx === game.level.arcade.blocks[0].vx)', sandbox));
 vm.runInContext("game.level.arcade.candies.length = 0; game.level.arcade.eventTower()", sandbox); frames(180);
@@ -3026,7 +3036,7 @@ vm.runInContext("(() => { const a = game.level.arcade; a.waves.i = 3; a.blocks.l
 // assert. Park it (never restore the old 4.5s window to dodge this).
 vm.runInContext("(() => { const a = game.level.arcade; a.launchT = 999; a.balls.forEach(b => { b.rest = true; b.held = false; b.vx = 0; b.vy = 0; }); })()", sandbox);
 frames(90);
-check('blockbash: clearing wave 4 lowers the JUNKBOT on its chain', vm.runInContext("game.level.arcade.state === 'boss' && !!game.level.arcade.junkbot", sandbox) && G().level.music === 'arcade');
+check('blockbash: clearing wave 4 lowers the JUNKBOT on its chain', vm.runInContext("game.level.arcade.state === 'boss' && !!game.level.arcade.junkbot && AudioSys.songName === 'boss'", sandbox));
 const JB = () => vm.runInContext('(() => { const j = game.level.arcade.junkbot; return { hp: j.hp, stage: j.stage, parts: { ...j.parts }, x: j.x, y: j.y, w: j.w, h: j.h }; })()', sandbox);
 const bbHitBot = () => { vm.runInContext("(() => { const a = game.level.arcade, j = a.junkbot; a.balls.length = 0; const b = a.spawnBall(j.x + j.w / 2, j.y + j.h + 60, false); b.vx = 0; b.vy = -540; b.speed = 540; })()", sandbox); frames(12); };
 const cB = G().candy; bbHitBot(); bbHitBot(); bbHitBot();

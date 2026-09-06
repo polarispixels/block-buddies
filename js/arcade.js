@@ -59,9 +59,12 @@ class ArcadeHud {
   pop(x, y, text, color = '#fff', size = 30) { this.pops.push({ x, y, text, color, size, t: 0.9 }); }
   update(dt) { if (this.bannerT > 0) { this.bannerT -= dt; if (this.bannerT <= 0) this.bannerText = null; } for (const p of this.pops) { p.t -= dt; p.y -= 60 * dt; } this.pops = this.pops.filter(p => p.t > 0); }
   drawWorld(ctx, t) { for (const p of this.pops) { ctx.save(); ctx.globalAlpha = Math.min(1, p.t * 2); outlineText(ctx, p.text, p.x, p.y, p.size, p.color, '#3a2a4a'); ctx.restore(); } }
-  drawScreen(ctx, t, chips = []) {
+  // chips sit in the free HUD band (hearts end ~x=172, the candy counter
+  // starts ~x=1018): default row fits up to 7 chips (BB.MODS has 7 kinds)
+  // without reaching either
+  drawScreen(ctx, t, chips = [], { x0 = 230, y = 52, step = 74 } = {}) {
     if (this.bannerText) { const k = this.bannerT / this.bannerDur, pop = 1 + 0.25 * Math.max(0, 1 - (1 - k) * 6); ctx.save(); ctx.globalAlpha = Math.min(1, k * 3); ctx.translate(W / 2, 250); ctx.scale(pop, pop); outlineText(ctx, this.bannerText, 0, 0, 72, this.bannerColor, '#3a2a4a'); ctx.restore(); }
-    let x = 60; for (const c of chips) { ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = '#2a2438'; ctx.beginPath(); ctx.arc(x, H - 250, 30, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, H - 250, 30, -Math.PI / 2, -Math.PI / 2 + TAU * c.frac); ctx.stroke(); c.icon(ctx, x, H - 250, 34); ctx.restore(); x += 74; }
+    let x = x0; for (const c of chips) { ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = '#2a2438'; ctx.beginPath(); ctx.arc(x, y, 30, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + TAU * c.frac); ctx.stroke(); c.icon(ctx, x, y, 34); ctx.restore(); x += step; }
   }
 }
 function arcadePayout(m, n, x, y) { m.payQ = (m.payQ || 0) + n; m.payX = x; m.payY = y; }

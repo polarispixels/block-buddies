@@ -21,7 +21,9 @@ const BB = {
   // actively-playing run clears blocks on its own (that's still governed by
   // BB.CAP/BB.SPEED, untouched).
   PAR: [26, 32, 38, 44], STALL_EVERY: 1.5,
-  BOSS: { HP: 12, W: 340, H: 260, XMIN: 200, XMAX: 1080, YMIN: 150, YMAX: 330, STALL: 60 }
+  BOSS: { HP: 12, W: 340, H: 260, XMIN: 200, XMAX: 1080, YMIN: 150, STALL: 60 },
+  CRANE_HOME_Y: 100, // idle/retract rest height (art's y = magnet bottom): keeps the magnet's
+  // bottom above row 0's top (BB.GY=110) instead of hanging into the top block row
 };
 // phase-weighted capsule mix (phase 0/1/2+): multi/wide/net favoured early, boom/giant later
 const BB_CAP_WEIGHTS = [
@@ -58,11 +60,11 @@ class JunkBot {
     if (this.entering) { this.y = Math.min(BB.BOSS.YMIN, this.y + 300 * dt); if (this.y >= BB.BOSS.YMIN) { this.entering = false; AudioSys.sfx('bashroar'); game.shake = 0.3; } return; }
     const speed = 120 + this.stage * 45; this.x += this.dir * speed * dt;
     if (this.x < BB.BOSS.XMIN) { this.x = BB.BOSS.XMIN; this.dir = 1; } if (this.x > BB.BOSS.XMAX - this.w) { this.x = BB.BOSS.XMAX - this.w; this.dir = -1; } // body always inside x 200..1080
-    // small bob around YMIN, not a full YMIN..YMAX swing (Task 9 playability
+    // small bob around YMIN, not a wide vertical swing (Task 9 playability
     // gate: BOSS.H (260) leaves only ~10px of headroom under the box's
     // bottom <= 420 reachability bound before the anti-stall droop is even
-    // added; a bob using the full (YMAX-YMIN) range blew straight through
-    // that — and briefly poked the box above the arena's own TOP wall)
+    // added; a bob with real vertical travel blew straight through that —
+    // and briefly poked the box above the arena's own TOP wall)
     this.y = BB.BOSS.YMIN + this.droop + Math.sin(this.t * 1.3) * 9;
     // spec §10 (amended): droops ONCE, not twice — one step of 60px caps body
     // bottom at YMIN+60+H+bob <= 479, clear of a roof-resting ball at 506
@@ -70,7 +72,10 @@ class JunkBot {
     this.drops.update(dt); if (this.stage >= 2) this.tires.update(dt); if (this.stage >= 3) this.beams.update(dt);
     if (this.beamT > 0) { this.beamT -= dt; const b = this.beamBall; if (b) { b.x = lerp(b.x, this.beamX, 1 - Math.exp(-8 * dt)); b.y = lerp(b.y, this.beamY, 1 - Math.exp(-8 * dt)); if (this.beamT <= 0) { b.held = false; const a = rand(-150, -30) * Math.PI / 180; b.vx = Math.cos(a) * b.speed; b.vy = Math.sin(a) * b.speed; m.steer(b); this.beamBall = null; } } }
   }
-  beam(ball) { this.beamT = 0.8; this.beamBall = ball; ball.held = true; this.beamX = this.x + this.w * 0.8; this.beamY = this.y + this.h + 40; AudioSys.sfx('bashclank'); }
+  beam(ball) {
+    if (this.beamT > 0 || this.beamBall) return; // a double fire would leave the first ball held forever
+    this.beamT = 0.8; this.beamBall = ball; ball.held = true; this.beamX = this.x + this.w * 0.8; this.beamY = this.y + this.h + 40; AudioSys.sfx('bashclank');
+  }
   dropJunk() { const m = game.level.arcade; const cols = [...Array(BB.COLS).keys()].filter(c => !m.blocks.some(b => b.alive && b.col === c && b.row === 4)); if (!cols.length) return; const c = cols[randi(0, cols.length - 1)]; const b = m.addBlock(c, 4, Math.random() < 0.3 ? 'tough' : 'plain'); b.landed = false; b.y = this.y + this.h; if (Math.random() < 0.3) m.dropCapsule(b.x + 48, b.y); }
   hit(ball) {  // called from stepBall each substep; returns true when it bounced
     if (this.entering || ball.held || this.hitCd > 0) return false;
@@ -104,8 +109,8 @@ class BlockBash {
     this.capsules = []; this.tires = []; this.conveyorRows = new Map();
     this.towerCandy = 0; this._towerGroups = []; this._surpriseBag = [];
     this.crane = {
-      x: (BB.L + BB.R) / 2, y: 140, mode: 'idle', stage: null, target: null,
-      holding: null, t: 0, holdT: 0, wanderT: 0, wanderX: (BB.L + BB.R) / 2, mood: 'happy'
+      x: (BB.L + BB.R) / 2, y: BB.CRANE_HOME_Y, mode: 'idle', stage: null, target: null,
+      holding: null, t: 0, holdT: 0, wanderT: 0, wanderX: (BB.L + BB.R) / 2,
     };
     this.stallAcc = 0; this.bootT = 0;
     // ---- Task 7: the four escalating waves (WaveRunner from js/arcade.js)
@@ -374,7 +379,7 @@ class BlockBash {
       this.wideK = 1.6;
     } else if (kind === 'net') {
       this.mods.add('net', BB.MODS.net);
-      this.net = { t: BB.MODS.net };
+      this.net = true; // a truthy flag only — `mods` (via BB.MODS.net) owns the actual timer
     } else {
       this.mods.add(kind, BB.MODS[kind]);
     }
@@ -430,7 +435,7 @@ class BlockBash {
       c.wanderT -= dt;
       if (c.wanderT <= 0) { c.wanderX = rand(BB.L + 100, BB.R - 100); c.wanderT = rand(2, 4); }
       c.x = lerp(c.x, c.wanderX, 1 - Math.exp(-1.2 * dt));
-      c.y = lerp(c.y, 140, 1 - Math.exp(-2 * dt));
+      c.y = lerp(c.y, BB.CRANE_HOME_Y, 1 - Math.exp(-2 * dt));
       c.holding = null;
     } else if (c.mode === 'snatch') this.updateSnatch(dt);
     else if (c.mode === 'clear') this.updateClear(dt);
@@ -450,6 +455,11 @@ class BlockBash {
     const c = this.crane, b = c.target;
     if (!b || this.balls.indexOf(b) < 0) { c.mode = 'idle'; c.holding = null; c.target = null; return; }
     if (c.stage === 'chase') {
+      c.t += dt;
+      // never-stall belt-and-braces: an unlucky ball (bouncing away every time
+      // the crane closes in) must not disable the crane's own never-stall rule
+      // — give up the snatch and retract empty-handed past 4s of chasing
+      if (c.t > 4) { c.stage = 'retract'; c.t = 0; c.target = null; return; }
       const tx = b.x, ty = b.y - 6;
       c.x += clamp(tx - c.x, -700 * dt, 700 * dt);
       c.y += clamp(ty - c.y, -500 * dt, 500 * dt);
@@ -469,7 +479,7 @@ class BlockBash {
         c.stage = 'retract'; c.t = 0; c.target = null;
       }
     } else if (c.stage === 'retract') {
-      c.t += dt; c.y = lerp(c.y, 140, 1 - Math.exp(-3 * dt));
+      c.t += dt; c.y = lerp(c.y, BB.CRANE_HOME_Y, 1 - Math.exp(-3 * dt));
       if (c.t > 0.6) c.mode = 'idle';
     }
   }
@@ -499,7 +509,7 @@ class BlockBash {
         c.holding = null; c.stage = 'retract'; c.t = 0; c.target = null;
       }
     } else if (c.stage === 'retract') {
-      c.t += dt; c.y = lerp(c.y, 140, 1 - Math.exp(-3 * dt));
+      c.t += dt; c.y = lerp(c.y, BB.CRANE_HOME_Y, 1 - Math.exp(-3 * dt));
       if (c.t > 0.6) c.mode = 'idle';
     }
   }
@@ -592,6 +602,13 @@ class BlockBash {
       '3,2': 'boom', '3,5': 'boom', '3,6': 'boom', '3,9': 'boom',
       '4,2': 'runner', '4,9': 'runner',
     });
+    // eventTower(0)/eventTower(11) below rain tower blocks into rows 2-4 of
+    // those exact columns — remove the wave grid's own blocks there first so
+    // a tower block never lands stacked on an identical grid cell
+    for (let i = this.blocks.length - 1; i >= 0; i--) {
+      const b = this.blocks[i];
+      if (b.alive && (b.col === 0 || b.col === 11) && b.row >= 2 && b.row <= 4) this.blocks.splice(i, 1);
+    }
     for (let r = 0; r < 5; r++) this.eventConveyor(r, r % 2 === 0 ? 1 : -1);
     this.eventTower(0); this.eventTower(11);
   }
@@ -623,6 +640,11 @@ class BlockBash {
     if (this.balls.length === 0) this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), true);
     else { const b0 = this.balls[0]; b0.rest = true; b0.held = false; b0.vx = 0; b0.vy = 0; }
     this.launchT = BB.LAUNCH_AUTO;
+    // if the last block and the last ball happened to go on the same frame,
+    // loseBall's respawn timer would still be counting down — this wave-clear
+    // roundup already guarantees a resting ball above, so cancel any pending
+    // respawn to avoid ending up with two resting balls
+    this.respawnT = 0;
   }
   onWavesDone() {
     this.state = 'boss';
@@ -787,6 +809,15 @@ class BlockBash {
     for (let i = 0; i < n; i++) arr.push({ x: x + rand(-24, 24), y: y + rand(-12, 12), kind: randi(0, 5), rot: rand(TAU), rotV: rand(-6, 6), vx: rand(-220, 220), vy: rand(-420, -180), t: 0, life: 1.2 });
     return arr;
   }
+  // gravity/rotation integration for the tumbling debris pool — identical in
+  // both the normal update and the victory sequence, so it lives once here
+  stepDebris(dt) {
+    for (let i = this.debris.length - 1; i >= 0; i--) {
+      const d = this.debris[i];
+      d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.rotV * dt;
+      if (d.t >= d.life) this.debris.splice(i, 1);
+    }
+  }
   loseBall(b) {
     const i = this.balls.indexOf(b);
     if (i < 0) return;
@@ -818,11 +849,7 @@ class BlockBash {
       // logic (the truck still drives around, harmlessly, via updatePlayer)
       if (this.victory) this.victory.update(dt);
       this.updateCandy(dt, pl);
-      for (let i = this.debris.length - 1; i >= 0; i--) {
-        const d = this.debris[i];
-        d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.rotV * dt;
-        if (d.t >= d.life) this.debris.splice(i, 1);
-      }
+      this.stepDebris(dt);
       if (this.toast) { this.toast.t -= dt; if (this.toast.t <= 0) this.toast = null; }
       return;
     }
@@ -869,12 +896,7 @@ class BlockBash {
     }
     // splat fade
     if (this.splat) { this.splat.k -= dt / 1.2; if (this.splat.k <= 0) this.splat = null; }
-    // debris
-    for (let i = this.debris.length - 1; i >= 0; i--) {
-      const d = this.debris[i];
-      d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.rotV * dt;
-      if (d.t >= d.life) this.debris.splice(i, 1);
-    }
+    this.stepDebris(dt);
 
     this.updateBlocks(dt, pl);
     this.updateCandy(dt, pl);
@@ -908,7 +930,7 @@ class BlockBash {
     for (const c of this.capsules) BASH_ART.capsule(ctx, c.x, c.y, c.kind, t);
     for (const tr of this.tires) BASH_ART.tire(ctx, tr.x, BB.FLOOR - tr.r, tr.r, tr.rot, t);
     if (this.net) BASH_ART.net(ctx, BB.FLOOR - 14, t, this.mods.frac('net'));
-    BASH_ART.crane(ctx, this.crane.x, this.crane.y, t, { holding: !!this.crane.holding, mood: this.crane.mood });
+    BASH_ART.crane(ctx, this.crane.x, this.crane.y, t, { holding: !!this.crane.holding });
     if (this.junkbot) BASH_ART.junkbot(ctx, this.junkbot, t); // after blocks, before balls, unclipped (he paces past the arena's own bounds while pacing/bobbing)
     for (const b of this.balls) {
       for (const p of b.trail) { ctx.save(); ctx.globalAlpha = 0.18; BASH_ART.ball(ctx, p.x, p.y, b.r * 0.7, t, { mood: b.mood }); ctx.restore(); }
@@ -926,8 +948,12 @@ class BlockBash {
     const chips = this.mods.list().map(m => ({ frac: this.mods.frac(m.name), icon: (ctx, x, y, s) => BASH_ART.modIcon(ctx, x, y, s, m.name) }));
     this.hud.drawScreen(ctx, t, chips);
     if (this.mods.has('wide')) {
-      const pl = game.player, facing = pl.facing || 1, pw = 70, ph = pl.h * 0.85;
-      BASH_ART.plow(ctx, pl.cx + facing * (pl.w / 2 + pw * 0.32), pl.cy, pw, ph, facing, t);
+      // the wide mod widens the catch box on BOTH sides (paddleBox's `extra`),
+      // so the art draws a plow on both sides too, mirrored — matching the
+      // hitbox regardless of which way the truck is currently facing
+      const pl = game.player, pw = 70, ph = pl.h * 0.85;
+      BASH_ART.plow(ctx, pl.cx + (pl.w / 2 + pw * 0.32), pl.cy, pw, ph, 1, t);
+      BASH_ART.plow(ctx, pl.cx - (pl.w / 2 + pw * 0.32), pl.cy, pw, ph, -1, t);
     }
     if (this.toast) {
       ctx.save(); ctx.globalAlpha = Math.min(1, this.toast.t * 2);
