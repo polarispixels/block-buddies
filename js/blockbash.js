@@ -37,7 +37,7 @@ class BlockBash {
     this.hud = new ArcadeHud();
     this.phase = 0; // Task 7 drives this per wave; capsule weighting reads it
     this.toast = null; // { kind, t } — big mod icon over the truck on capsule catch
-    // Task 7/8 stub — later task fills this in
+    // Task 8 stub — later task fills this in
     this.junkbot = null;
     this.net = null;
     this.capsules = []; this.tires = []; this.conveyorRows = new Map();
@@ -46,14 +46,31 @@ class BlockBash {
       x: (BB.L + BB.R) / 2, y: 140, mode: 'idle', stage: null, target: null,
       holding: null, t: 0, holdT: 0, wanderT: 0, wanderX: (BB.L + BB.R) / 2, mood: 'happy'
     };
+    this.stallAcc = 0; this.bootT = 0;
+    // ---- Task 7: the four escalating waves (WaveRunner from js/arcade.js)
+    this.WAVES = [
+      { par: BB.PAR[0], build: () => this.buildWave1() },
+      { par: BB.PAR[1], build: () => this.buildWave2() },
+      { par: BB.PAR[2], build: () => this.buildWave3() },
+      { par: BB.PAR[3], build: () => this.buildWave4() },
+    ];
+    this.waves = new WaveRunner(this.WAVES, {
+      onBuild: (i) => this.onWaveBuild(i),
+      onPlay: (i) => this.onWavePlay(i),
+      onClear: (i) => this.onWaveClear(i),
+      onDone: () => this.onWavesDone(),
+      isClear: () => this.aliveBlocks().filter((b) => !b.tower).length === 0,
+    });
   }
   boot(pl) {
-    this.booted = true;
+    this.booted = true; this.bootT = 0;
     if (pl.vehicle !== 'truck') pl.boardTruck();
     pl.x = 590 - 52; this.hopY0 = BB.FLOOR - pl.h; pl.y = this.hopY0;
     this.spawnBall(pl.cx, pl.y - BB.BALL_R, true);
     this.launchT = BB.LAUNCH_AUTO;
+    this.startWaves();
   }
+  startWaves() { this.waves.start(); }
   paddleBox() {
     const pl = game.player, extra = (this.wideK - 1) * pl.w / 2;
     return { x: pl.x - BB.PADDLE_PAD - extra, y: pl.y, w: pl.w + 2 * (BB.PADDLE_PAD + extra), h: pl.h };
@@ -106,6 +123,12 @@ class BlockBash {
     const a = -Math.PI / 2 + (right > left ? 1 : right < left ? -1 : (Math.random() < 0.5 ? -1 : 1)) * rand(0.15, 0.35);
     b.rest = false; b.vx = Math.cos(a) * this.phaseSpeed; b.vy = Math.sin(a) * this.phaseSpeed; this.steer(b);
     AudioSys.sfx('whoosh');
+    // the intro's arrows hint (js/levels.js buildLevel('blockbash')) only matters until the
+    // very first launch — remove it so it never lingers over a game already in motion
+    if (this.lv.hints && this.lv.hints.length) {
+      const hi = this.lv.hints.findIndex(h => h.icon === 'arrows' && h.x === 590 && h.y === 380);
+      if (hi >= 0) this.lv.hints.splice(hi, 1);
+    }
   }
   // circle-vs-AABB: returns null or { nx, ny, depth } (axis-aligned normal chosen by penetration)
   hitBox(b, s) {
@@ -172,6 +195,26 @@ class BlockBash {
     const hp = kind === 'tough' ? 3 : kind === 'runner' ? 2 : 1;
     const b = { x: BB.GX + col * BB.BW, y: BB.GY + row * BB.BH, w: BB.BW, h: BB.BH, kind, hp, maxHp: hp, alive: true, landed: true, hitT: 0, seed: randi(0, 99), row, col, vx: 0, runT: 0, falling: false, vy: 0, wobble: 0 };
     this.blocks.push(b); return b;
+  }
+  // a wave-build block: same shape as addBlock's, but starts off the top of the
+  // screen and rains in — reuses updateBlocks' existing !landed fall/bounce/settle
+  // path (the same one the junk tower uses), so there's exactly ONE rain-in
+  // implementation in the whole file
+  addWaveBlock(col, row, kind) {
+    const b = this.addBlock(col, row, kind);
+    b.landed = false; b.bounced = false; b.y = -60 - row * 30; b.vy = 0;
+    // a small per-block release stagger — cascading off the crane rail rather than
+    // the whole grid dropping in one instant — so the rain-in reads (and lasts
+    // close to the 1.2s build window) whether it's wave 1's shallow 2 rows or
+    // wave 4's dense 5; updateBlocks' shared !landed path holds a block at its
+    // start position while fallDelay counts down, then falls it exactly like the
+    // junk tower's blocks (which have no fallDelay and so start immediately)
+    b.fallDelay = (col + row * BB.COLS) * 0.025;
+    return b;
+  }
+  // fills COLS × rows with 'plain', overridden by `specials` keyed 'row,col' -> kind
+  addWaveGrid(rows, specials) {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < BB.COLS; c++) this.addWaveBlock(c, r, specials[r + ',' + c] || 'plain');
   }
   aliveBlocks() { return this.blocks.filter(b => b.alive); }
   hitBlock(b, ball, pierce) {
@@ -412,8 +455,9 @@ class BlockBash {
   }
 
   // JUNK TOWER: 3 plain blocks rain in at a wall column, then topple into free candy
-  eventTower() {
-    const col = Math.random() < 0.5 ? 0 : 11;
+  // (col defaults to a random side; wave 4's build calls it explicitly for both sides)
+  eventTower(col) {
+    if (col === undefined) col = Math.random() < 0.5 ? 0 : 11;
     const rows = [4, 3, 2];
     const blocksArr = rows.map((row, i) => {
       const b = this.addBlock(col, row, 'plain');
@@ -443,6 +487,74 @@ class BlockBash {
   }
 
   onBlockBroken(b) {}
+
+  // ---- wave layouts (spec §9): WaveRunner calls build() at the top of each
+  // wave, before onWaveBuild runs — so a wave's own blocks/conveyors/towers are
+  // already in place by the time onWaveBuild collects the balls and banners in
+  buildWave1() { // LEARN: 2 rows plain + one candy crate
+    this.addWaveGrid(2, { '1,5': 'candy' });
+  }
+  buildWave2() { // POWER-UPS: 3 rows, capsules/candy/split/tough introduced
+    this.addWaveGrid(3, {
+      '0,2': 'power', '0,6': 'power', '0,10': 'power',
+      '1,4': 'candy', '1,8': 'candy', '1,6': 'split',
+      '2,0': 'tough', '2,11': 'tough',
+    });
+  }
+  buildWave3() { // MOVING JUNK: 4 rows, opposing conveyors + fallers/runners/booms/surprises
+    this.conveyorRows.clear();
+    this.addWaveGrid(4, {
+      '0,3': 'faller', '0,6': 'faller', '0,9': 'faller',
+      '1,1': 'surprise', '1,10': 'surprise', '1,4': 'power', '1,7': 'power',
+      '2,2': 'runner', '2,9': 'runner', '2,11': 'power',
+      '3,5': 'boom', '3,6': 'boom',
+    });
+    this.eventConveyor(1, 1);
+    this.eventConveyor(3, -1);
+  }
+  buildWave4() { // CHAOS: 5 dense rows, everything moving, two junk towers, starts with 2 balls
+    this.conveyorRows.clear();
+    this.addWaveGrid(5, {
+      '0,1': 'power', '0,4': 'faller', '0,5': 'power', '0,6': 'power', '0,7': 'faller', '0,10': 'power',
+      '1,3': 'rainbow', '1,8': 'rainbow',
+      '2,0': 'surprise', '2,4': 'split', '2,7': 'split', '2,11': 'surprise',
+      '3,2': 'boom', '3,5': 'boom', '3,6': 'boom', '3,9': 'boom',
+      '4,2': 'runner', '4,9': 'runner',
+    });
+    for (let r = 0; r < 5; r++) this.eventConveyor(r, r % 2 === 0 ? 1 : -1);
+    this.eventTower(0); this.eventTower(11);
+  }
+  onWaveBuild(i) {
+    this.phase = i; this.phaseSpeed = BB.SPEED[i]; this.stallAcc = 0;
+    this.hud.banner('WAVE ' + (i + 1) + '!');
+    // collect every ball back to the roof as ONE resting ball; extra balls get
+    // a small plop (mods are untouched — only ball count/position resets)
+    const pl = game.player;
+    for (const b of this.balls.slice(1)) {
+      AudioSys.sfx('plop');
+      Particles.burst(b.x, b.y, 4, { colors: ['#9a9a9a', '#7d7d7d'], type: 'circle', sp1: 180, l1: 0.5, s1: 6, grav: 400 });
+    }
+    this.balls.length = Math.min(this.balls.length, 1);
+    if (this.balls.length === 0) this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), true);
+    else { const b0 = this.balls[0]; b0.rest = true; b0.held = false; b0.vx = 0; b0.vy = 0; }
+    for (const b of this.balls) this.steer(b); // re-steer to the new phase speed
+    this.launchT = BB.LAUNCH_AUTO;
+  }
+  onWavePlay(i) {
+    if (i === 3) { // wave 4 starts with 2 balls — added post-collection so it survives onWaveBuild's roundup
+      const pl = game.player;
+      const nb = this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), false);
+      this.launch(nb);
+    }
+  }
+  onWaveClear(i) {
+    this.hud.banner('WAVE CLEAR!', '#7be07b');
+    AudioSys.sfx('cheer');
+    Particles.burst(W / 2, H / 2 - 60, 24, { colors: RAINBOW.concat(['#fff', '#ffe156']), type: 'confetti', sp1: 340, l0: 1, l1: 1.8, s1: 12, grav: 260, up: 160 });
+  }
+  onWavesDone() {
+    this.state = 'done'; // Task 8 replaces this with the JUNKBOT boss entrance
+  }
 
   // ---- candy
   dropCandy(x, y, n) {
@@ -480,7 +592,11 @@ class BlockBash {
     for (const b of this.blocks) {
       if (!b.alive) continue;
       if (!b.landed) {
-        // rain-in: fall to the grid row, bounce once, settle (junk tower and — later — wave build-in both use this)
+        // rain-in: fall to the grid row, bounce once, settle (junk tower and wave
+        // build-in both use this). A wave-build block may hold at its start
+        // position for `fallDelay` first (a cascading release); the tower's
+        // blocks have no fallDelay and so fall immediately, as before.
+        if (b.fallDelay > 0) { b.fallDelay -= dt; continue; }
         b.vy += 1400 * dt; b.y += b.vy * dt;
         const gy = BB.GY + b.row * BB.BH;
         if (b.y >= gy) {
@@ -540,10 +656,20 @@ class BlockBash {
   // ---- main update
   update(dt, pl) {
     if (!this.booted) this.boot(pl);
-    this.t += dt;
+    this.t += dt; this.bootT += dt;
     this.mods.update(dt);
     this.hud.update(dt);
     arcadePayTick(this, dt);
+    this.waves.update(dt);
+    // never-stall rule: past par, the crane periodically yanks a leftover block
+    if (this.waves.pastPar() && this.crane.mode === 'idle') {
+      this.stallAcc += dt;
+      if (this.stallAcc >= BB.STALL_EVERY) { this.stallAcc = 0; this.craneClearOne(); }
+    }
+    // target-highlight: the last few survivors pulse so a stalling wave is obvious
+    const survivors = this.aliveBlocks().filter(b => !b.tower);
+    const pulse = survivors.length > 0 && survivors.length <= 3;
+    for (const b of survivors) b.wobble = pulse ? 1 : 0;
 
     this.launchT -= dt;
     for (const b of this.balls) {
@@ -603,6 +729,12 @@ class BlockBash {
     for (const b of this.balls) {
       for (const p of b.trail) { ctx.save(); ctx.globalAlpha = 0.18; BASH_ART.ball(ctx, p.x, p.y, b.r * 0.7, t, { mood: b.mood }); ctx.restore(); }
       BASH_ART.ball(ctx, b.x, b.y, b.r, t, { mood: b.mood, rainbow: this.mods.has('rainbow'), squash: b.squash });
+    }
+    if (this.bootT < 2) { // intro: a bobbing spacebar hint over the truck, clear of the roof ball
+      const pl = game.player;
+      ctx.save(); ctx.globalAlpha = Math.min(1, (2 - this.bootT) * 3);
+      drawSpacebar(ctx, pl.cx, pl.y - 95, 110, t);
+      ctx.restore();
     }
     this.hud.drawWorld(ctx, t);
   }

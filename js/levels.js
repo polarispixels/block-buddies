@@ -1534,6 +1534,7 @@ function buildLevel(n) {
     lv.solids[lv.solids.length - 1].skipDraw = true; // the arcade paints its own junk floor
     lv.touchLayout = 'arcade';
     lv.arcade = new BlockBash(lv);
+    lv.hints.push({ x: 590, y: 380, icon: 'arrows' }); // spliced out on the first launch (BlockBash.launch)
   }
 
   if (n === 'zombietown') { // ---------------- ZOMBIE TOWN AFTER DARK (a town to save)

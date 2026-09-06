@@ -2779,6 +2779,13 @@ check('blockbash: the hop lands back on the floor', Math.abs(G().player.y - pyRe
 // literal `frames(200)` re-entry would otherwise eat into the auto-launch
 // timing budget checked next.
 vm.runInContext("game.level.arcade = new BlockBash(game.level);", sandbox); frames(5);
+// freeze wave auto-advance for this isolated per-block-kind testing section (Task
+// 5/6): these tests repeatedly null out a.blocks to test one kind at a time, and
+// an empty board reads as "wave cleared" to WaveRunner — left running, a long
+// frames() gap here would silently auto-build the next wave mid-test. Task 7's
+// own wave tests re-enter via game.startLevel('blockbash'), which builds a fresh,
+// unfrozen instance.
+vm.runInContext("game.level.arcade.waves.state = 'done';", sandbox);
 const bbS = () => vm.runInContext(`(() => { const a = game.level.arcade; return { balls: a.balls.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r, rest: b.rest, speed: b.speed })), blocks: a.aliveBlocks().length, combo: a.combo, respawnT: a.respawnT, candies: a.candies.length, splat: !!a.splat, mods: a.mods.list().map(m => m.name) }; })()`, sandbox);
 check('blockbash: a ball rests on the truck roof at the start', bbS().balls.length === 1 && bbS().balls[0].rest);
 frames(100);
@@ -2901,6 +2908,40 @@ vm.runInContext("game.level.arcade.candies.length = 0; game.level.arcade.eventTo
 check('blockbash: a JUNK TOWER topples into free candy', vm.runInContext('game.level.arcade.candies.length + game.level.arcade.towerCandy', sandbox) >= 3);
 vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
 check('blockbash: the crane CLEAR yanks one leftover block (and pays for it)', bbS().blocks === 1);
+
+// ---------------- waves, escalation, build-in, anti-stall, intro hints (Task 7) ----------------
+vm.runInContext("game.startLevel('blockbash')", sandbox); frames(200);
+check('blockbash: wave 1 = 2 rows of plain blocks + a candy crate, ball 380', vm.runInContext("(() => { const a = game.level.arcade; const k = a.aliveBlocks(); return a.waves.i === 0 && k.length === 24 && k.filter(b => b.kind === 'candy').length === 1 && k.every(b => b.kind === 'plain' || b.kind === 'candy') && a.phaseSpeed === 380; })()", sandbox));
+check('blockbash: the intro arrows hint sits over the truck before the first launch', vm.runInContext("game.level.hints.some(h => h.icon === 'arrows' && h.x === 590 && h.y === 380)", sandbox) === true);
+check('blockbash: blocks rain in and are unhittable until landed', vm.runInContext("game.level.arcade.blocks.some(b => !b.landed)", sandbox) || vm.runInContext("game.level.arcade.waves.state", sandbox) !== 'build');
+frames(80);
+check('blockbash: after the build-in every block has landed on its grid spot', vm.runInContext("game.level.arcade.blocks.every(b => b.landed && Math.abs(b.y - (BB.GY + b.row * BB.BH)) < 0.5)", sandbox));
+check('blockbash: the intro hint is spliced out after the first launch', vm.runInContext("game.level.hints.some(h => h.icon === 'arrows' && h.x === 590 && h.y === 380)", sandbox) === false);
+// clear wave 1 by force → flourish → wave 2 arrives with power-ups
+vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(10);
+check('blockbash: clearing the board starts the WAVE CLEAR flourish', vm.runInContext("game.level.arcade.waves.state", sandbox) === 'clear' && vm.runInContext("game.level.arcade.hud.bannerText", sandbox) !== null);
+frames(200);
+check('blockbash: wave 2 brings power/candy/split/tough blocks and speed 430', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 1 && ks.includes('power') && ks.includes('split') && ks.includes('tough') && a.phaseSpeed === 430; })()", sandbox));
+// anti-stall: past par the crane starts clearing
+vm.runInContext("(() => { const a = game.level.arcade; a.waves.stallT = 999; a.balls.forEach(b => { b.rest = true; }); })()", sandbox);
+const nb0 = bbS().blocks; frames(60 * 6);
+check('blockbash: past par the crane yanks leftover blocks — a wave can never stall', bbS().blocks < nb0);
+vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(210);
+check('blockbash: wave 3 = moving junk (conveyor rows, fallers, runners, barrels, surprises), speed 480', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 2 && a.conveyorRows.size >= 2 && ks.includes('faller') && ks.includes('runner') && ks.includes('boom') && ks.includes('surprise') && a.phaseSpeed === 480; })()", sandbox));
+vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(210);
+check('blockbash: wave 4 = CHAOS with rainbow blocks, 4 barrels, 2 balls, speed 520', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 3 && ks.filter(k => k === 'rainbow').length === 2 && ks.filter(k => k === 'boom').length >= 4 && a.balls.length >= 2 && a.phaseSpeed === 520; })()", sandbox));
+check('blockbash: the ball speed cap holds under bump + chaos', vm.runInContext("(() => { const a = game.level.arcade; const b = a.balls[0]; b.rest = false; b.bumpT = 1; a.steer(b); return b.speed <= 620; })()", sandbox));
+
+// Task 7's wave checks re-entered via game.startLevel('blockbash'), which
+// unconditionally clears game.subReturn — re-enter through the rally's cabinet
+// door (as Task 5/6 originally did) so the pre-existing exit-path check below
+// still has a rally to land back in instead of falling through to the title.
+vm.runInContext('game.startLevel(7)', sandbox); frames(140); // clear the intro card first — the door only arms in 'play' (subDoors don't update during 'intro'), and it needs to see the player far away at least once
+vm.runInContext('game.player.boardTruck()', sandbox); // stash the truck vehicle for the exit check
+put(200, 620 - 96); frames(10);
+put(280 - 52, 620 - 96); frames(12); tap('Space'); frames(10);
+frames(200); // let the intro card auto-advance to 'play' before subWin() below needs a 5s party window
+check('blockbash: re-entering via the door restores subReturn for the exit check', vm.runInContext("game.level.n === 'blockbash' && game.state === 'play' && !!game.subReturn", sandbox));
 
 // exit path (forced win for now — Task 8 wires the real victory)
 vm.runInContext('game.subWin()', sandbox); frames(320); tap('Space'); frames(10);
