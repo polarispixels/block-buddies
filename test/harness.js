@@ -2714,6 +2714,31 @@ check('the rally still runs turbo → big ramp → trophy after the secret', G()
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---- ARCADE KIT (js/arcade.js)
+check('arcade kit: Mods add/has/left/expire callback', vm.runInContext(`(() => {
+  const gone = []; const m = new Mods(n => gone.push(n));
+  m.add('wide', 2); m.add('slow', 1); m.add('wide', 1);           // refresh never shortens
+  const ok1 = m.has('wide') && Math.abs(m.left('wide') - 2) < 1e-9 && m.list().length === 2;
+  m.update(1.5);
+  return ok1 && !m.has('slow') && m.has('wide') && gone.join() === 'slow' && Math.abs(m.frac('wide') - 0.25) < 1e-9;
+})()`, sandbox));
+check('arcade kit: WaveRunner build → play → clear → next → done, stall clock only in play', vm.runInContext(`(() => {
+  const log = []; let clear = false;
+  const w = new WaveRunner([{ par: 1, build() { log.push('b0'); } }, { par: 1, build() { log.push('b1'); } }],
+    { onBuild: i => log.push('B' + i), onPlay: i => log.push('P' + i), onClear: i => log.push('C' + i), onDone: () => log.push('D'), isClear: () => clear });
+  w.start(); w.update(1.3); const s1 = w.state; w.update(1.5); const past = w.pastPar(); clear = true; w.update(0.02); const s2 = w.state; clear = false;
+  w.update(2.1); const s3 = w.state; w.update(1.3); clear = true; w.update(0.02); w.update(2.1);
+  return s1 === 'play' && past && s2 === 'clear' && s3 === 'build' && w.state === 'done' && log.join() === 'b0,B0,P0,C0,b1,B1,P1,C1,D';
+})()`, sandbox));
+check('arcade kit: Sequence runs steps in order with k 0..1 and finishes', vm.runInContext(`(() => {
+  const ks = []; const s = new Sequence([{ dur: 1, enter() { ks.push('e0'); }, tick(k) { ks.push(k.toFixed(1)); } }, { dur: 0.5, enter() { ks.push('e1'); } }]);
+  s.update(0.5); s.update(0.5); s.update(0.3); s.update(0.3);
+  return s.done && ks[0] === 'e0' && ks.includes('0.5') && ks.includes('e1');
+})()`, sandbox));
+check('arcade kit: Spawner fires on its interval', vm.runInContext(`(() => { let n = 0; const s = new Spawner(1, 0, () => n++); for (let i = 0; i < 35; i++) s.update(0.1); return n === 3; })()`, sandbox));
+check('arcade kit: ArcadeHud banner + pops tick out', vm.runInContext(`(() => { const h = new ArcadeHud(); h.banner('WAVE 2!'); h.pop(10, 10, '+5'); const a = !!h.bannerText; h.update(2); return a && !h.bannerText && h.pops.length === 0; })()`, sandbox));
+check('arcade kit: arcadePayout drains at ~90 candy/s into game.candy', vm.runInContext(`(() => { const c0 = game.candy; const m = { payQ: 0, payX: 0, payY: 0 }; arcadePayout(m, 100, 100, 100); for (let i = 0; i < 60; i++) arcadePayTick(m, 1/60); const mid = game.candy - c0; for (let i = 0; i < 60; i++) arcadePayTick(m, 1/60); return mid >= 80 && mid <= 100 && game.candy - c0 === 100 && m.payQ === 0; })()`, sandbox));
+
 // ---------------------------------------------------------------- JUNKYARD BLOCK BASH (v1.29.0)
 vm.runInContext('game.startLevel(7)', sandbox); frames(120);
 check('blockbash: the rally has a press-gated ARCADE cabinet door at x=280',
