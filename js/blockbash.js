@@ -174,6 +174,10 @@ class BlockBash {
     Particles.burst(cx, cy, 10, { colors: ['#fff', '#ffe156', RAINBOW[b.seed % 6]], type: 'block', sp1: 300, l1: 0.8, s1: 10, grav: 700 });
     if (b.kind === 'faller' && cause === 'floor') {
       // harmless thud, no candy — the faller was never caught
+    } else if (b.kind === 'faller' && cause === 'truck') {
+      game.candy += 5; this.hud.pop(cx, cy, '+5', '#ffd24a', 26);
+      AudioSys.sfx('candy');
+      Particles.burst(cx, cy, 8, { colors: ['#fff', '#ffe156'], type: 'block', sp1: 260, l1: 0.6, s1: 9, grav: 600 });
     } else {
       const pay = b.kind === 'tough' ? 3 : 1;
       if (b.kind === 'candy') this.dropCandy(cx, cy, 5); else { game.candy += pay; this.hud.pop(cx, cy, '+' + pay, '#ffd24a', 24); }
@@ -249,10 +253,7 @@ class BlockBash {
       if (b.falling) {
         b.vy += 900 * dt; b.y += b.vy * dt;
         if (b.y + b.h >= p.y && b.y < p.y + p.h && b.x + b.w > p.x && b.x < p.x + p.w) {
-          b.alive = false;
-          game.candy += 5; this.hud.pop(b.x + b.w / 2, b.y, '+5', '#ffd24a', 26);
-          AudioSys.sfx('candy');
-          Particles.burst(b.x + b.w / 2, b.y + b.h / 2, 8, { colors: ['#fff', '#ffe156'], type: 'block', sp1: 260, l1: 0.6, s1: 9, grav: 600 });
+          this.breakBlock(b, 'truck'); // route through breakBlock so onBlockBroken always fires on removal
         } else if (b.y > BB.FLOOR) {
           this.breakBlock(b, 'floor');
         }
@@ -275,6 +276,10 @@ class BlockBash {
       game.player.setMood('surprised', 0.6);
       this.mods.clear('rainbow');
       this.combo = 0; AudioSys.bashCombo = 0;
+    } else {
+      // not the last ball: a small plop, nothing more (other balls keep playing)
+      AudioSys.sfx('plop');
+      Particles.burst(b.x, b.y, 4, { colors: ['#9a9a9a', '#7d7d7d'], type: 'circle', sp1: 180, l1: 0.5, s1: 6, grav: 400 });
     }
   }
 

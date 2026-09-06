@@ -2819,13 +2819,20 @@ bbShoot('runner'); const bbRx0 = vm.runInContext('game.level.arcade.blocks[0].x'
 check('blockbash: a runner scoots 2 columns along its row after the first hit and survives', bbS().blocks === 1 && Math.abs(vm.runInContext('game.level.arcade.blocks[0].x', sandbox) - bbRx0) >= 180);
 bbShoot('faller'); frames(10);
 check('blockbash: a hit faller drops', vm.runInContext('game.level.arcade.blocks[0].falling', sandbox) === true);
+vm.runInContext("(() => { const a = game.level.arcade; a.onBlockBroken = b => { a._caught = b.kind; }; })()", sandbox);
 vm.runInContext("game.player.x = game.level.arcade.blocks[0].x + 48 - game.player.w / 2", sandbox); const c1 = G().candy; frames(120);
 check('blockbash: the truck catching a faller pays 5 candy', G().candy >= c1 + 5 && bbS().blocks === 0);
+check('blockbash: the truck-caught faller still routes through breakBlock (onBlockBroken fires)', vm.runInContext('game.level.arcade._caught', sandbox) === 'faller');
+vm.runInContext("(() => { const a = game.level.arcade; delete a.onBlockBroken; delete a._caught; })()", sandbox); // restore the default stub
 bbShoot('rainbow', 5, 3, "a.addBlock(5, 2, 'plain'); a.addBlock(5, 1, 'plain'); a.addBlock(5, 0, 'plain')"); frames(40);
 check('blockbash: a rainbow block turns the ball RAINBOW and it pierces the whole column', bbS().mods.includes('rainbow') && bbS().blocks === 0);
 // combo
 bbShoot('plain', 5, 4, "for (let r = 0; r < 4; r++) a.addBlock(5, r, 'plain')"); frames(60);
 check('blockbash: consecutive hits without touching the truck build a combo', bbS().combo >= 3);
+// losing a non-last ball is just a small plop — no splat, no respawn timer
+vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.balls.length = 0; a.splat = null; a.respawnT = 0; const keep = a.spawnBall(600, 300, false); keep.vx = 0; keep.vy = -100; keep.speed = 380; const gone = a.spawnBall(300, 500, false); gone.vx = 0; gone.vy = 500; gone.speed = 500; })()", sandbox);
+frames(30);
+check('blockbash: losing a ball that is not the last one is a small plop, not a splat', bbS().balls.length === 1 && !bbS().splat && vm.runInContext('game.level.arcade.respawnT', sandbox) === 0);
 // the funny miss
 vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.addBlock(2, 0, 'plain'); a.balls.length = 0; const b = a.spawnBall(300, 500, false); b.vx = 0; b.vy = 500; b.speed = 500; game.player.x = 1000; })()", sandbox);
 frames(30);
