@@ -75,7 +75,7 @@
 <header>
   <h1>🙂 Block Buddies: The Adventures of Jack-Jack and Becca</h1>
   <p>Developer &amp; agent documentation — everything a human or agentic collaborator needs to understand, extend, and safely ship changes to the game.</p>
-  <span class="badge">v1.28.4</span>
+  <span class="badge">v1.29.0</span>
   <a class="badge play" href="../">▶ Play the game</a>
   <a class="badge" href="https://github.com/polarispixels/block-buddies">Source repo</a>
 </header>
@@ -340,6 +340,27 @@ The behavior is deliberately split from the artwork:</p>
   "no solid ceilings over jump paths" rule.</li>
 </ul>
 
+<h3>Arcade Mode (<code>lv.arcade</code>, since v1.29.0)</h3>
+<p>A new engine slot for fast arcade-cabinet levels, mirroring <code>lv.puzzle</code>:
+<code>Player.update</code> hands off entirely to <code>lv.arcade.updatePlayer</code> when the slot is set
+(no gravity/ramp/turbo code paths run at all — the cabinet owns the hero completely), and
+<code>game.js</code> calls <code>lv.arcade.update</code>/<code>drawBack</code>/<code>draw</code>/
+<code>drawFront</code> alongside the existing puzzle hooks (<code>drawBack</code> before solids,
+<code>draw</code> after the puzzle draw so cabinet actors sit in front, <code>drawFront</code> after
+darkness for screen-space chrome). A companion <code>lv.touchLayout = 'arcade'</code> switches
+<code>TouchUI</code> to left ◀ ▶ / right big JUMP + ★, no duck button. The reusable kit lives in
+<code>js/arcade.js</code> and knows nothing about any specific cabinet's game rules:
+<code>Mods</code> (timed modifiers with expiry callbacks), <code>WaveRunner</code> (an ordered
+build → play → clear wave state machine with a par-time stall hook), <code>Sequence</code>
+(timed-step intros and victories), <code>Spawner</code> (interval+jitter event scheduling),
+<code>ArcadeHud</code> (banners, world-space pops, timer-ring modifier chips), and
+<code>arcadePayout</code>/<code>arcadePayTick</code> (a fractional ~90/s rolling candy payout,
+frame-rate independent). <strong>Junkyard Block Bash</strong> (see Mini-games) is the first cabinet
+built on it, and its two rules are meant to generalize to every future one: <em>misses are comedy and
+nothing ever resets</em> (a lost ball/life just respawns; blocks, wave progress, and active modifiers
+all persist), and <em>a session can never stall</em> — Block Bash's crane yanks a leftover block once
+a wave runs past its par time, and its JUNKBOT boss droops into reach after 60&nbsp;s with no hits.</p>
+
 <h3>Cutscenes &amp; endings</h3>
 <p><code>game.cut = {name, t}</code> is handled in <code>updateCut</code> (kinds: <code>bossintro</code>,
 <code>magmaintro</code>, <code>rumble</code>, <code>chestfall</code>, <code>eruption</code>, <code>coronation</code>);
@@ -446,7 +467,7 @@ did not exist in any earlier level; "Cameos" lists returning elements from earli
   <dt>Enemies</dt><dd>4 <strong>dirt tornadoes</strong> (new: tall wandering dust devils), 3 walking and 1 jumping spider.</dd>
   <dt>New here</dt><dd>The <strong>truck assembly mission</strong> (<code>TruckBuild</code>: MissionTokens with <code>'wheels'</code>/<code>'engine'</code>/<code>'core'</code> skins, a crane + floor switch, and a parts-attach ceremony that spawns the <code>ParkedTruck</code>), the <strong>truck vehicle</strong> itself (faster than the wheel, monster tires), ramps with automatic mid-air backflips, and the turbo pad (a burst of flame-trailing speed). A tiny easter egg is parked somewhere in this world — we don't say where.</dd>
   <dt>Ending</dt><dd>Finish line → grandstand celebration → <strong>CANDY TROPHY</strong> ("YOU WIN THE RACE!") → party → unlocks Unicorn Forest.</dd>
-  <dt>Secret</dt><dd>Between the two mid-course ramps (x≈2680), a pit garage <em>thumps to a muffled beat</em> — light strobes through the door seams, a wrench sails off the roof, and a tiny mechanic peeks out and slams the door. Racing past never interrupts; <em>stop</em> at it (or press ★) to discover <strong>Pit Stop Beat Bash</strong>, the game's first rhythm game (see Mini-games).</dd>
+  <dt>Secret</dt><dd>Between the two mid-course ramps (x≈2680), a pit garage <em>thumps to a muffled beat</em> — light strobes through the door seams, a wrench sails off the roof, and a tiny mechanic peeks out and slams the door. Racing past never interrupts; <em>stop</em> at it (or press ★) to discover <strong>Pit Stop Beat Bash</strong>, the game's first rhythm game (see Mini-games). Right on the free start ground (x≈280), a press-gated junkyard arcade cabinet drops Jack straight into his truck as the paddle of <strong>Junkyard Block Bash</strong> (see Mini-games), the game's first ARCADE MODE cabinet (v1.29.0).</dd>
   <dt>Pickups</dt><dd>Fire, ice, rainbow, heart ×2, big candy arcs over every ramp.</dd>
   <dt>Cameos</dt><dd>Lava pools from Lava World are the track hazards; all three throwable powers appear together for the first time since the base game; walk/jump spiders patrol the infield.</dd>
 </dl>
@@ -518,7 +539,9 @@ Rally's in-world truck-assembly mission, which shares the same collection gramma
   <code>'garage'</code> a pit garage thumping to a muffled beat with strobing door seams, flying
   wrenches, and a peek-and-slam mechanic (the clue),
   <code>'moonwell'</code> a moonbeam pouring through a cracked cave ceiling with stars visible in the
-  crack, drifting music notes and a faint far-away bell (the clue) — and the garage is the one door
+  crack, drifting music notes and a faint far-away bell (the clue),
+  <code>'arcade'</code> a junkyard arcade cabinet on a tire base with a bouncing-ball screen and a
+  flashing "BASH" marquee (Junkyard Block Bash, v1.29.0) — and the garage is the one door
   with a speed rule: overlapping
   it in the <em>truck</em> above 200&nbsp;px/s never enters, so a race is never hijacked; stopping (or
   ★) enters. Doors re-arm only after the player moves a door-width away
@@ -842,6 +865,50 @@ and a candy-and-confetti eruption — the golden star pops out at the doorway. <
 SUPERSTAR!</em> The rhythm engine is fully deterministic (dt-driven song clock, fixed beat intervals
 and groove steps; the ring is the timing source, audio just agrees with it), so it holds up under any
 frame-rate wobble and is testable in the headless harness.</p>
+<h3>Junkyard Block Bash <small>(arcade cabinet at the Monster Truck Rally's start, x≈280 — v1.29.0)</small></h3>
+<p><strong>Breakout reinterpreted through Block Buddies — the first ARCADE MODE cabinet.</strong> A
+press-gated junkyard arcade cabinet on the rally's free start ground drops Jack straight into his
+monster truck as the paddle of a self-contained Breakout level (<code>'blockbash'</code>, its own
+bright <code>arcade</code> chiptune), no camera work, arena 40–1240 wide by 90–620 tall. The truck
+(accel 2600&nbsp;px/s², max 520, a ±6&nbsp;px forgiving hitbox) returns Bouncy Buddy — a faced rubber
+ball, r 18 (giant 32) — by hit-offset steering plus truck english; a 0.35&nbsp;s HOP (▲) both BUMPs a
+struck ball +25% speed and snatches falling capsules out of the air. Ball speed ramps
+380/430/480/520/540 across the four waves and the boss, hard-capped at 620, with minimum
+35%-vertical/8%-horizontal steering so it never flat-lines or pogos one column forever; collision is
+an ≤8&nbsp;px substepped sweep so nothing ever tunnels, and a block the hit actually destroys never
+deflects the ball — it plows straight through a whole chain of one-hitters, only a survivor bounces
+it — while rainbow mode pierces everything for 6&nbsp;s. A miss is pure comedy (splat, flying junk,
+an "oops" truck face) and 0.9&nbsp;s later the ball pops back onto the roof with NOTHING else reset
+(blocks/wave/mods/boss hp all persist); only the very last ball actually splats, extra balls just
+plop. Ten block kinds (plain, 3-hit tough, candy crate, glowing power block, rainbow, chaining boom
+oil-drum, split, scoot-two-columns runner, hook-chain faller, surprise "?" toolbox) pay candy and
+drive four surprise events (a giant rolling tire spin-out, the ceiling crane's mid-air snatch-and-
+fling, a wrapping conveyor row, a toppling junk tower) plus seven phase-weighted power-up capsules
+(multi/giant/wide/boom/magnet/slow/net, freely stacking). Four escalating waves — LEARN → POWER-UPS
+→ MOVING JUNK → CHAOS, each with a 1.2&nbsp;s crane rain-in build and a 1.5&nbsp;s "WAVE CLEAR!"
+flourish (this level overrides the kit's 2&nbsp;s default) — carry a never-stall par timer
+(<code>BB.PAR</code> 26/32/38/44&nbsp;s, tuned down from an initial 45/55/65/75&nbsp;s spec target
+during playtest review): once a wave runs past its par, the crane drives to a random remaining block
+every <code>BB.STALL_EVERY</code> = 1.5&nbsp;s and yanks it into the ceiling crusher — this <em>is</em>
+the never-stall rule, not a fallback, and it's what lets even a wrong-40%-of-the-time policy always
+finish. The finale is <strong>JUNKBOT</strong>: a chain-lowered, 12-hp, 340×260 boss
+who loses one of four parts (sign shield → left tire → right tire → core) every 3 hits across three
+escalating attack stages (junk drops into the rows below, rolling tires, a magnet beam that grabs and
+flings a ball without ever losing it) and droops 60&nbsp;px lower — once — after 60&nbsp;s with no
+hits, so he is never out of reach; no JUNKBOT attack ever touches the truck or loses the ball.
+Victory runs a scripted wobble → parts-rocket-off → giant junk explosion → 100-candy shower (magneted
+straight to the truck with a rolling ~90/s counter) → fireworks → <code>subWin()</code>, headline
+"JUNKYARD CHAMPION!". Engine-side, this is the debut of the reusable <strong>Arcade Mode</strong>
+slot and kit (see Core systems) — <code>lv.arcade</code>, <code>js/arcade.js</code>'s <code>Mods</code>/
+<code>WaveRunner</code>/<code>Sequence</code>/<code>Spawner</code>/<code>ArcadeHud</code>/payout, and
+<code>lv.touchLayout</code> — plus <code>js/bashart.js</code>'s whole contact-sheet-reviewed art pack.
+The harness runs full simulated playthroughs: a pure "track the ball" policy (no aim bias toward
+remaining blocks — a five-year-old chases the ball, not the layout) clears all four waves plus
+JUNKBOT plus victory in roughly 190–265&nbsp;s across repeated randomised runs (well inside the
+360&nbsp;s/6-minute ceiling, landing in the 3–5-minute target window), and a clumsy policy (wrong or
+idle 40% of the time) still finishes in roughly 230–245&nbsp;s (well inside the 480&nbsp;s/8-minute
+ceiling) — alongside a dedicated 200+200-shot anti-tunnel stress test at block edges and truck
+corners.</p>
 <h3>Zombie Town After Dark <small>(moonlit ceiling shaft in Zombie Cave — v1.13.0, concept by Jack)</small></h3>
 <p><strong>A whole little world above the cave.</strong> Climbing the moonbeam surfaces in a small
 outdoor town under a huge night sky (3000 × 720, its own gentle <code>midnight</code> waltz), and one
@@ -1126,7 +1193,7 @@ check that <em>actually fires</em> the projectile from ground level at the enemy
 
 </main>
 <footer>
-  Block Buddies v1.28.4 · built for Jack ·
+  Block Buddies v1.29.0 · built for Jack ·
   <a href="../">play</a> · <a href="https://github.com/polarispixels/block-buddies">github.com/polarispixels/block-buddies</a><br>
   This document is the onboarding reference for human and AI collaborators. Keep it in sync with
   <code>CLAUDE.md</code> (the in-repo agent instructions) whenever architecture or levels change.

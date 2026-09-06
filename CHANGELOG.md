@@ -8,6 +8,88 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.29.0] - 2026-09-06
+
+### Added
+- **JUNKYARD BLOCK BASH — Arcade Mode #1.** A new press-gated arcade cabinet
+  (`SubDoor` style `'arcade'`, x=280, junk-tire base + a bouncing-ball screen +
+  a flashing "BASH" marquee) sits on the free ground at the Monster Truck
+  Rally's start (world 7, displayed "6") and drops Jack straight into his
+  truck as the paddle of a full Breakout level, `'blockbash'` (theme `dirt`,
+  its own bright chiptune `'arcade'`). Truck paddle physics: 2600 px/s²
+  accel, 520 max, a ±6 px forgiving hitbox, and a 0.35 s HOP (justP.ArrowUp)
+  that both BUMPs a struck ball +25% speed and snatches falling capsules out
+  of the air. Bouncy Buddy, the faced rubber ball (r 18, giant 32), returns
+  off the paddle with hit-offset steering + truck english, is speed-ramped
+  380/430/480/520/540 across the four waves and the boss (hard cap 620,
+  minimum 35% vertical / 8% horizontal so it never flat-lines or pogos one
+  column), and sweeps in ≤8 px substeps so nothing tunnels; a block the hit
+  actually destroys never deflects it (the ball plows straight through a
+  chain of one-hitters — only a survivor bounces it), and rainbow mode
+  pierces everything for 6 s. Misses are pure comedy: splat, junk flies,
+  `bashmiss`+`muffhonk`, the truck pulls an "oops" face, and 0.9 s later the
+  ball pops back onto the roof — nothing else resets, and only the very last
+  ball splats (extra balls just plop). Ten block kinds (plain, tough ×3
+  hits, candy crate, glowing power block, rainbow, boom oil-drum chain,
+  split, scoot-two-columns runner, hook-chain faller, surprise "?"
+  toolbox) pay candy and drive four surprise events (giant rolling tire
+  spin-out, the crane magnet's mid-air snatch-and-fling, a wrapping
+  conveyor row, a toppling junk tower) plus seven timed power-up capsules
+  (multi/giant/wide/boom/magnet/slow/net, phase-weighted, freely stacking).
+  Four escalating waves (LEARN → POWER-UPS → MOVING JUNK → CHAOS, each with
+  a rain-in build and a never-stall crane that yanks a leftover block past
+  par) lead into the JUNKBOT finale: a 12-hp, 340×260 chain-lowered boss
+  that loses a part (sign shield → left tire → right tire → core) every 3
+  hits across three escalating attack stages (junk drops, rolling tires, a
+  magnet beam that grabs and flings a ball — never loses it, never touches
+  the truck) and droops once after 60 s of no hits so he's never out of
+  reach. Victory is a scripted `Sequence`: wobble → parts rocket off → a
+  giant junk explosion → a 100-candy shower magneted straight to the truck
+  with a rolling counter → fireworks → `subWin()` (party headline "JUNKYARD
+  CHAMPION!"). Completion persists in `ffbg_mini` like every other sublevel.
+- **Engine: the `lv.arcade` slot + the reusable `js/arcade.js` kit.**
+  `Player.update` hands off entirely to `lv.arcade.updatePlayer` when set (no
+  gravity/ramp/turbo code runs), and game.js wires `update`/`drawBack`/
+  `draw`/`drawFront` hooks alongside the existing `lv.puzzle` ones; a new
+  `lv.touchLayout = 'arcade'` switches TouchUI to ◀ ▶ + big JUMP + ★ with no
+  duck button. `js/arcade.js` holds the pieces any future arcade cabinet
+  reuses: `Mods` (timed modifiers with expiry callbacks), `WaveRunner`
+  (build/play/clear wave state machine with a par-time stall hook),
+  `Sequence` (timed-step intros/victories), `Spawner` (interval+jitter
+  event scheduling), `ArcadeHud` (banners, pops, timer-ring chips), and
+  `arcadePayout`/`arcadePayTick` (a fractional ~90/s rolling candy payout,
+  frame-rate independent). `js/bashart.js` carries Block Bash's whole
+  contact-sheet-reviewed art pack (`BASH_ART`) with zero game-state reads.
+  New sfx cluster `bashhit`/`bashbreak`/`bashmiss`/`bashbump`/`bashpow`/
+  `bashclank`/`bashroar`/`bashsplit` plus the `arcade` chiptune loop in
+  `SONGS`. Wave par times (`BB.PAR` = 26/32/38/44s) and the crane's stall
+  cadence (`BB.STALL_EVERY` = 1.5s, this level's `WaveRunner.clearTime` =
+  1.5s vs the kit's 2s default) are tuned down from an initial 45/55/65/75s
+  spec target once the harness's tracking policy dropped an aim-toward-
+  remaining-blocks bias (a five-year-old chases the ball, not the block
+  layout) — the crane driving to a random remaining block and yanking it
+  into the ceiling crusher once a wave runs past its par is the designed
+  never-stall rule, not a fallback, and it's what keeps even a wrong-40%-
+  of-the-time policy finishing. Harness coverage adds full simulated
+  playthroughs — a pure "track the ball" policy (no aim bias) clears all
+  four waves + JUNKBOT + victory in roughly 190-265s across repeated
+  randomised runs (well inside the 360s/6 sim-minute ceiling, landing in
+  the 3-5 minute target window), and a clumsy policy (wrong or idle on 40%
+  of frames) still finishes in roughly 230-245s (well inside the 480s/8
+  sim-minute ceiling) — run repeatedly with no flakes, alongside a
+  dedicated 200+200-shot anti-tunnel stress test at block edges and truck
+  corners.
+
+### Changed
+- Docs/backlog cleanup: BACKLOG.md's Status board now shows both the Alien
+  Space Station (world 9's stage 2) and the Great Dinosaur Rescue (world
+  10's stage one) confirmed ✅ shipped, adds Junkyard Block Bash as item 20
+  (✅ shipped v1.29.0, Arcade Mode #1) and Blaster Run as item 21 (a
+  fast-shooting arcade cabinet — move, jump, shoot targets at height — 🎯
+  next arcade release), and a new "Arcade Mode" backlog section sketches the
+  reusable kit and candidate cabinet #3s. Junkyard Bridge Builders remains
+  the next Stage 2 on deck.
+
 ## [1.28.4] - 2026-09-04
 
 ### Fixed

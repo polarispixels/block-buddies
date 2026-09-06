@@ -36,6 +36,8 @@ release spec. Maintenance rules:
 | 19 | Ocean Surf (surfboard ride + Kraken) | Sublevel | ✅ shipped v1.26.0 — Ride Mode's second instance: five escalating surf phases (waves, sharks, red ramps, chests, the monster-truck pirate boat with aimed cannonballs and rams), the surf-along Kraken befriended with the re-spawning rainbow block, and the oversized victory (boat flung, hero launched sky-high with the camera following, island, giant chest, +100 candy); off Underwater World via a surfboard door (see CHANGELOG 1.26.0) |
 | 18 | Rainbow Spider Flower Land (Jack's level) | Sublevel | ✅ shipped v1.25.0 — Jack's own storybook designed with a planning agent: mushrooms → giant rainbow spiders grow and smash flowers → key → secret door → sleepy guards → flower person → magic flying hat → rainbow castle + bubble dragon → giant cloud → pirate captain + robot race → gold → surprise party; off Block Meadow 0-2 via a flower door (see CHANGELOG 1.25.0) |
 | 16 | Linear world chains | Flow/framework | ✅ shipped v1.20.0 — worlds are ordered stage lists (`WORLD_STAGES`); stage archways end stages with a light STAGE CLEAR beat, final-stage stars complete the world (full party + unlock), `ffbg_stage` title resume; spec in `docs/superpowers/specs/2026-08-29-linear-world-chains-design.md` (see CHANGELOG 1.20.0) |
+| 20 | Junkyard Block Bash | Arcade Mode #1 | ✅ shipped v1.29.0 — Breakout through Block Buddies: the truck as paddle, Bouncy Buddy ball, 10 block kinds, 7 power-up capsules, 4 surprise events, 4 escalating never-stall waves, the 12-hp JUNKBOT finale (4 parts, 3 attack stages) and its 100-candy victory shower, off a press-gated arcade cabinet (x=280) at the Monster Truck Rally's start; debuts the reusable `js/arcade.js` kit (`Mods`/`WaveRunner`/`Sequence`/`Spawner`/`ArcadeHud`/payout) and the `lv.arcade` engine slot (see CHANGELOG 1.29.0) |
+| 21 | Blaster Run (fast shooting: move, jump, shoot targets at heights) | Arcade Mode #2 | 🎯 next arcade release |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark
@@ -407,18 +409,81 @@ required exercises, separate educational currencies.
 
 ---
 
+## 12. Arcade Mode
+
+**Arcade Mode** is a new track, parallel to the Stage 2 chain and the Puzzle
+Blocks framework: short (3-5 min), fast, replayable arcade-cabinet levels
+reached through a press-gated `SubDoor` on an existing world, built on a
+shared reusable kit (`js/arcade.js`) rather than one-off level code. Junkyard
+Block Bash (item 20, ✅ shipped v1.29.0) is instance #1.
+
+**The kit** (`js/arcade.js`, no knowledge of any one cabinet's rules):
+`Mods` (timed modifiers with expiry callbacks — stack freely), `WaveRunner`
+(an ordered build → play → clear wave state machine with a par-time stall
+hook so a session can never grind to a halt), `Sequence` (timed-step
+intros/victories), `Spawner` (interval+jitter event scheduling), `ArcadeHud`
+(banners, world/screen pops, timer-ring modifier chips), and
+`arcadePayout`/`arcadePayTick` (a frame-rate-independent rolling candy
+payout). The engine side is one new slot, `lv.arcade`, mirroring `lv.puzzle`:
+`Player.update` hands off to it entirely (the cabinet owns the hero, no
+gravity/ramp/turbo code runs) and a matching `lv.touchLayout` swaps the
+touch controls to whatever the cabinet needs.
+
+**What Block Bash proved**: the two house rules generalize cleanly —
+*misses are comedy and nothing ever resets* (a lost ball/life just respawns;
+progress, active modifiers, and boss hp all persist), and *a session can
+never stall* (a never-stall par-time assist plus a one-shot boss droop kept
+every simulated playthrough — even a deliberately clumsy 40%-wrong-input
+policy — finishing well inside its ceiling, with zero flakes across repeated
+harness runs). Both are cheap, generic guarantees any future cabinet should
+keep.
+
+**Item 21 sketch — Blaster Run** (fast shooting: move, jump, shoot targets at
+heights) reuses `WaveRunner` for escalating target waves, `Spawner` for
+target pop-up timing, `Mods` for timed power-ups (rapid-fire, spread shot,
+giant targets), and `ArcadeHud` for the banner/combo/chip presentation —
+the same skeleton Block Bash used, with a side-scrolling-gallery ruleset
+instead of a Breakout one: the hero moves along a rail, jumps to reach
+high targets, and shoots (Space/★) at silly junkyard targets popping up at
+varied heights (low crates, mid-height tires, high hubcaps needing a jump-
+shot), with a moving/rotating target introduced mid-run the way Block Bash
+introduced runners and conveyors mid-wave. A boss cabinet-topper (a bigger
+target array, or a boss that pops multiple weak points) closes it out the
+way JUNKBOT closes Block Bash.
+
+**Candidate #3s** (pick after Blaster Run ships, to keep proving kit
+breadth rather than overfitting to one genre):
+- **Whack-a-Mole Junkyard** — a `Spawner`-driven grid of pop-up targets
+  (moles → junk critters) with escalating pop/retreat timing; tests the kit
+  against a fundamentally different input shape (tap-where-it-is rather
+  than move/aim).
+- **Claw Machine Candy Grab** — reuses the crane-magnet feel from Block
+  Bash's snatch event as the whole game: steer a claw, drop, grab, deposit,
+  against a `WaveRunner`-style escalating prize board.
+- **Junkyard Kart Sprint** — a short lap-based `RideMode`/Arcade Mode
+  crossover (steering + a boost `Mod`) if a faster, more literally
+  "arcade" racing beat is wanted alongside Blaster Run's shooting-gallery
+  beat.
+
+---
+
 # Recommended Development Order
 
-1. **Underwater 1-2: The Sunken Temple**
-2. **Cloud 2-2: The Weather Factory**
-3. **Mountain 3-2: The Frozen Observatory**
-4. Alien Space Station
-5. Great Dinosaur Rescue
-6. Junkyard Bridge Builders
+1. **Underwater 1-2: The Sunken Temple** — ✅ shipped
+2. **Cloud 2-2: The Weather Factory** — ✅ shipped
+3. **Mountain 3-2: The Frozen Observatory** — ✅ shipped
+4. Alien Space Station — ✅ shipped
+5. Great Dinosaur Rescue — ✅ shipped
+6. Junkyard Bridge Builders — 🎯 next up
 7. Magma Cooling Works
 8. Enchanted Garden
 9. Toy Factory
 10. Clockwork Castle
+
+Running alongside this Stage 2 order as a separate track: **Arcade Mode**
+(item 12) — Junkyard Block Bash shipped v1.29.0 as #1, Blaster Run is next.
+The two tracks share no content and can be worked in either order relative
+to each other.
 
 The first three should intentionally increase cognitive complexity:
 
