@@ -2861,6 +2861,35 @@ check('blockbash: no ball ever tunnels through a block or the truck at max speed
   return bad === 0;
 })()`, sandbox));
 
+// ---------------- Task 6: capsules & mods, crane, events, tires, net, plow ----------------
+const bbCatch = (kind) => { vm.runInContext(`(() => { const a = game.level.arcade, pl = game.player; a.capsules.length = 0; a.mods.clearAll(); a.balls.length = 0; a.spawnBall(pl.cx, pl.y - 20, true); a.capsules.push({ x: pl.cx, y: pl.y - 40, kind: '${kind}', vy: 220, t: 0 }); })()`, sandbox); frames(10); };
+bbCatch('wide'); check('blockbash: catching WIDE bolts a plow on and widens the paddle', bbS().mods.includes('wide') && vm.runInContext('game.level.arcade.paddleBox().w', sandbox) > 104 * 1.5);
+bbCatch('giant'); check('blockbash: GIANT grows every ball to r 32', bbS().mods.includes('giant') && bbS().balls.every(b => b.r === 32));
+bbCatch('slow'); vm.runInContext('game.level.arcade.launch(game.level.arcade.balls[0])', sandbox); frames(2);
+check('blockbash: SLOW-MO halves the ball speed', bbS().mods.includes('slow') && bbS().balls[0].speed < 380 * 0.6);
+bbCatch('multi'); check('blockbash: MULTI splits into 3 balls', bbS().balls.length === 3);
+bbCatch('net'); vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(300, 560, false); b.vx = 0; b.vy = 400; b.speed = 400; game.player.x = 1000; })()", sandbox); frames(15);
+check('blockbash: the JUNK NET bounces a missed ball back up', bbS().balls.length === 1 && bbS().balls[0].vy < 0 && !bbS().splat);
+bbCatch('magnet'); vm.runInContext("game.level.arcade.dropCandy(200, 300, 3)", sandbox); frames(40);
+check('blockbash: the MAGNET pulls candy straight to the truck', bbS().candies === 0);
+bbCatch('boom'); bbShoot('plain', 5, 2, "a.addBlock(4, 2, 'plain'); a.addBlock(6, 2, 'plain'); a.mods.add('boom', 8)"); frames(20);
+check('blockbash: a BOOM BALL blasts neighbours on every hit', bbS().blocks === 0);
+// power block → capsule → chip
+bbShoot('power'); frames(20);
+check('blockbash: a power block drops a capsule', vm.runInContext('game.level.arcade.capsules.length', sandbox) === 1);
+// events
+vm.runInContext("game.level.arcade.eventTire()", sandbox); vm.runInContext("(() => { const a = game.level.arcade; a.tires[0].x = game.player.cx; })()", sandbox); frames(5);
+check('blockbash: a giant tire spins the truck out briefly (no damage)', vm.runInContext('game.level.arcade.spinT', sandbox) > 0 && G().player.hearts === 3);
+frames(60); check('blockbash: the spin-out ends and control returns', vm.runInContext('game.level.arcade.spinT', sandbox) <= 0);
+vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 100; b.vy = -300; a.steer(b); a.eventSnatch(); })()", sandbox); frames(150);
+check('blockbash: the crane SNATCH grabs the ball and flings it — never lost', bbS().balls.length === 1 && !bbS().splat);
+vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; for (let c = 0; c < 4; c++) a.addBlock(c, 1, 'plain'); a.eventConveyor(1); })()", sandbox); const cvx = vm.runInContext('game.level.arcade.blocks[0].x', sandbox); frames(30);
+check('blockbash: a CONVEYOR slides a whole row', vm.runInContext('game.level.arcade.blocks[0].x', sandbox) !== cvx && vm.runInContext('game.level.arcade.blocks.every(b => b.vx === game.level.arcade.blocks[0].vx)', sandbox));
+vm.runInContext("game.level.arcade.candies.length = 0; game.level.arcade.eventTower()", sandbox); frames(180);
+check('blockbash: a JUNK TOWER topples into free candy', vm.runInContext('game.level.arcade.candies.length + game.level.arcade.towerCandy', sandbox) >= 3);
+vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
+check('blockbash: the crane CLEAR yanks one leftover block (and pays for it)', bbS().blocks === 1);
+
 // exit path (forced win for now — Task 8 wires the real victory)
 vm.runInContext('game.subWin()', sandbox); frames(320); tap('Space'); frames(10);
 check('blockbash: Space after the party returns to the rally in the truck, nothing leaks',

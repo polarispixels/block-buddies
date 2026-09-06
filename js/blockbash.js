@@ -14,6 +14,13 @@ const BB = {
   PAR: [45, 55, 65, 75], STALL_EVERY: 2.5,
   BOSS: { HP: 12, W: 340, H: 260, XMIN: 200, XMAX: 1080, YMIN: 150, YMAX: 330, STALL: 60 }
 };
+// phase-weighted capsule mix (phase 0/1/2+): multi/wide/net favoured early, boom/giant later
+const BB_CAP_WEIGHTS = [
+  { multi: 3, wide: 3, net: 3, slow: 2, giant: 1, magnet: 2, boom: 0 },
+  { multi: 3, wide: 2, net: 2, slow: 2, giant: 2, magnet: 2, boom: 1 },
+  { multi: 3, wide: 2, net: 2, slow: 1, giant: 3, magnet: 2, boom: 3 },
+];
+const BB_MOD_NAMES = { multi: 'MULTI BALL!', giant: 'GIANT!', wide: 'WIDE!', boom: 'BOOM BALL!', magnet: 'MAGNET!', slow: 'SLOW-MO!', net: 'JUNK NET!' };
 
 class BlockBash {
   constructor(lv) {
@@ -28,9 +35,17 @@ class BlockBash {
     this.splat = null;
     this.mods = new Mods((name) => this.onModExpire(name));
     this.hud = new ArcadeHud();
-    // Task 6/7/8 stubs — later tasks fill these in
-    this.net = null; this.junkbot = null;
+    this.phase = 0; // Task 7 drives this per wave; capsule weighting reads it
+    this.toast = null; // { kind, t } — big mod icon over the truck on capsule catch
+    // Task 7/8 stub — later task fills this in
+    this.junkbot = null;
+    this.net = null;
     this.capsules = []; this.tires = []; this.conveyorRows = new Map();
+    this.towerCandy = 0; this._towerGroups = []; this._surpriseBag = [];
+    this.crane = {
+      x: (BB.L + BB.R) / 2, y: 140, mode: 'idle', stage: null, target: null,
+      holding: null, t: 0, holdT: 0, wanderT: 0, wanderX: (BB.L + BB.R) / 2, mood: 'happy'
+    };
   }
   boot(pl) {
     this.booted = true;
@@ -64,12 +79,14 @@ class BlockBash {
 
   onModExpire(name) {
     if (name === 'rainbow') for (const b of this.balls) b.mood = 'happy';
-    // wide/giant/boom/magnet/slow/net expiries are Task 6/7's to react to further
+    if (name === 'giant') for (const b of this.balls) b.r = BB.BALL_R;
+    if (name === 'wide') this.wideK = 1;
+    if (name === 'net') this.net = null;
   }
 
   // ---- balls
   spawnBall(x, y, rest) {
-    const b = { x, y, r: this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R, vx: 0, vy: 0, speed: this.phaseSpeed, rest, bumpT: 0, squash: 1, mood: 'happy', trail: [] };
+    const b = { x, y, r: this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R, vx: 0, vy: 0, speed: this.phaseSpeed, rest, bumpT: 0, graceT: 0, squash: 1, mood: 'happy', trail: [] };
     this.balls.push(b); return b;
   }
   ballSpeed(b) { // target speed this frame: phase × slow × bump, hard-capped
@@ -109,7 +126,7 @@ class BlockBash {
     return k.hp - dmg > 0;
   }
   stepBall(b, dt) {
-    if (b.rest) return;
+    if (b.rest || b.held) return;
     const sp = Math.hypot(b.vx, b.vy) || 1, n = Math.max(1, Math.ceil(sp * dt / 8)), h = dt / n;
     for (let i = 0; i < n; i++) {
       b.x += b.vx * h; b.y += b.vy * h;
@@ -178,6 +195,8 @@ class BlockBash {
       game.candy += 5; this.hud.pop(cx, cy, '+5', '#ffd24a', 26);
       AudioSys.sfx('candy');
       Particles.burst(cx, cy, 8, { colors: ['#fff', '#ffe156'], type: 'block', sp1: 260, l1: 0.6, s1: 9, grav: 600 });
+    } else if (b.tower) {
+      this.dropCandy(cx, cy, 1); this.towerCandy++;
     } else {
       const pay = b.kind === 'tough' ? 3 : 1;
       if (b.kind === 'candy') this.dropCandy(cx, cy, 5); else { game.candy += pay; this.hud.pop(cx, cy, '+' + pay, '#ffd24a', 24); }
@@ -195,10 +214,232 @@ class BlockBash {
     for (const k of this.blocks) if (k.alive && Math.hypot(k.x + k.w / 2 - x, k.y + k.h / 2 - y) <= radius) this.breakBlock(k, 'boom');
   }
 
-  // ---- power-up stubs (Task 6 fills these in)
-  netHit(b) {}
-  dropCapsule(x, y) {}
-  surprise(x, y) {}
+  // ---- power-up capsules
+  netHit(b) {
+    AudioSys.sfx('clank');
+    Particles.burst(b.x, b.y, 6, { colors: ['#fff', '#9a9a9a'], type: 'circle', sp1: 200, l1: 0.4, s1: 6, grav: 300 });
+  }
+  dropCapsule(x, y, kind) {
+    if (!kind) {
+      const weights = BB_CAP_WEIGHTS[Math.min(this.phase, BB_CAP_WEIGHTS.length - 1)];
+      const entries = Object.entries(weights).filter(([, w]) => w > 0);
+      let r = rand(0, entries.reduce((s, [, w]) => s + w, 0));
+      for (const [k, w] of entries) { r -= w; if (r <= 0) { kind = k; break; } }
+      if (!kind) kind = entries[entries.length - 1][0];
+    }
+    this.capsules.push({ x, y, kind, vy: BB.CAPSULE_VY, t: 0 });
+  }
+  updateCapsules(dt) {
+    const p = this.paddleBox();
+    for (let i = this.capsules.length - 1; i >= 0; i--) {
+      const c = this.capsules[i];
+      c.t += dt; c.y += c.vy * dt;
+      if (c.y + 22 > p.y && c.y - 22 < p.y + p.h && c.x + 22 > p.x && c.x - 22 < p.x + p.w) {
+        this.capsules.splice(i, 1); this.applyMod(c.kind); continue;
+      }
+      if (c.y > BB.FLOOR + 30) this.capsules.splice(i, 1);
+    }
+  }
+  applyMod(kind) {
+    AudioSys.sfx('bashpow');
+    this.hud.banner(BB_MOD_NAMES[kind] || kind.toUpperCase(), '#ffe156');
+    this.toast = { kind, t: 1 };
+    if (kind === 'multi') {
+      for (const b of this.balls.slice()) if (b.rest) this.launch(b);
+      for (const b of this.balls.slice()) {
+        for (let i = 0; i < 2 && this.balls.length < BB.MAX_BALLS; i++) {
+          const ang = Math.atan2(b.vy, b.vx) + (i === 0 ? -1 : 1) * (35 * Math.PI / 180);
+          const nb = this.spawnBall(b.x, b.y, false);
+          nb.vx = Math.cos(ang) * b.speed; nb.vy = Math.sin(ang) * b.speed;
+          this.steer(nb);
+        }
+      }
+    } else if (kind === 'giant') {
+      this.mods.add('giant', BB.MODS.giant);
+      for (const b of this.balls) b.r = BB.GIANT_R;
+    } else if (kind === 'wide') {
+      this.mods.add('wide', BB.MODS.wide);
+      this.wideK = 1.6;
+    } else if (kind === 'net') {
+      this.mods.add('net', BB.MODS.net);
+      this.net = { t: BB.MODS.net };
+    } else {
+      this.mods.add(kind, BB.MODS[kind]);
+    }
+  }
+
+  // ---- environmental surprise events
+  surprise(x, y) {
+    if (!this._surpriseBag.length) {
+      const bag = ['tire', 'snatch', 'conveyor', 'tower'];
+      for (let i = bag.length - 1; i > 0; i--) { const j = randi(0, i); const tmp = bag[i]; bag[i] = bag[j]; bag[j] = tmp; }
+      this._surpriseBag = bag;
+    }
+    const kind = this._surpriseBag.pop();
+    this.hud.banner('SURPRISE!', '#ffe156');
+    AudioSys.sfx('whoosh');
+    if (kind === 'tire') this.eventTire();
+    else if (kind === 'snatch') this.eventSnatch();
+    else if (kind === 'conveyor') { const row = this._randomRowWithBlocks(); if (row != null) this.eventConveyor(row); else this.eventTire(); }
+    else this.eventTower();
+  }
+  _randomRowWithBlocks() {
+    const rows = [...new Set(this.aliveBlocks().map(b => b.row))];
+    return rows.length ? rows[randi(0, rows.length - 1)] : null;
+  }
+
+  // GIANT TIRE: rolls floor-to-floor; hitting the truck spins it out 0.5s (no damage)
+  eventTire() {
+    const side = Math.random() < 0.5;
+    this.tires.push({ x: side ? BB.L : BB.R, y: BB.FLOOR, r: 62, vx: side ? 380 : -380, rot: 0 });
+  }
+  updateTires(dt) {
+    const p = this.paddleBox();
+    for (let i = this.tires.length - 1; i >= 0; i--) {
+      const tr = this.tires[i];
+      tr.x += tr.vx * dt; tr.rot += (tr.vx / tr.r) * dt;
+      if (this.spinT <= 0) {
+        const cyc = BB.FLOOR - tr.r;
+        const cx = clamp(tr.x, p.x, p.x + p.w), cy = clamp(cyc, p.y, p.y + p.h);
+        const dx = tr.x - cx, dy = cyc - cy;
+        if (dx * dx + dy * dy < tr.r * tr.r) {
+          this.spinT = 0.5; AudioSys.sfx('tireboom'); game.shake = Math.max(game.shake, 0.25);
+          Particles.burst(game.player.cx, game.player.cy - 20, 10, { colors: ['#ffe156', '#fff'], type: 'sparkle', sp1: 260, l1: 0.7, s1: 10, grav: -60 });
+        }
+      }
+      if (tr.x < BB.L - tr.r - 30 || tr.x > BB.R + tr.r + 30) this.tires.splice(i, 1);
+    }
+  }
+
+  // MAGNET SNATCH / anti-stall CLEAR: the crane rail piece, doubles for both jobs
+  updateCrane(dt) {
+    const c = this.crane;
+    if (c.mode === 'idle') {
+      c.wanderT -= dt;
+      if (c.wanderT <= 0) { c.wanderX = rand(BB.L + 100, BB.R - 100); c.wanderT = rand(2, 4); }
+      c.x = lerp(c.x, c.wanderX, 1 - Math.exp(-1.2 * dt));
+      c.y = lerp(c.y, 140, 1 - Math.exp(-2 * dt));
+      c.holding = null;
+    } else if (c.mode === 'snatch') this.updateSnatch(dt);
+    else if (c.mode === 'clear') this.updateClear(dt);
+  }
+  eventSnatch() {
+    let best = null, bd = Infinity;
+    for (const b of this.balls) {
+      if (b.rest || b.held) continue;
+      const d = Math.hypot(b.x - this.crane.x, b.y - this.crane.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (!best) return;
+    const c = this.crane;
+    c.mode = 'snatch'; c.stage = 'chase'; c.target = best; c.t = 0; c.holdT = 0;
+  }
+  updateSnatch(dt) {
+    const c = this.crane, b = c.target;
+    if (!b || this.balls.indexOf(b) < 0) { c.mode = 'idle'; c.holding = null; c.target = null; return; }
+    if (c.stage === 'chase') {
+      const tx = b.x, ty = b.y - 6;
+      c.x += clamp(tx - c.x, -700 * dt, 700 * dt);
+      c.y += clamp(ty - c.y, -500 * dt, 500 * dt);
+      if (Math.abs(c.x - tx) < 6 && Math.abs(c.y - ty) < 6) {
+        c.stage = 'hold'; c.holdT = 0; b.held = true; c.holding = b; b.vx = 0; b.vy = 0;
+        AudioSys.sfx('bashclank');
+      }
+    } else if (c.stage === 'hold') {
+      b.x = c.x; b.y = c.y + 6;
+      c.holdT += dt;
+      if (c.holdT >= 0.8) {
+        const ang = rand(-150, -30) * Math.PI / 180, sp = this.ballSpeed(b);
+        b.held = false; c.holding = null;
+        b.vx = Math.cos(ang) * sp; b.vy = Math.sin(ang) * sp;
+        this.steer(b);
+        b.graceT = 1.2; // the crane's release can never be "lost" — it briefly bounces off the floor if missed
+        AudioSys.sfx('whoosh');
+        c.stage = 'retract'; c.t = 0; c.target = null;
+      }
+    } else if (c.stage === 'retract') {
+      c.t += dt; c.y = lerp(c.y, 140, 1 - Math.exp(-3 * dt));
+      if (c.t > 0.6) c.mode = 'idle';
+    }
+  }
+  craneClearOne() {
+    const candidates = this.aliveBlocks().filter(b => b.landed && !b.falling);
+    if (!candidates.length) return;
+    const b = candidates[randi(0, candidates.length - 1)];
+    const c = this.crane;
+    c.mode = 'clear'; c.stage = 'chase'; c.target = b; c.t = 0;
+  }
+  updateClear(dt) {
+    const c = this.crane, b = c.target;
+    if (!b || !b.alive) { c.mode = 'idle'; c.target = null; c.holding = null; return; }
+    const tx = b.x + b.w / 2, ty = b.y + b.h / 2 - 10;
+    if (c.stage === 'chase') {
+      c.x += clamp(tx - c.x, -700 * dt, 700 * dt);
+      c.y += clamp(ty - c.y, -500 * dt, 500 * dt);
+      if (Math.abs(c.x - tx) < 6 && Math.abs(c.y - ty) < 6) { c.stage = 'grab'; c.t = 0; c.holding = b; }
+    } else if (c.stage === 'grab') {
+      c.t += dt;
+      if (c.t >= 0.3) {
+        AudioSys.sfx('bashclank');
+        this.breakBlock(b, 'crane');
+        c.holding = null; c.stage = 'retract'; c.t = 0; c.target = null;
+      }
+    } else if (c.stage === 'retract') {
+      c.t += dt; c.y = lerp(c.y, 140, 1 - Math.exp(-3 * dt));
+      if (c.t > 0.6) c.mode = 'idle';
+    }
+  }
+
+  // CONVEYOR: one row slides forever, wraps at the walls
+  eventConveyor(row, dir) {
+    if (dir === undefined) dir = Math.random() < 0.5 ? -1 : 1;
+    this.conveyorRows.set(row, dir);
+    for (const b of this.blocks) if (b.row === row) b.vx = dir * 60;
+  }
+  updateConveyors(dt) {
+    const span = BB.R - BB.L;
+    for (const [row, dir] of this.conveyorRows) {
+      for (const b of this.blocks) {
+        if (b.row !== row || !b.alive || !b.landed || b.falling) continue;
+        if (b.kind === 'runner' && b.runT > 0) continue;
+        b.x += dir * 60 * dt;
+        if (b.x < BB.L) b.x += span; else if (b.x + b.w > BB.R) b.x -= span;
+        b.vx = dir * 60;
+      }
+    }
+  }
+
+  // JUNK TOWER: 3 plain blocks rain in at a wall column, then topple into free candy
+  eventTower() {
+    const col = Math.random() < 0.5 ? 0 : 11;
+    const rows = [4, 3, 2];
+    const blocksArr = rows.map((row, i) => {
+      const b = this.addBlock(col, row, 'plain');
+      b.tower = true; b.landed = false; b.bounced = false; b.y = -60 - i * 30; b.vy = 0;
+      return b;
+    });
+    this._towerGroups.push({ blocks: blocksArr, state: 'falling', t: 0, idx: 0 });
+  }
+  updateTowers(dt) {
+    for (let i = this._towerGroups.length - 1; i >= 0; i--) {
+      const g = this._towerGroups[i];
+      if (g.state === 'falling') {
+        if (g.blocks.every(b => b.landed || !b.alive)) { g.state = 'wait'; g.t = 0; }
+      } else if (g.state === 'wait') {
+        g.t += dt;
+        if (g.t >= 1.2) { g.state = 'topple'; g.idx = 0; g.t = 0; }
+      } else if (g.state === 'topple') {
+        g.t += dt;
+        while (g.idx < g.blocks.length && g.t >= g.idx * 0.25) {
+          const b = g.blocks[g.idx];
+          if (b.alive) this.breakBlock(b, 'tower');
+          g.idx++;
+        }
+        if (g.idx >= g.blocks.length) this._towerGroups.splice(i, 1);
+      }
+    }
+  }
+
   onBlockBroken(b) {}
 
   // ---- candy
@@ -212,7 +453,7 @@ class BlockBash {
       if (!c.onFloor) {
         if (magnet) {
           const dx = pl.cx - c.x, dy = pl.cy - c.y, d = Math.hypot(dx, dy) || 1;
-          c.vx = dx / d * 900; c.vy = dy / d * 900;
+          c.vx = dx / d * 1400; c.vy = dy / d * 1400;
         } else {
           c.vy += 900 * dt;
           const dx = pl.cx - c.x;
@@ -236,6 +477,16 @@ class BlockBash {
     const p = this.paddleBox();
     for (const b of this.blocks) {
       if (!b.alive) continue;
+      if (!b.landed) {
+        // rain-in: fall to the grid row, bounce once, settle (junk tower and — later — wave build-in both use this)
+        b.vy += 1400 * dt; b.y += b.vy * dt;
+        const gy = BB.GY + b.row * BB.BH;
+        if (b.y >= gy) {
+          if (!b.bounced) { b.y = gy; b.vy = -180; b.bounced = true; if (Math.random() < 0.5) AudioSys.sfx('bashclank'); }
+          else { b.y = gy; b.vy = 0; b.landed = true; }
+        }
+        continue;
+      }
       if (b.hitT > 0) b.hitT = Math.max(0, b.hitT - dt);
       if (b.kind === 'runner' && b.runT > 0) {
         b.runT -= dt;
@@ -259,6 +510,7 @@ class BlockBash {
         }
       }
     }
+    this.updateTowers(dt);
   }
 
   // ---- miss + debris + splat
@@ -300,13 +552,17 @@ class BlockBash {
         b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 6) b.trail.shift();
         this.stepBall(b, dt);
         if (b.bumpT > 0) b.bumpT = Math.max(0, b.bumpT - dt);
+        if (b.graceT > 0) b.graceT = Math.max(0, b.graceT - dt);
         b.squash = lerp(b.squash, 1, 1 - Math.exp(-10 * dt));
       }
     }
-    // miss detection (after stepping)
+    // miss detection (after stepping) — a ball just released by the crane snatch is graced:
+    // it bounces off the floor instead of being lost, so the event can never cost a ball
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i];
-      if (!b.rest && b.y - b.r > BB.MISS_Y) this.loseBall(b);
+      if (b.rest || b.held || b.y - b.r <= BB.MISS_Y) continue;
+      if (b.graceT > 0) { b.y = BB.FLOOR - 20 - b.r; b.vy = -Math.abs(b.vy || 300); this.steer(b); }
+      else this.loseBall(b);
     }
     // respawn
     if (this.respawnT > 0) {
@@ -324,6 +580,11 @@ class BlockBash {
 
     this.updateBlocks(dt, pl);
     this.updateCandy(dt, pl);
+    this.updateCapsules(dt);
+    this.updateTires(dt);
+    this.updateConveyors(dt);
+    this.updateCrane(dt);
+    if (this.toast) { this.toast.t -= dt; if (this.toast.t <= 0) this.toast = null; }
   }
 
   drawBack(ctx, t) {
@@ -337,6 +598,10 @@ class BlockBash {
     for (const c of this.candies) drawCandy(ctx, c.x, c.y, 15, c.kind || 0, t); // BASH_ART has no dedicated candyDrop; reuse the shared util.js candy piece like every other level's pickups
     for (const b of this.blocks) if (b.alive) BASH_ART.block(ctx, b, t);
     for (const d of this.debris) BASH_ART.junk(ctx, d.x, d.y, d.kind, d.rot, 1);
+    for (const c of this.capsules) BASH_ART.capsule(ctx, c.x, c.y, c.kind, t);
+    for (const tr of this.tires) BASH_ART.tire(ctx, tr.x, BB.FLOOR - tr.r, tr.r, tr.rot, t);
+    if (this.net) BASH_ART.net(ctx, BB.FLOOR - 14, t, this.mods.frac('net'));
+    BASH_ART.crane(ctx, this.crane.x, this.crane.y, t, { holding: !!this.crane.holding, mood: this.crane.mood });
     for (const b of this.balls) {
       for (const p of b.trail) { ctx.save(); ctx.globalAlpha = 0.18; BASH_ART.ball(ctx, p.x, p.y, b.r * 0.7, t, { mood: b.mood }); ctx.restore(); }
       BASH_ART.ball(ctx, b.x, b.y, b.r, t, { mood: b.mood, rainbow: this.mods.has('rainbow'), squash: b.squash });
@@ -346,5 +611,14 @@ class BlockBash {
   drawFront(ctx, t) {
     const chips = this.mods.list().map(m => ({ frac: this.mods.frac(m.name), icon: (ctx, x, y, s) => BASH_ART.modIcon(ctx, x, y, s, m.name) }));
     this.hud.drawScreen(ctx, t, chips);
+    if (this.mods.has('wide')) {
+      const pl = game.player, facing = pl.facing || 1, pw = 70, ph = pl.h * 0.85;
+      BASH_ART.plow(ctx, pl.cx + facing * (pl.w / 2 + pw * 0.32), pl.cy, pw, ph, facing, t);
+    }
+    if (this.toast) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, this.toast.t * 2);
+      BASH_ART.modIcon(ctx, game.player.cx, game.player.y - 66, 40, this.toast.kind);
+      ctx.restore();
+    }
   }
 }
