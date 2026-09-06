@@ -2923,8 +2923,11 @@ check('blockbash: a JUNK TOWER topples into free candy', vm.runInContext('game.l
 // rest every ball first — a still-flying ball left over from the snatch test
 // above can otherwise smash one of these two test blocks itself (on top of
 // the crane's own pick), occasionally leaving 0 instead of 1 and flaking this
-// check; the crane's own action is what's under test here, in isolation
-vm.runInContext("(() => { const a = game.level.arcade; a.balls.forEach(b => { b.rest = true; b.held = false; }); a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
+// check; the crane's own action is what's under test here, in isolation. Also
+// park launchT — a resting ball auto-relaunches once launchT elapses even
+// while rest === true, and this test's 200-frame wait is long enough for
+// that to happen and re-arm the exact same race.
+vm.runInContext("(() => { const a = game.level.arcade; a.balls.forEach(b => { b.rest = true; b.held = false; }); a.launchT = 999; a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
 check('blockbash: the crane CLEAR yanks one leftover block (and pays for it)', bbS().blocks === 1);
 
 // ---------------- waves, escalation, build-in, anti-stall, intro hints (Task 7) ----------------
@@ -2942,14 +2945,35 @@ check('blockbash: the intro hint is spliced out after the first launch', vm.runI
 vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(10);
 check('blockbash: clearing the board starts the WAVE CLEAR flourish', vm.runInContext("game.level.arcade.waves.state", sandbox) === 'clear' && vm.runInContext("game.level.arcade.hud.bannerText", sandbox) !== null);
 check('blockbash: the flourish collects every ball to ONE resting ball on the roof', vm.runInContext("(() => { const a = game.level.arcade; return a.waves.state === 'clear' && a.balls.length === 1 && a.balls[0].rest; })()", sandbox));
-frames(200);
-check('blockbash: wave 2 brings power/candy/split/tough blocks and speed 430', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 1 && ks.includes('power') && ks.includes('split') && ks.includes('tough') && a.phaseSpeed === 430; })()", sandbox));
+// wave 2 and wave 3's kind checks used to sample after a blind wait — the
+// same flake class the wave 4 check further down was built to dodge (a
+// resting ball can auto-launch and break/scoot a special block before a
+// blind-wait check ever runs). Snapshot each wave's kind mix the instant its
+// build begins instead (mirrors bb4Snap below), before anything can land and
+// become hittable.
+function bbSnapWave(i, maxF) {
+  for (let bbF = 0; bbF < maxF; bbF++) {
+    frames(1);
+    if (vm.runInContext('game.level.arcade.waves.i', sandbox) === i) {
+      return vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return { ks, conveyors: a.conveyorRows.size, phaseSpeed: a.phaseSpeed }; })()", sandbox);
+    }
+  }
+  return null;
+}
+function bbWaitPlay(maxF) {
+  for (let bbF = 0; bbF < maxF; bbF++) { frames(1); if (vm.runInContext("game.level.arcade.waves.state", sandbox) === 'play') return true; }
+  return false;
+}
+const bb2Snap = bbSnapWave(1, 300);
+check('blockbash: wave 2 brings power/candy/split/tough blocks and speed 430', bb2Snap !== null && bb2Snap.ks.includes('power') && bb2Snap.ks.includes('split') && bb2Snap.ks.includes('tough') && bb2Snap.phaseSpeed === 430);
+bbWaitPlay(300); // let the build-in land before forcing a stall below
 // anti-stall: past par the crane starts clearing
 vm.runInContext("(() => { const a = game.level.arcade; a.waves.stallT = 999; a.balls.forEach(b => { b.rest = true; }); })()", sandbox);
-const nb0 = bbS().blocks; frames(60 * 6);
+const nb0 = bbS().blocks; frames(60 * 8);
 check('blockbash: past par the crane yanks leftover blocks — a wave can never stall', bbS().blocks < nb0);
-vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(210);
-check('blockbash: wave 3 = moving junk (conveyor rows, fallers, runners, barrels, surprises), speed 480', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 2 && a.conveyorRows.size >= 2 && ks.includes('faller') && ks.includes('runner') && ks.includes('boom') && ks.includes('surprise') && a.phaseSpeed === 480; })()", sandbox));
+vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox);
+const bb3Snap = bbSnapWave(2, 300);
+check('blockbash: wave 3 = moving junk (conveyor rows, fallers, runners, barrels, surprises), speed 480', bb3Snap !== null && bb3Snap.conveyors >= 2 && bb3Snap.ks.includes('faller') && bb3Snap.ks.includes('runner') && bb3Snap.ks.includes('boom') && bb3Snap.ks.includes('surprise') && bb3Snap.phaseSpeed === 480);
 vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox);
 // wave 4 has the deepest/densest build-in (60 blocks, up to ~1.5s of fallDelay
 // stagger before the last one even starts falling) — sample every frame from
@@ -2994,7 +3018,14 @@ check('blockbash: re-entering via the door restores subReturn for the exit check
 // ---------------- THE JUNKBOT finale, victory, party & persistence (Task 8) ----------------
 // force wave 4 (whatever it actually contains right now) to read as cleared —
 // WaveRunner's own clear flourish + onDone then lowers the boss for real
-vm.runInContext("(() => { const a = game.level.arcade; a.waves.i = 3; a.blocks.length = 0; a.waves.state = 'play'; })()", sandbox); frames(10); frames(320); // 2 s clear flourish + the 1.4 s chain descent
+vm.runInContext("(() => { const a = game.level.arcade; a.waves.i = 3; a.blocks.length = 0; a.waves.state = 'play'; })()", sandbox); frames(10); frames(230); // 2 s clear flourish + the 1.4 s chain descent
+// park the resting ball the moment the boss has appeared — with the boss's
+// auto-launch tuned down to 2.5s (v1.29.0, Task 9) an idle ball now has time
+// to launch itself and land a stray hit on the JUNKBOT before the scripted
+// hits below ever run, throwing off the exact hp/candy counts those checks
+// assert. Park it (never restore the old 4.5s window to dodge this).
+vm.runInContext("(() => { const a = game.level.arcade; a.launchT = 999; a.balls.forEach(b => { b.rest = true; b.held = false; b.vx = 0; b.vy = 0; }); })()", sandbox);
+frames(90);
 check('blockbash: clearing wave 4 lowers the JUNKBOT on its chain', vm.runInContext("game.level.arcade.state === 'boss' && !!game.level.arcade.junkbot", sandbox) && G().level.music === 'arcade');
 const JB = () => vm.runInContext('(() => { const j = game.level.arcade.junkbot; return { hp: j.hp, stage: j.stage, parts: { ...j.parts }, x: j.x, y: j.y, w: j.w, h: j.h }; })()', sandbox);
 const bbHitBot = () => { vm.runInContext("(() => { const a = game.level.arcade, j = a.junkbot; a.balls.length = 0; const b = a.spawnBall(j.x + j.w / 2, j.y + j.h + 60, false); b.vx = 0; b.vy = -540; b.speed = 540; })()", sandbox); frames(12); };
@@ -3003,11 +3034,38 @@ check('blockbash: three hits pop the SIGN shield off (+10 candy)', JB().hp === 9
 check('blockbash: junkbot attacks never hurt the truck', G().player.hearts === 3);
 for (let i = 0; i < 3; i++) bbHitBot();
 check('blockbash: six hits — left tire gone, stage 3 rolls tires', JB().parts.tireL === false && JB().stage >= 2);
-vm.runInContext("game.level.arcade.junkbot.beam(game.level.arcade.balls[0] || game.level.arcade.spawnBall(600, 400, false))", sandbox); frames(120);
-check('blockbash: the magnet beam grabs and flings the ball but never loses it', bbS().balls.length >= 1 && !bbS().splat);
+// stage 3 (reached above) arms the junkbot's own automatic beam Spawner —
+// left alone it can fire spontaneously mid-flight during the scripted
+// bbHitBot() shots below (a real, occasionally-flaking race that showed up
+// once the earlier wave restructuring shifted the overall Math.random() call
+// sequence), grabbing an aimed ball before it lands and throwing off the
+// exact hit/candy counts those checks assert. Disarm the automatic Spawner
+// for the rest of this deterministic section — the beam mechanic itself is
+// still exercised for real by the explicit trigger right below.
+vm.runInContext("(() => { game.level.arcade.junkbot.beams.t = 9999; })()", sandbox);
+vm.runInContext("game.level.arcade.junkbot.beam(game.level.arcade.balls[0] || game.level.arcade.spawnBall(600, 400, false))", sandbox);
+// catch the moment of release (hold is 0.8s = 48 frames) rather than letting
+// the ball keep flying afterward: the boss box is huge, and a passive wait
+// long enough to prove a miss always recovers gives the loose ball plenty of
+// chances to bounce straight back into the box and rack up incidental hits,
+// which once raced the junkbot to 0 hp before the scripted sequence below
+// ever ran (a null-junkbot crash). "never loses it" is really the release
+// guarantee itself — always flung upward (spec: rand(-150,-30) degrees),
+// never straight down at the floor — which is exactly what beam() computes,
+// so check that directly and then park the ball before it can rack up any
+// more incidental hits.
+frames(50);
+const bbBeamRel = vm.runInContext("(() => { const a = game.level.arcade; const b = a.balls.find(x => !x.held); return b ? { exists: true, vy: b.vy } : { exists: false }; })()", sandbox);
+check('blockbash: the magnet beam grabs and flings the ball upward, never loses it', bbBeamRel.exists && bbBeamRel.vy < 0);
+vm.runInContext("(() => { game.level.arcade.balls.length = 0; })()", sandbox); // park it — the scripted hits below need a clean slate anyway
 for (let i = 0; i < 3; i++) bbHitBot();
 check('blockbash: nine hits — the core opens', JB().parts.tireR === false && vm.runInContext('game.level.arcade.junkbot.coreOpen', sandbox) === true);
-vm.runInContext("(() => { const j = game.level.arcade.junkbot; j.stallT = 61; })()", sandbox); const jy = JB().y; frames(5);
+// clear any ball still bouncing from the last scripted hit first — by stage 3
+// the beam Spawner is live and can otherwise grab it and fling it (random
+// angle) back into the box within these 5 frames, re-hitting the junkbot and
+// resetting stallT before the droop check below ever reads it (a real,
+// occasionally-flaking race, not something to paper over with a wider window)
+vm.runInContext("(() => { const a = game.level.arcade, j = a.junkbot; a.balls.length = 0; j.stallT = 61; })()", sandbox); const jy = JB().y; frames(5);
 check('blockbash: 60 s without a hit and the junkbot droops closer', JB().y > jy || vm.runInContext('game.level.arcade.junkbot.droop', sandbox) > 0);
 const cV = G().candy; for (let i = 0; i < 3; i++) bbHitBot();
 check('blockbash: twelve hits start the VICTORY sequence', vm.runInContext("game.level.arcade.state", sandbox) === 'victory');
@@ -3022,6 +3080,143 @@ put(600, 620 - 96); frames(5);
 check('blockbash: the finished cabinet is a dormant trophy; walking over never re-enters', (() => { put(280 - 52, 620 - 96); frames(20); return G().level.n === 7; })());
 tap('Space'); frames(10);
 check('blockbash: standing on the trophy + Space replays the whole arcade', G().level.n === 'blockbash' && G().state === 'intro');
+
+// ---------------- reachability sweep (Task 9 playability gate) ----------------
+// every wave layout, once its blocks have landed, stays inside the arena
+check('blockbash: every wave layout keeps its blocks inside the arena once landed (x 64..1216, y 110..350)', vm.runInContext(`(() => {
+  const lv = game.level;
+  const pl = { x: 590, y: 524, w: 104, h: 96 };
+  for (const fn of ['buildWave1', 'buildWave2', 'buildWave3', 'buildWave4']) {
+    const m = new BlockBash(lv);
+    m[fn]();
+    for (let i = 0; i < 260; i++) m.updateBlocks(1 / 60, pl); // settle the whole rain-in (wave 4's stagger needs ~1.7s)
+    const alive = m.aliveBlocks();
+    if (!alive.length || !alive.every(b => b.landed)) return false;
+    if (!alive.every(b => b.x >= 64 && b.x + b.w <= 1216 && b.y >= 110 && b.y + b.h <= 350)) return false;
+  }
+  return true;
+})()`, sandbox));
+// the paddle clamp both lets the truck occupy each wall exactly AND actually
+// pulls a truck driven past a wall back to it (a real clamp, not a no-op)
+check('blockbash: the truck can reach both arena walls (paddle clamp allows x=40 and x=1240-w)', vm.runInContext(`(() => {
+  const a = game.level.arcade, pl = game.player;
+  const x0 = pl.x, vx0 = pl.vx, w0 = pl.w;
+  a.booted = true; pl.w = 104; // this check runs while still in the trophy-replay
+  // 'intro' beat, before the arcade's own first updatePlayer() call — leaving
+  // booted false would make updatePlayer() run boot() instead of the clamp,
+  // clobbering the forced x; the truck's real width is 104 (boardTruck), not
+  // whatever on-foot size the player still has this early
+  pl.x = -500; pl.vx = 0; a.updatePlayer(pl, 1 / 60);
+  const leftOk = Math.abs(pl.x - 40) < 0.01;
+  pl.x = 5000; pl.vx = 0; a.updatePlayer(pl, 1 / 60);
+  const rightOk = Math.abs(pl.x - (1240 - pl.w)) < 0.01;
+  pl.x = x0; pl.vx = vx0; pl.w = w0;
+  return leftOk && rightOk;
+})()`, sandbox));
+// the JUNKBOT's box (pacing + sinusoidal bob) never wanders past the walls, and
+// its bottom stays close enough to the roof that a straight-up ball always
+// reaches it — checked through several full bob periods so the invariant
+// isn't a one-frame fluke. The anti-stall droop (spec: 60px, twice max) is a
+// deliberate, temporary exception that pulls the boss CLOSER to the paddle
+// (easier to hit, not harder), so it's exercised separately, not against the
+// same tight bound.
+check('blockbash: the junkbot box stays inside x 40..1240 with bottom <= 420 through a full pacing cycle', vm.runInContext(`(() => {
+  const j = new JunkBot();
+  j.entering = false; j.y = BB.BOSS.YMIN; j.droop = 0;
+  let bad = false;
+  for (let i = 0; i < 60 * 15; i++) {
+    j.update(1 / 60, game.level.arcade);
+    if (j.x < 40 || j.x + j.w > 1240 || j.y + j.h > 420) bad = true;
+  }
+  return !bad;
+})()`, sandbox));
+check('blockbash: the anti-stall droop only ever pulls the junkbot closer to the paddle, never off the floor', vm.runInContext(`(() => {
+  const j = new JunkBot();
+  j.entering = false; j.y = BB.BOSS.YMIN; j.droop = 120; // both droop steps applied (spec: 60px, twice max)
+  let bad = false;
+  for (let i = 0; i < 60 * 8; i++) {
+    j.update(1 / 60, game.level.arcade);
+    if (j.x < 40 || j.x + j.w > 1240 || j.y + j.h > BB.FLOOR) bad = true;
+  }
+  return !bad;
+})()`, sandbox));
+// capsules (no horizontal drift) and candy (drifts toward the paddle) dropped
+// from any column stay inside the walls all the way down
+check('blockbash: capsules and candy dropped from any column land inside the walls', vm.runInContext(`(() => {
+  const lv = game.level;
+  for (let col = 0; col < BB.COLS; col++) {
+    const m = new BlockBash(lv);
+    const pl = { cx: 642, cy: 572 };
+    const x = BB.GX + col * BB.BW + BB.BW / 2;
+    m.dropCapsule(x, 200, 'giant'); m.dropCandy(x, 200, 1);
+    for (let i = 0; i < 240; i++) {
+      m.updateCapsules(1 / 60); m.updateCandy(1 / 60, pl);
+      for (const c of m.capsules) if (c.x < BB.L || c.x > BB.R) return false;
+      for (const c of m.candies) if (c.x < BB.L - 20 || c.x > BB.R + 20) return false;
+    }
+  }
+  return true;
+})()`, sandbox));
+
+// ---------------- FULL SIMULATED RUNS — the playability gate (Task 9) ----------------
+// A "keep the truck under the ball" policy a five-year-old could follow must
+// finish the whole game (4 waves + JUNKBOT + victory -> party) inside 6
+// sim-minutes; a clumsy policy (wrong/idle on 40% of frames) inside 10; a
+// normal run should land in the 2-5.5 min zone. Never unwinnable.
+function bbRun(maxFrames, clumsy) {
+  vm.runInContext("game.startLevel('blockbash')", sandbox); frames(200);
+  let f = 0;
+  while (f < maxFrames) {
+    // landing-x prediction: a straight-line extrapolation past the side walls
+    // (the brief's original formula) chased a mirage whenever the aimed ball
+    // still had a wall bounce or two ahead of it, dragging out an otherwise
+    // simple "track the ball" run — fold the predicted flight path off the
+    // walls like a light bouncing in a hall of mirrors instead (still just
+    // "where will it land", the kind of thing an attentive kid reads off a
+    // bounce by eye; ignores block deflections, same as a kid would)
+    const st = vm.runInContext(`(() => { const a = game.level.arcade, pl = game.player; if (!a) return null; const live = a.balls.filter(b => !b.rest && !b.held); let tgt = null;
+      if (live.length) { live.sort((p, q) => (q.y - p.y)); tgt = live[0]; } const caps = a.capsules.length ? a.capsules[0] : null;
+      let tx;
+      if (tgt) {
+        if (tgt.vy > 5) {
+          const t = (pl.y - tgt.y) / tgt.vy, width = BB.R - BB.L;
+          let raw = (tgt.x - BB.L) + tgt.vx * t, m = raw % (2 * width); if (m < 0) m += 2 * width;
+          tx = BB.L + (m <= width ? m : 2 * width - m);
+        } else tx = tgt.x; // still rising/flat: no reliable landing yet, just shadow it
+        // during a wave, don't sit dead-centre under the predicted landing spot:
+        // a perfectly-centred catch returns the ball almost straight up (paddle
+        // english is near zero at the middle), which can settle into a stable
+        // back-and-forth that never sweeps into the last few columns. Nudge the
+        // aim toward wherever blocks remain — the same "lean toward the fuller
+        // side" instinct launch() itself already uses for the opening serve —
+        // so catches pick up some spread instead of orbiting forever.
+        if (a.state === 'play') {
+          const alive = a.aliveBlocks();
+          if (alive.length) {
+            let sum = 0; for (const b of alive) sum += b.x + b.w / 2;
+            tx = tx * 0.7 + (sum / alive.length) * 0.3;
+          }
+        }
+      } else tx = caps ? caps.x : (a.blocks.length ? 640 : pl.cx);
+      return { state: a.state, endPhase: game.endPhase, px: pl.cx, tx, rest: a.balls.some(b => b.rest), bally: tgt ? tgt.y : 0 }; })()`, sandbox);
+    if (!st || st.endPhase === 'party') break;
+    const wrong = clumsy && Math.random() < 0.4;
+    const hold = {};
+    if (!wrong) { if (st.tx > st.px + 12) hold.ArrowRight = 1; else if (st.tx < st.px - 12) hold.ArrowLeft = 1; }
+    else if (Math.random() < 0.5) hold[Math.random() < 0.5 ? 'ArrowLeft' : 'ArrowRight'] = 1;
+    if (st.rest && f % 30 === 0) tap('Space');
+    if (!clumsy && st.bally > 380 && Math.random() < 0.02) tap('ArrowUp');
+    frames(1, hold); f++;
+  }
+  return { frames: f, party: G().endPhase === 'party', state: vm.runInContext('game.level.arcade && game.level.arcade.state', sandbox), wave: vm.runInContext('game.level.arcade && game.level.arcade.waves.i', sandbox) };
+}
+const run1 = bbRun(60 * 360, false);
+check('blockbash: a simple tracking policy finishes the whole arcade inside 6 sim-minutes (' + Math.round(run1.frames / 60) + ' s, state ' + run1.state + ', wave ' + run1.wave + ')', run1.party);
+const run2 = bbRun(60 * 600, true);
+check('blockbash: a CLUMSY policy (40% wrong) still finishes inside 10 sim-minutes (' + Math.round(run2.frames / 60) + ' s)', run2.party);
+check('blockbash: a normal run lands in the 2-5.5 minute target zone (' + Math.round(run1.frames / 60) + ' s)', run1.frames >= 60 * 120 && run1.frames <= 60 * 330);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
 
 // ---------------- secret: ZOMBIE TOWN AFTER DARK (Jack's town to save) ----------------
 vm.runInContext('game.startLevel(5)', sandbox);

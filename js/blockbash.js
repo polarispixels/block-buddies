@@ -11,7 +11,14 @@ const BB = {
   LAUNCH_AUTO: 1.5, RESPAWN: 0.9,
   CAPSULE_VY: 220, CANDY_DRIFT: 140, FLOOR_CANDY_T: 6, MAX_BALLS: 6,
   MODS: { giant: 10, wide: 12, boom: 8, magnet: 10, slow: 6, net: 12, rainbow: 6 },
-  PAR: [45, 55, 65, 75], STALL_EVERY: 2.5,
+  // Task 9 playability gate: tuned down from [45, 55, 65, 75] / 2.5 — a full
+  // simulated run of the "keep the truck under the ball" tracking policy
+  // occasionally landed within 15% of the 5.5-min normal-run ceiling (one
+  // measured run hit 323s of a 330s cap) because a less-lucky run leans more
+  // heavily on the anti-stall crane to finish a wave; pulling par and the
+  // clear cadence in gives that safety net more headroom without touching
+  // how fast an actively-playing run clears blocks on its own.
+  PAR: [36, 44, 52, 60], STALL_EVERY: 2,
   BOSS: { HP: 12, W: 340, H: 260, XMIN: 200, XMAX: 1080, YMIN: 150, YMAX: 330, STALL: 60 }
 };
 // phase-weighted capsule mix (phase 0/1/2+): multi/wide/net favoured early, boom/giant later
@@ -49,7 +56,12 @@ class JunkBot {
     if (this.entering) { this.y = Math.min(BB.BOSS.YMIN, this.y + 300 * dt); if (this.y >= BB.BOSS.YMIN) { this.entering = false; AudioSys.sfx('bashroar'); game.shake = 0.3; } return; }
     const speed = 120 + this.stage * 45; this.x += this.dir * speed * dt;
     if (this.x < BB.BOSS.XMIN) { this.x = BB.BOSS.XMIN; this.dir = 1; } if (this.x > BB.BOSS.XMAX - this.w) { this.x = BB.BOSS.XMAX - this.w; this.dir = -1; } // body always inside x 200..1080
-    this.y = BB.BOSS.YMIN + this.droop + Math.sin(this.t * 1.3) * (BB.BOSS.YMAX - BB.BOSS.YMIN) * 0.5;
+    // small bob around YMIN, not a full YMIN..YMAX swing (Task 9 playability
+    // gate: BOSS.H (260) leaves only ~10px of headroom under the box's
+    // bottom <= 420 reachability bound before the anti-stall droop is even
+    // added; a bob using the full (YMAX-YMIN) range blew straight through
+    // that — and briefly poked the box above the arena's own TOP wall)
+    this.y = BB.BOSS.YMIN + this.droop + Math.sin(this.t * 1.3) * 9;
     this.stallT += dt; if (this.stallT > BB.BOSS.STALL && this.droop < 120) { this.droop += 60; this.stallT = 0; }
     this.drops.update(dt); if (this.stage >= 2) this.tires.update(dt); if (this.stage >= 3) this.beams.update(dt);
     if (this.beamT > 0) { this.beamT -= dt; const b = this.beamBall; if (b) { b.x = lerp(b.x, this.beamX, 1 - Math.exp(-8 * dt)); b.y = lerp(b.y, this.beamY, 1 - Math.exp(-8 * dt)); if (this.beamT <= 0) { b.held = false; const a = rand(-150, -30) * Math.PI / 180; b.vx = Math.cos(a) * b.speed; b.vy = Math.sin(a) * b.speed; m.steer(b); this.beamBall = null; } } }
@@ -171,6 +183,12 @@ class BlockBash {
     AudioSys.sfx('whoosh');
     // the intro's arrows hint (js/levels.js buildLevel('blockbash')) only matters until the
     // very first launch — remove it so it never lingers over a game already in motion
+    this.removeIntroHint();
+  }
+  // belt-and-braces: the boss's own auto-launch (onWavesDone) and the victory
+  // sequence (startVictory) both also guarantee the hint is gone, in case a
+  // whole wave somehow clears without the ball ever having been Space-launched
+  removeIntroHint() {
     if (this.lv.hints && this.lv.hints.length) {
       const hi = this.lv.hints.findIndex(h => h.icon === 'arrows' && h.x === 590 && h.y === 380);
       if (hi >= 0) this.lv.hints.splice(hi, 1);
@@ -608,11 +626,14 @@ class BlockBash {
     this.phase = 4; // capsule weighting through the boss fight (BB_CAP_WEIGHTS[4])
     this.hud.banner('JUNKBOT!', '#ff4d4d');
     AudioSys.setMusic('boss');
+    this.removeIntroHint();
     // a longer beat than the usual 1.5s before the resting ball auto-fires —
     // gives a kid a moment to take in the JUNKBOT lowering in on its chain
     // before the ball's back in play (and keeps it from launching mid-descent
-    // and clipping the boss's hitbox the instant it lands)
-    this.launchT = 4.5;
+    // and clipping the boss's hitbox the instant it lands). Tuned down from
+    // an original 4.5s (Task 9 playability gate — the entrance itself only
+    // takes ~1.4s; a kid shouldn't wait 3 extra seconds after the roar).
+    this.launchT = 2.5;
   }
 
   // ---- victory: the junk explosion, the 100-candy shower, fireworks, subWin
@@ -622,6 +643,7 @@ class BlockBash {
     this.mods.clearAll();
     this.flash = 0;
     AudioSys.setMusic('win');
+    this.removeIntroHint();
     const jb = this.junkbot;
     const cx = jb ? jb.x + jb.w / 2 : W / 2, cy = jb ? jb.y + jb.h / 2 : H / 2 - 60;
     const halfW = jb ? jb.w / 2 : 70, halfH = jb ? jb.h / 2 : 70;
