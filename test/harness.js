@@ -2741,6 +2741,7 @@ check('arcade kit: arcadePayout drains at ~90 candy/s into game.candy', vm.runIn
 
 // ---------------------------------------------------------------- JUNKYARD BLOCK BASH (v1.29.0)
 check('audio: every bash sfx name is handled', vm.runInContext("['bashhit','bashbreak','bashmiss','bashbump','bashpow','bashclank','bashroar','bashsplit'].every(n => { try { AudioSys.sfx(n); return true; } catch (e) { return false; } }) && !!SONGS.arcade", sandbox));
+check('audio: bash arp chimes are in Hz, not MIDI', vm.runInContext("(() => { const calls = []; const o = AudioSys.arp; AudioSys.arp = (notes) => calls.push(...notes); AudioSys.sfx('bashpow'); AudioSys.sfx('bashsplit'); AudioSys.arp = o; return calls.length === 7 && calls.every(f => f > 200); })()", sandbox));
 vm.runInContext('game.startLevel(7)', sandbox); frames(120);
 check('blockbash: the rally has a press-gated ARCADE cabinet door at x=280',
   vm.runInContext("game.level.subDoors.some(d => d.sub === 'blockbash' && d.press && d.style === 'arcade' && d.cx === 280)", sandbox));

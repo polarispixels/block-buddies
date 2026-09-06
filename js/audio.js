@@ -200,10 +200,10 @@ const AudioSys = {
       case 'bashbreak': this.noise(0.09, 0.22, 0, 2200); this.tone(300, 120, 0.12, 'triangle', 0.18); break; // block crumbles
       case 'bashmiss': this.tone(240, 60, 0.35, 'sawtooth', 0.2); this.noise(0.25, 0.25, 0.05, 900); break; // splat
       case 'bashbump': this.tone(180, 620, 0.16, 'square', 0.22); break; // hop BUMP!
-      case 'bashpow': this.arp([72, 76, 79, 84], 0.05, 0.12, 'square', 0.18); break; // capsule caught
+      case 'bashpow': this.arp([mf(72), mf(76), mf(79), mf(84)], 0.05, 0.12, 'square', 0.18); break; // capsule caught
       case 'bashclank': this.tone(900, 300, 0.12, 'square', 0.16); this.noise(0.1, 0.18, 0, 4000); break; // crane / bot part
       case 'bashroar': this.tone(90, 60, 0.6, 'sawtooth', 0.3); this.noise(0.5, 0.2, 0.05, 500); break; // junkbot
-      case 'bashsplit': this.arp([76, 83, 88], 0.04, 0.1, 'triangle', 0.2); break; // extra ball
+      case 'bashsplit': this.arp([mf(76), mf(83), mf(88)], 0.04, 0.1, 'triangle', 0.2); break; // extra ball
     }
   },
 
