@@ -153,18 +153,21 @@ const BASH_ART = {
   },
 
   // ---------------------------------------------------------------- 5
-  // The magnet head. x = centre, y = bottom of the magnet. Chain runs up to
-  // the rail underside (y=92). o.holding draws a warm grip glow; o.mood.
+  // The magnet head: a classic red/white horseshoe on a steel yoke, wider
+  // than tall — never confusable with Bouncy Buddy the ball. x = centre,
+  // y = bottom of the magnet (the leg tips). Chain runs up to the rail
+  // underside (y=92). o.holding draws a warm grip glow; o.mood.
   crane(ctx, x, y, t = 0, o = {}) {
     const holding = !!o.holding, mood = o.mood || 'happy';
-    const magR = 34, topY = y - magR * 2;
+    const legGap = 30, legLen = 13, armW = 14; // wider (2*legGap) than tall
+    const topAttachY = y - legLen - legGap;
     ctx.save();
     ctx.strokeStyle = '#4a4f5c'; ctx.lineWidth = 6; ctx.lineCap = 'round';
     ctx.beginPath();
     let py = 92, sign = 1;
     ctx.moveTo(x, py);
-    while (py < topY - 1) {
-      const ny = Math.min(py + 16, topY);
+    while (py < topAttachY - 1) {
+      const ny = Math.min(py + 16, topAttachY);
       ctx.lineTo(x + sign * 5, (py + ny) / 2);
       ctx.lineTo(x, ny);
       sign *= -1; py = ny;
@@ -173,28 +176,39 @@ const BASH_ART = {
     ctx.fillStyle = '#5a6070';
     ctx.beginPath(); ctx.arc(x, 90, 10, 0, TAU); ctx.fill();
     ctx.save();
-    ctx.translate(x, y - magR);
+    ctx.translate(x, y - legLen);
     if (holding) {
-      const gg = ctx.createRadialGradient(0, 0, 4, 0, 0, magR * 1.8);
+      const gg = ctx.createRadialGradient(0, -legGap * 0.4, 4, 0, -legGap * 0.4, legGap * 2.1);
       gg.addColorStop(0, 'rgba(255,235,150,0.9)'); gg.addColorStop(1, 'rgba(255,235,150,0)');
-      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 0, magR * 1.8, 0, TAU); ctx.fill();
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, -legGap * 0.4, legGap * 2.1, 0, TAU); ctx.fill();
     }
-    // steel casing rim (reads as an industrial lifting-magnet disc)
-    ctx.fillStyle = BB_TIRE_RIM;
-    ctx.beginPath(); ctx.arc(0, 0, magR, 0, TAU); ctx.fill();
-    ctx.strokeStyle = BB_TIRE_DARK; ctx.lineWidth = 4; ctx.stroke();
+    // the U-shaped body path: up the left leg, over the yoke, down the right
+    const uPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(-legGap, legLen);
+      ctx.lineTo(-legGap, 0);
+      ctx.arc(0, 0, legGap, Math.PI, TAU, false);
+      ctx.lineTo(legGap, legLen);
+    };
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // steel casing outline (drawn wider, underneath)
+    ctx.strokeStyle = BB_TIRE_DARK; ctx.lineWidth = armW + 6;
+    uPath(); ctx.stroke();
+    // red-painted horseshoe body
+    ctx.strokeStyle = BB_DRUM; ctx.lineWidth = armW;
+    uPath(); ctx.stroke();
+    // white tip bands at the bottom of each leg (the classic magnet look)
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = armW * 0.86;
+    for (const lx of [-legGap, legGap]) {
+      ctx.beginPath(); ctx.moveTo(lx, legLen * 0.3); ctx.lineTo(lx, legLen); ctx.stroke();
+    }
+    // rivets around the yoke
     ctx.fillStyle = BB_TIRE_DARK;
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * magR * 0.86, Math.sin(a) * magR * 0.86, magR * 0.09, 0, TAU); ctx.fill();
+    for (const a of [Math.PI * 1.15, Math.PI * 1.5, Math.PI * 1.85]) {
+      ctx.beginPath(); ctx.arc(Math.cos(a) * legGap * 0.9, Math.sin(a) * legGap * 0.9, 2.6, 0, TAU); ctx.fill();
     }
-    // red magnetic core
-    const bg = ctx.createRadialGradient(-magR * 0.25, -magR * 0.25, 4, 0, 0, magR * 0.74);
-    bg.addColorStop(0, BB_DRUM); bg.addColorStop(1, BB_DRUM2);
-    ctx.fillStyle = bg;
-    ctx.beginPath(); ctx.arc(0, 0, magR * 0.74, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#5a2018'; ctx.lineWidth = 4; ctx.stroke();
-    drawFace(ctx, 0, 0, magR * 0.68, mood, t, 6);
+    // face on the steel yoke (the rounded back), not the legs
+    drawFace(ctx, 0, -legGap * 0.62, legGap * 0.62, mood, t, 6);
     ctx.restore();
     ctx.restore();
   },
@@ -250,31 +264,35 @@ const BASH_ART = {
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     rr(ctx, -hw * 0.68, -hh * 0.78, w * 0.32, h * 0.22, 5); ctx.fill();
 
-    // kind decorations
+    // kind decorations — sized/pushed to the corners so the BIG face (below)
+    // stays the dominant, unmissable element at in-game size (96x48).
     if (kind === 'tough') {
       ctx.fillStyle = BB_METAL_DARK;
       for (const p of [[-hw + 10, -hh + 9], [hw - 10, -hh + 9], [-hw + 10, hh - 9], [hw - 10, hh - 9]]) {
         ctx.beginPath(); ctx.arc(p[0], p[1], 3.5, 0, TAU); ctx.fill();
       }
+      // dent scuffs live in the top corners (clear of the big face) — dizzy
+      // mood on the face itself is what really sells hp<=1, this backs it up
       const dents = Math.max(0, maxHp - hp);
-      ctx.strokeStyle = 'rgba(30,24,20,0.5)'; ctx.lineWidth = 4;
+      const dentPos = [[-hw * 0.62, -hh * 0.5], [hw * 0.62, -hh * 0.5]];
+      ctx.fillStyle = 'rgba(20,16,14,0.4)'; ctx.strokeStyle = 'rgba(20,16,14,0.65)'; ctx.lineWidth = 2.5;
       for (let i = 0; i < dents; i++) {
-        const dx = -hw * 0.42 + i * hw * 0.84;
-        ctx.beginPath(); ctx.arc(dx, -hh * 0.05, hh * 0.5, 0.2 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+        const p = dentPos[i % 2];
+        ctx.beginPath(); ctx.ellipse(p[0], p[1], hh * 0.34, hh * 0.22, 0.35, 0, TAU); ctx.fill(); ctx.stroke();
       }
     } else if (kind === 'candy') {
-      drawCandy(ctx, hw * 0.42, hh * 0.32, hh * 0.7, seed % 3, t);
+      drawCandy(ctx, hw * 0.64, hh * 0.6, hh * 0.5, seed % 3, t);
     } else if (kind === 'power') {
       const glow = 0.5 + 0.5 * Math.sin(t * 5);
       const gg = ctx.createRadialGradient(0, 0, 2, 0, 0, hw * 0.95);
       gg.addColorStop(0, POW.power.glow); gg.addColorStop(1, 'rgba(255,247,194,0)');
-      ctx.save(); ctx.globalAlpha = 0.3 * glow + 0.35; ctx.fillStyle = gg;
+      ctx.save(); ctx.globalAlpha = 0.28 * glow + 0.3; ctx.fillStyle = gg;
       ctx.beginPath(); ctx.arc(0, 0, hw * 0.95, 0, TAU); ctx.fill(); ctx.restore();
       ctx.fillStyle = '#fff';
-      starPath(ctx, hw * 0.6, -hh * 0.6, hh * 0.32, hh * 0.14, 5); ctx.fill();
+      starPath(ctx, hw * 0.74, -hh * 0.7, hh * 0.26, hh * 0.11, 5); ctx.fill();
     } else if (kind === 'boom') {
       ctx.fillStyle = BB_DRUM_BAND;
-      ctx.fillRect(-hw, -hh * 0.22, w, hh * 0.44);
+      ctx.fillRect(-hw, -hh * 0.9, w, hh * 0.32);
       ctx.strokeStyle = BB_RUST2; ctx.lineWidth = 4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(0, -hh); ctx.quadraticCurveTo(hw * 0.16, -hh - 14, hw * 0.05, -hh - 22); ctx.stroke();
       const spark = 0.6 + 0.4 * Math.sin(t * 20 + seed);
@@ -285,11 +303,11 @@ const BASH_ART = {
       ctx.beginPath(); ctx.moveTo(0, -hh + 4); ctx.lineTo(0, hh - 4); ctx.stroke();
     } else if (kind === 'surprise') {
       ctx.strokeStyle = BB_METAL_DARK; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(0, -hh, hh * 0.5, Math.PI, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -hh, hh * 0.4, Math.PI, TAU); ctx.stroke();
       ctx.fillStyle = BB_METAL2;
-      rr(ctx, -hh * 0.13, -hh * 1.02, hh * 0.26, hh * 0.28, 3); ctx.fill();
+      rr(ctx, -hh * 0.11, -hh * 0.92, hh * 0.22, hh * 0.24, 3); ctx.fill();
       const bob = Math.sin(t * 4 + seed) * 3;
-      outlineText(ctx, '?', hw * 0.52, -hh * 0.42 + bob, hh * 1.05, '#fff', '#8a5a12');
+      outlineText(ctx, '?', hw * 0.7, -hh * 0.55 + bob, hh * 0.85, '#fff', '#8a5a12');
     } else if (kind === 'runner') {
       const legY = hh;
       ctx.strokeStyle = '#3a2a2a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
@@ -300,17 +318,19 @@ const BASH_ART = {
       }
     }
 
-    // face(s)
+    // face(s) — BIG, the dominant element on every block (matches the ball's
+    // r18 face reading perfectly: same ~30px scale on this 96x48 block).
+    const faceS = Math.min(w, h) * 0.625; // ≈30 for the standard block
     if (kind === 'split') {
-      drawFace(ctx, -hw * 0.42, hh * 0.08, hh * 0.52, 'happy', t, seed);
-      drawFace(ctx, hw * 0.42, hh * 0.08, hh * 0.52, 'grin', t, seed + 1);
+      drawFace(ctx, -hw * 0.46, 2, faceS * 0.8, 'happy', t, seed);
+      drawFace(ctx, hw * 0.46, 2, faceS * 0.8, 'grin', t, seed + 1);
     } else if (kind === 'rainbow') {
-      drawFace(ctx, 0, hh * 0.05, hh * 0.62, 'happy', t, seed);
+      drawFace(ctx, 0, 2, faceS, 'happy', t, seed);
       ctx.fillStyle = '#fff';
-      for (const sd of [-1, 1]) starPath(ctx, sd * hh * 0.36, hh * 0.05 - hh * 0.15, hh * 0.13, hh * 0.055, 5, 0);
+      for (const sd of [-1, 1]) starPath(ctx, sd * faceS * 0.34, -faceS * 0.28, faceS * 0.12, faceS * 0.05, 5, 0);
       ctx.fill();
     } else {
-      drawFace(ctx, 0, hh * 0.05, hh * 0.62, mood, t, seed);
+      drawFace(ctx, 0, 2, faceS, mood, t, seed);
     }
 
     if (hitT > 0) {
@@ -377,7 +397,12 @@ const BASH_ART = {
     const bob = Math.sin(t * 3 + x * 0.01) * 3;
     ctx.translate(x, y + bob);
     bbTire(ctx, 0, 0, 22, t * 0.4, null, t, 0);
-    BASH_ART.modIcon(ctx, 0, 0, 15, kind);
+    // bright inner disc so the icon reads instead of vanishing into the
+    // dark tire tread (dark-on-dark was the readability bug)
+    ctx.fillStyle = '#ffe156';
+    ctx.beginPath(); ctx.arc(0, 0, 22 * 0.7, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    BASH_ART.modIcon(ctx, 0, 0, 26, kind);
     ctx.restore();
   },
 
@@ -415,10 +440,26 @@ const BASH_ART = {
       ctx.fillStyle = BB_TOOLBOX;
       starPath(ctx, s * 0.3, -s * 0.68, s * 0.17, s * 0.07, 5); ctx.fill();
     } else if (kind === 'magnet') {
-      ctx.strokeStyle = BB_DRUM; ctx.lineWidth = s * 0.26; ctx.lineCap = 'butt';
-      ctx.beginPath(); ctx.arc(0, -s * 0.05, s * 0.36, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-      ctx.fillStyle = BB_TIRE_HUB;
-      ctx.fillRect(-s * 0.52, s * 0.2, s * 0.26, s * 0.22); ctx.fillRect(s * 0.26, s * 0.2, s * 0.26, s * 0.22);
+      // same silhouette as the crane's magnet head (an upside-down U, red
+      // body + white tip bands) so the capsule instantly reads as "that
+      // thing at the top" — dark outline first so it pops on any bg
+      const legGap = s * 0.34, legLen = s * 0.34, armW = s * 0.26, oy = -s * 0.06;
+      const uPath = () => {
+        ctx.beginPath();
+        ctx.moveTo(-legGap, legLen + oy);
+        ctx.lineTo(-legGap, oy);
+        ctx.arc(0, oy, legGap, Math.PI, TAU, false);
+        ctx.lineTo(legGap, legLen + oy);
+      };
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#7a1810'; ctx.lineWidth = armW + s * 0.09;
+      uPath(); ctx.stroke();
+      ctx.strokeStyle = BB_DRUM; ctx.lineWidth = armW;
+      uPath(); ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = armW * 0.82;
+      for (const lx of [-legGap, legGap]) {
+        ctx.beginPath(); ctx.moveTo(lx, legLen * 0.3 + oy); ctx.lineTo(lx, legLen + oy); ctx.stroke();
+      }
     } else if (kind === 'slow') {
       ctx.fillStyle = '#8fd85a';
       ctx.beginPath(); ctx.ellipse(-s * 0.05, s * 0.24, s * 0.44, s * 0.2, 0, 0, TAU); ctx.fill();
@@ -601,8 +642,9 @@ const BASH_ART = {
       ctx.beginPath(); ctx.arc(p[0], chestY + p[1], 5, 0, TAU); ctx.fill();
     }
 
-    // candy core
-    const coreOpen = !!jb.coreOpen;
+    // candy core — self-sufficient on jb.stage too, in case a caller sets
+    // the boss's stage without also flagging coreOpen explicitly
+    const coreOpen = !!jb.coreOpen || (jb.stage || 1) >= 4;
     const coreR = chestH * (coreOpen ? 0.42 : 0.3);
     if (hasCore) {
       if (coreOpen) {
