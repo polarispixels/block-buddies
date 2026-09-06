@@ -348,6 +348,12 @@ const TouchUI = {
       { key: 'ArrowDown',  glyph: 'down',  x: W - 105, y: H - 98,  r: 54 },
       { key: 'Space',      glyph: 'star',  x: W - 268, y: H - 140, r: 54 }
     ];
+    if (typeof game !== 'undefined' && game.level && game.level.touchLayout === 'arcade' && game.state !== 'title') return [
+      { key: 'ArrowLeft',  glyph: 'left',  x: 82,      y: H - 105, r: 54 },
+      { key: 'ArrowRight', glyph: 'right', x: 220,     y: H - 105, r: 54 },
+      { key: 'ArrowUp',    glyph: 'up',    x: W - 105, y: H - 112, r: 64 },
+      { key: 'Space',      glyph: 'star',  x: W - 272, y: H - 170, r: 54 }
+    ];
     return [
       { key: 'ArrowLeft',  glyph: 'left',  x: 82,      y: H - 105, r: 54 },
       { key: 'ArrowRight', glyph: 'right', x: 220,     y: H - 105, r: 54 },

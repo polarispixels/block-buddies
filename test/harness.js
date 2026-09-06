@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'arcade.js', 'bashart.js', 'blockbash.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -2713,6 +2713,40 @@ frames(300, { ArrowRight: 1 });
 check('the rally still runs turbo → big ramp → trophy after the secret', G().raceDone === true);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
+
+// ---------------------------------------------------------------- JUNKYARD BLOCK BASH (v1.29.0)
+vm.runInContext('game.startLevel(7)', sandbox); frames(120);
+check('blockbash: the rally has a press-gated ARCADE cabinet door at x=280',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'blockbash' && d.press && d.style === 'arcade' && d.cx === 280)", sandbox));
+vm.runInContext('game.player.boardTruck()', sandbox); // enter IN the truck so the exit check can prove the vehicle survives
+put(200, 620 - 96); frames(40, { ArrowRight: 1 });
+check('blockbash: driving past the cabinet never enters it', G().level.n === 7);
+put(280 - 52, 620 - 96); frames(12); tap('Space'); frames(10);
+check('blockbash: standing at the cabinet + Space enters JUNKYARD BLOCK BASH', G().level.n === 'blockbash' && G().state === 'intro');
+frames(200); // intro card
+const BBM = () => vm.runInContext('game.level.arcade', sandbox);
+check('blockbash: BlockBash rides lv.arcade, the hero spawns IN THE TRUCK, camera pinned',
+  vm.runInContext('game.level.arcade instanceof BlockBash', sandbox) && G().player.vehicle === 'truck' && G().cam.x === 0 && G().cam.y === 0 && G().level.touchLayout === 'arcade');
+check('blockbash: the arcade touch layout has no duck button',
+  vm.runInContext("TouchUI.layout().every(b => b.key !== 'ArrowDown') && TouchUI.layout().some(b => b.key === 'ArrowUp')", sandbox));
+const px0 = G().player.x;
+frames(30, { ArrowRight: 1 });
+check('blockbash: Right drives the truck right, fast', G().player.x > px0 + 150);
+frames(90, { ArrowRight: 1 });
+check('blockbash: the truck is clamped inside the tire wall', G().player.x + G().player.w <= 1240 + 1);
+frames(120, { ArrowLeft: 1 });
+check('blockbash: the truck is clamped at the left wall', G().player.x >= 40 - 1);
+frames(20); const pyRest = G().player.y;
+check('blockbash: the truck sits on the floor, no gravity fall', Math.abs(pyRest - (620 - 96)) < 0.5 && G().player.vy === 0);
+tap('ArrowUp'); frames(8);
+check('blockbash: Jump = truck HOP (rises)', G().player.y < pyRest - 20);
+frames(40);
+check('blockbash: the hop lands back on the floor', Math.abs(G().player.y - pyRest) < 0.5);
+// exit path (forced win for now — Task 8 wires the real victory)
+vm.runInContext('game.subWin()', sandbox); frames(320); tap('Space'); frames(10);
+check('blockbash: Space after the party returns to the rally in the truck, nothing leaks',
+  G().level.n === 7 && G().state === 'play' && G().level.arcade === null && G().level.touchLayout === null && G().player.vehicle === 'truck');
+check('blockbash: completion is remembered', G().miniDone.blockbash === true && sandbox.localStorage.getItem('ffbg_mini').includes('blockbash'));
 
 // ---------------- secret: ZOMBIE TOWN AFTER DARK (Jack's town to save) ----------------
 vm.runInContext('game.startLevel(5)', sandbox);

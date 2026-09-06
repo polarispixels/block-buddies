@@ -757,6 +757,7 @@ function updatePlay(dt) {
   if (lv.mission) lv.mission.update(dt, pl);
   if (lv.truckBuild) lv.truckBuild.update(dt, pl);
   if (lv.puzzle) lv.puzzle.update(dt, pl); // secret-room machines (Pipe Room / Torch Cavern / Star Chamber / Treehouse Trail)
+  if (lv.arcade) lv.arcade.update(dt, pl); // arcade-mode machine (Block Bash)
   if (lv.ride && lv.ride.state === 'intro') lv.ride.updateIntro(dt, pl); // board pickup watch (js/ride.js)
   else if (lv.ride && lv.ride.state === 'done' && lv.ride.updateIsland) lv.ride.updateIsland(dt, pl); // Ocean Surf: the island walk + giant chest
   if (lv.vines) for (const v of lv.vines) v.update(dt, pl, lv); // swinging jungle vines
@@ -1349,6 +1350,9 @@ function drawPartyOverlay() {
     } else if (game.level.n === 'beatbash') {
       outlineText(ctx, 'PIT STOP SUPERSTAR!', W / 2, 140, 74, '#ffb62b', '#3a3448');
       outlineText(ctx, 'YOU GOT THE WHOLE GARAGE ROCKING!', W / 2, 212, 34, '#ffe156', '#3a3448');
+    } else if (game.level.n === 'blockbash') {
+      outlineText(ctx, 'JUNKYARD CHAMPION!', W / 2, 140, 74, '#ffe156', '#3a3448');
+      outlineText(ctx, 'YOU BASHED THE JUNKBOT!', W / 2, 212, 34, '#ff9f43', '#3a3448');
     } else if (game.level.n === 'jungle2') {
       outlineText(ctx, 'JUNGLE HERO!', W / 2, 140, 84, '#7be07b', '#2f5a2a');
       outlineText(ctx, 'YOU BUILT A DINO TEAM!', W / 2, 212, 36, '#ffe156', '#2f5a2a');
@@ -1408,6 +1412,7 @@ function renderWorld() {
   // goal star (the Beat Bash garage walls/roller door live here)
   if (lv.puzzle && lv.puzzle.drawBack) lv.puzzle.drawBack(ctx, t);
   if (lv.ride) lv.ride.drawBack(ctx, t); // ride-mode heightfield terrain
+  if (lv.arcade) lv.arcade.drawBack(ctx, t);
   drawSolids(ctx, lv, cam, t);
   drawHints(ctx, lv, t);
   for (const c of lv.checks) c.draw(ctx);
@@ -1417,6 +1422,7 @@ function renderWorld() {
   if (lv.mission) lv.mission.draw(ctx, t);
   if (lv.truckBuild) lv.truckBuild.draw(ctx, t);
   if (lv.puzzle) lv.puzzle.draw(ctx, t);
+  if (lv.arcade) lv.arcade.draw(ctx, t);
   if (lv.ride) lv.ride.draw(ctx, t);
   if (lv.vines) for (const v of lv.vines) v.draw(ctx, t);
   for (const p of game.pickups) p.draw(ctx);
@@ -1493,6 +1499,7 @@ function renderWorld() {
     ctx.save(); ctx.translate(-Math.round(game.cam.x), -Math.round(game.cam.y)); lv.puzzle.drawFront(ctx, t); ctx.restore();
   }
   if (lv.puzzle && lv.puzzle.drawCinematic) lv.puzzle.drawCinematic(ctx, t); // fullscreen story frames (the escape pod)
+  if (lv.arcade) lv.arcade.drawFront(ctx, t); // screen-space arcade chrome (banners, chips)
   drawHUD();
   if (game.state === 'intro') drawIntroCard();
   if (game.state === 'dead') drawDeadOverlay();

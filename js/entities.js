@@ -136,6 +136,8 @@ class Player {
   setMood(m, t) { this.mood = m; this.moodT = t; }
   update(dt) {
     const lv = game.level;
+    // ARCADE MODE (js/arcade.js): the arcade machine owns the hero completely
+    if (lv.arcade) { lv.arcade.updatePlayer(this, dt); return; }
     // RIDE MODE (js/ride.js): while riding, the heightfield rider owns the
     // physics entirely — shooting/cooldown stay live, everything else waits
     if (lv.ride && lv.ride.state !== 'intro' && lv.ride.state !== 'done' && lv.ride.state !== undefined) { // 'done' = the ride is over, walk normally
@@ -4405,6 +4407,7 @@ class SubDoor {
         : this.style === 'garage' ? ['#ffe156', '#ff8fb0', '#7fd8ff']
         : this.style === 'moonwell' ? ['#e8ecff', '#bfd0ff', '#ffe156']
         : this.style === 'stagegate' ? ['#ffe156', '#7be07b', '#fff']
+        : this.style === 'arcade' ? ['#ffe156', '#ff4d4d', '#4aa3ff']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -4508,6 +4511,9 @@ class SubDoor {
     if (this.style === 'flower') {
       // a giant pink bloom whose heart is a magical doorway (Flower Land)
       FL_SCENE.flowerDoor(ctx, cx, g, t, { glow: !done });
+    } else if (this.style === 'arcade') {
+      // a coin-op cabinet parked on the rally's start line (Junkyard Block Bash)
+      BASH_ART.arcadeDoor(ctx, cx, g, t, { glow: !done });
     } else if (this.style === 'surfboard') {
       // a surfboard planted in the seafloor sand (Ocean Surf)
       SURF_ART.surfDoor(ctx, cx, g, t, { glow: !done });

@@ -31,6 +31,7 @@ const LEVEL_META = {
   countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
   flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
   surf: { name: 'OCEAN SURF', theme: 'ocean', music: 'dirt' }, // the surfboard ride (js/surf.js); 'ocean' = sky + clouds only
+  blockbash: { name: 'JUNKYARD BLOCK BASH', theme: 'dirt', music: 'arcade' }, // Arcade Mode #1 (js/blockbash.js)
   space2: { name: 'THE ALIEN SPACE STATION 8-2', theme: 'space', music: '' }, // stage two of the Space Maze (js/station.js)
   jungle2: { name: 'THE GREAT DINOSAUR RESCUE', theme: 'jungle', music: '' }, // Dino Jungle's stage ONE: the crash + five rescues (js/rescue.js)
   sandslide: { name: 'DESERT SAND SLIDE', theme: 'dirt', music: 'dirt' }, // stage 6-1: earn the truck
@@ -68,6 +69,7 @@ function newLevel(n) {
     vines: null, vineHold: null, vineLock: false,
     puzzle: null, // secret-room machine (PipeWorks / TorchCavern / StarChamber)
     ride: null,   // ride-mode orchestrator (SandSlide — js/ride.js)
+    arcade: null, touchLayout: null, // arcade-mode machine (js/arcade.js + js/blockbash.js) + its touch pad
     water: false, dark: false, fallCatch: false, boss: false,
     playerStart: { x: 90, y: 400 },
     gate: null
@@ -481,6 +483,8 @@ function buildLevel(n) {
     // Jack's replay wish: walk back to the start line, press Space at the
     // dune archway, and ride the whole Sand Slide again (tutorial skipped)
     lv.subDoors.push(new SubDoor(140, G, 'sandslide', 'stagegate', { goTo: 'sandslide' }));
+    // JUNKYARD BLOCK BASH: an arcade cabinet on the flat start ground, press-gated
+    lv.subDoors.push(new SubDoor(280, G, 'blockbash', 'arcade', { press: true }));
     // easter egg: don't tell anyone what's parked behind the starting line
     lv.decor.dinoTruck = { x: 42 };
     pick(lv, 1440, G - 90, 'fire');
@@ -1521,6 +1525,15 @@ function buildLevel(n) {
     lv.playerStart = { x: 70, y: 460 };
     addGround(lv, 0, 1280, G);
     lv.puzzle = new BeatBash(G);
+  }
+
+  if (n === 'blockbash') { // ---------------- JUNKYARD BLOCK BASH (Arcade Mode #1, v1.29.0)
+    lv.w = 1280; lv.h = 720;
+    lv.playerStart = { x: 590, y: G - 96 };
+    addGround(lv, 0, 1280, G);
+    lv.solids[lv.solids.length - 1].skipDraw = true; // the arcade paints its own junk floor
+    lv.touchLayout = 'arcade';
+    lv.arcade = new BlockBash(lv);
   }
 
   if (n === 'zombietown') { // ---------------- ZOMBIE TOWN AFTER DARK (a town to save)
