@@ -195,7 +195,9 @@ core opens and takes the final 3. Each stage he gets madder:
 - stage 3 (≤ 6 hp): + magnet beam every 8 s — grabs the nearest ball for 0.8 s
   and flings it;
 - stage 4: faster pacing, core sparks.
-Anti-stall: 60 s with no hit → he droops 60 px lower (twice max). No attack
+Anti-stall: 60 s with no hit → he droops 60 px lower (ONCE — a second step
+would put his 260-px body through the truck roof at y 523; bottom stays ≤ 479,
+clear of a roof-resting ball). No attack
 ever damages the truck or loses the ball.
 Victory `Sequence`: wobble + sparks (1.2 s) → parts rocket off one by one
 (1.5 s) → GIANT junk explosion (flash, `shake` 0.6, junk everywhere, `boom` +
