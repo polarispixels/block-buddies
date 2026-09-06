@@ -52,7 +52,7 @@ Block object shape (Task 5 creates, Task 3 draws, Tasks 6–8 mutate):
 ```
 Ball object shape: `{ x, y, r, vx, vy, speed, rest: bool, bumpT: 0, squash: 1, mood: 'happy', trail: [] }`.
 Capsule: `{ x, y, kind, vy, t }`. CandyDrop: `{ x, y, vx, vy, onFloor: bool, t }`.
-JunkBot (Task 8): `{ x, y, w, h, hp, stage, parts: { sign: true, tireL: true, tireR: true, core: true }, hurtT, mood, beamT, beamBall, dir, stallT, droop }`.
+JunkBot (Task 8): `{ x, y, w, h, hp, stage, parts: { sign: true, tireL: true, tireR: true, core: true }, coreOpen, hurtT, mood, beamT, beamBall, beamX, beamY, dir, stallT, droop, entering }` (coreOpen = true once tireR pops; beamX/beamY = where the beam holds the ball).
 
 ---
 
