@@ -86,7 +86,7 @@ class BlockBash {
 
   // ---- balls
   spawnBall(x, y, rest) {
-    const b = { x, y, r: this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R, vx: 0, vy: 0, speed: this.phaseSpeed, rest, bumpT: 0, graceT: 0, squash: 1, mood: 'happy', trail: [] };
+    const b = { x, y, r: this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R, vx: 0, vy: 0, speed: this.phaseSpeed, rest, bumpT: 0, squash: 1, mood: 'happy', trail: [] };
     this.balls.push(b); return b;
   }
   ballSpeed(b) { // target speed this frame: phase × slow × bump, hard-capped
@@ -352,8 +352,7 @@ class BlockBash {
         const ang = rand(-150, -30) * Math.PI / 180, sp = this.ballSpeed(b);
         b.held = false; c.holding = null;
         b.vx = Math.cos(ang) * sp; b.vy = Math.sin(ang) * sp;
-        this.steer(b);
-        b.graceT = 1.2; // the crane's release can never be "lost" — it briefly bounces off the floor if missed
+        this.steer(b); // upward-ish + no gravity: it must bounce off a wall/the ceiling before it can ever reach the floor
         AudioSys.sfx('whoosh');
         c.stage = 'retract'; c.t = 0; c.target = null;
       }
@@ -363,6 +362,9 @@ class BlockBash {
     }
   }
   craneClearOne() {
+    // tower blocks sitting in their pre-topple wait are landed + not falling, so they're
+    // valid (and safe) candidates here too — verified: breakBlock's b.tower branch fires
+    // the same way whether the crane or the topple sequence is what calls it
     const candidates = this.aliveBlocks().filter(b => b.landed && !b.falling);
     if (!candidates.length) return;
     const b = candidates[randi(0, candidates.length - 1)];
@@ -552,17 +554,13 @@ class BlockBash {
         b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 6) b.trail.shift();
         this.stepBall(b, dt);
         if (b.bumpT > 0) b.bumpT = Math.max(0, b.bumpT - dt);
-        if (b.graceT > 0) b.graceT = Math.max(0, b.graceT - dt);
         b.squash = lerp(b.squash, 1, 1 - Math.exp(-10 * dt));
       }
     }
-    // miss detection (after stepping) — a ball just released by the crane snatch is graced:
-    // it bounces off the floor instead of being lost, so the event can never cost a ball
+    // miss detection (after stepping)
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i];
-      if (b.rest || b.held || b.y - b.r <= BB.MISS_Y) continue;
-      if (b.graceT > 0) { b.y = BB.FLOOR - 20 - b.r; b.vy = -Math.abs(b.vy || 300); this.steer(b); }
-      else this.loseBall(b);
+      if (!b.rest && !b.held && b.y - b.r > BB.MISS_Y) this.loseBall(b);
     }
     // respawn
     if (this.respawnT > 0) {

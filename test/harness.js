@@ -2881,7 +2881,19 @@ check('blockbash: a power block drops a capsule', vm.runInContext('game.level.ar
 vm.runInContext("game.level.arcade.eventTire()", sandbox); vm.runInContext("(() => { const a = game.level.arcade; a.tires[0].x = game.player.cx; })()", sandbox); frames(5);
 check('blockbash: a giant tire spins the truck out briefly (no damage)', vm.runInContext('game.level.arcade.spinT', sandbox) > 0 && G().player.hearts === 3);
 frames(60); check('blockbash: the spin-out ends and control returns', vm.runInContext('game.level.arcade.spinT', sandbox) <= 0);
-vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 100; b.vy = -300; a.steer(b); a.eventSnatch(); })()", sandbox); frames(150);
+vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 100; b.vy = -300; a.steer(b); a.eventSnatch(); })()", sandbox);
+let bbReleaseVy = null;
+for (let bbF = 0; bbF < 150; bbF++) {
+  const bbWasHeld = vm.runInContext("(() => { const b = game.level.arcade.balls[0]; return b ? !!b.held : false; })()", sandbox);
+  frames(1);
+  const bbNow = vm.runInContext("(() => { const b = game.level.arcade.balls[0]; return b ? { held: !!b.held, vy: b.vy, x: b.x } : null; })()", sandbox);
+  if (bbWasHeld && bbNow && !bbNow.held && bbReleaseVy === null) bbReleaseVy = bbNow.vy;
+  // after release, keep the truck under the ball — no gravity here, so a flung ball must
+  // eventually bounce off a wall/ceiling and descend; parking the paddle under it removes
+  // any dependence on the crane's (random) travel time fitting inside this frame budget
+  if (bbNow && !bbNow.held) vm.runInContext(`(() => { const pl = game.player; pl.x = Math.max(BB.L, Math.min(BB.R - pl.w, ${bbNow.x} - pl.w / 2)); })()`, sandbox);
+}
+check('blockbash: the crane fling releases the ball moving upward (vy < 0)', bbReleaseVy !== null && bbReleaseVy < 0);
 check('blockbash: the crane SNATCH grabs the ball and flings it — never lost', bbS().balls.length === 1 && !bbS().splat);
 vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; for (let c = 0; c < 4; c++) a.addBlock(c, 1, 'plain'); a.eventConveyor(1); })()", sandbox); const cvx = vm.runInContext('game.level.arcade.blocks[0].x', sandbox); frames(30);
 check('blockbash: a CONVEYOR slides a whole row', vm.runInContext('game.level.arcade.blocks[0].x', sandbox) !== cvx && vm.runInContext('game.level.arcade.blocks.every(b => b.vx === game.level.arcade.blocks[0].vx)', sandbox));
