@@ -2769,6 +2769,91 @@ tap('ArrowUp'); frames(8);
 check('blockbash: Jump = truck HOP (rises)', G().player.y < pyRest - 20);
 frames(40);
 check('blockbash: the hop lands back on the floor', Math.abs(G().player.y - pyRest) < 0.5);
+
+// ---------------- balls, blocks, candy, combo, the funny miss (Task 5) ----------------
+// Re-arm a fresh BlockBash machine in place rather than re-entering via
+// startLevel('blockbash'): startLevel unconditionally clears game.subReturn,
+// which would break the pre-existing exit-path check below (it needs
+// subReturn intact to land back in the rally, not fall through to the
+// title). This also skips the level's own 2.2s intro card, which the brief's
+// literal `frames(200)` re-entry would otherwise eat into the auto-launch
+// timing budget checked next.
+vm.runInContext("game.level.arcade = new BlockBash(game.level);", sandbox); frames(5);
+const bbS = () => vm.runInContext(`(() => { const a = game.level.arcade; return { balls: a.balls.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r, rest: b.rest, speed: b.speed })), blocks: a.aliveBlocks().length, combo: a.combo, respawnT: a.respawnT, candies: a.candies.length, splat: !!a.splat, mods: a.mods.list().map(m => m.name) }; })()`, sandbox);
+check('blockbash: a ball rests on the truck roof at the start', bbS().balls.length === 1 && bbS().balls[0].rest);
+frames(100);
+check('blockbash: the ball auto-launches within 1.6 s (never stalls)', !bbS().balls[0].rest && bbS().balls[0].vy < 0);
+// paddle bounce: drop a ball straight onto the roof centre
+vm.runInContext("(() => { const a = game.level.arcade, pl = game.player; a.balls.length = 0; const b = a.spawnBall(pl.cx, pl.y - 60, false); b.vx = 0; b.vy = 400; b.speed = 400; })()", sandbox);
+frames(12);
+check('blockbash: a falling ball bounces UP off the truck roof', bbS().balls[0].vy < 0 && bbS().balls[0].y < 620 - 96 - 10);
+vm.runInContext("(() => { const a = game.level.arcade, pl = game.player; a.balls.length = 0; const b = a.spawnBall(pl.x + pl.w - 4, pl.y - 60, false); b.vx = 0; b.vy = 400; b.speed = 400; })()", sandbox);
+frames(12);
+check('blockbash: hitting the right edge of the roof sends the ball rightward', bbS().balls[0].vx > 120 && bbS().balls[0].vy < 0);
+// hop BUMP: ball falling onto a rising truck gets faster
+vm.runInContext("(() => { const a = game.level.arcade, pl = game.player; a.balls.length = 0; const b = a.spawnBall(pl.cx, pl.y - 40, false); b.vx = 0; b.vy = 400; b.speed = 400; })()", sandbox);
+tap('ArrowUp'); frames(6);
+check('blockbash: a hop BUMP speeds the ball up (≤ cap)', bbS().balls[0].speed > 400 && bbS().balls[0].speed <= 620);
+// block kinds — a helper that clears the board, adds one block and fires the ball at it
+const bbShoot = (kind, col = 5, row = 2, extra = '') => vm.runInContext(`(() => { const a = game.level.arcade; a.blocks.length = 0; a.balls.length = 0; a.candies.length = 0; a.mods.clearAll(); const b = a.addBlock(${col}, ${row}, '${kind}'); ${extra}; const ball = a.spawnBall(b.x + b.w / 2, b.y + b.h + 80, false); ball.vx = 0; ball.vy = -400; ball.speed = 400; return b; })()`, sandbox);
+bbShoot('plain'); const c0 = G().candy; frames(20);
+check('blockbash: a plain block breaks in one hit and pays 1 candy', bbS().blocks === 0 && G().candy === c0 + 1);
+bbShoot('tough'); frames(20);
+check('blockbash: a tough block takes the first hit (hp 3 → 2) and bounces the ball back down', bbS().blocks === 1 && vm.runInContext('game.level.arcade.blocks[0].hp', sandbox) === 2 && bbS().balls[0].vy > 0);
+vm.runInContext("(() => { const a = game.level.arcade; for (let i = 0; i < 2; i++) { const b = a.blocks[0]; const ball = a.balls[0]; ball.x = b.x + 48; ball.y = b.y + b.h + 30; ball.vx = 0; ball.vy = -400; } })()", sandbox); frames(15);
+vm.runInContext("(() => { const a = game.level.arcade; const b = a.blocks[0]; if (b && b.alive) { const ball = a.balls[0]; ball.x = b.x + 48; ball.y = b.y + b.h + 30; ball.vx = 0; ball.vy = -400; } })()", sandbox); frames(15);
+check('blockbash: three hits break the tough block', bbS().blocks === 0);
+bbShoot('candy'); frames(20);
+check('blockbash: a candy crate bursts into 5 candy pickups', bbS().blocks === 0 && bbS().candies === 5);
+frames(200);
+check('blockbash: candy drifts to the truck and is collected (or lies on the floor harmlessly, then fades)', bbS().candies <= 5 && G().player.hearts === 3);
+frames(400);
+check('blockbash: floor candy never lingers past 6 s', bbS().candies === 0);
+bbShoot('split'); frames(20);
+check('blockbash: a split block releases an extra ball', bbS().balls.length === 2);
+bbShoot('boom', 5, 2, "a.addBlock(4, 2, 'plain'); a.addBlock(6, 2, 'plain'); a.addBlock(5, 1, 'plain'); a.addBlock(9, 2, 'plain')"); frames(20);
+check('blockbash: a boom barrel blasts its neighbours but not a far block', bbS().blocks === 1);
+bbShoot('boom', 5, 2, "a.addBlock(6, 2, 'boom'); a.addBlock(7, 2, 'plain'); a.addBlock(8, 2, 'plain')"); frames(30);
+check('blockbash: barrels chain-react', bbS().blocks <= 1);
+bbShoot('runner'); const bbRx0 = vm.runInContext('game.level.arcade.blocks[0].x', sandbox); frames(60);
+check('blockbash: a runner scoots 2 columns along its row after the first hit and survives', bbS().blocks === 1 && Math.abs(vm.runInContext('game.level.arcade.blocks[0].x', sandbox) - bbRx0) >= 180);
+bbShoot('faller'); frames(10);
+check('blockbash: a hit faller drops', vm.runInContext('game.level.arcade.blocks[0].falling', sandbox) === true);
+vm.runInContext("game.player.x = game.level.arcade.blocks[0].x + 48 - game.player.w / 2", sandbox); const c1 = G().candy; frames(120);
+check('blockbash: the truck catching a faller pays 5 candy', G().candy >= c1 + 5 && bbS().blocks === 0);
+bbShoot('rainbow', 5, 3, "a.addBlock(5, 2, 'plain'); a.addBlock(5, 1, 'plain'); a.addBlock(5, 0, 'plain')"); frames(40);
+check('blockbash: a rainbow block turns the ball RAINBOW and it pierces the whole column', bbS().mods.includes('rainbow') && bbS().blocks === 0);
+// combo
+bbShoot('plain', 5, 4, "for (let r = 0; r < 4; r++) a.addBlock(5, r, 'plain')"); frames(60);
+check('blockbash: consecutive hits without touching the truck build a combo', bbS().combo >= 3);
+// the funny miss
+vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.addBlock(2, 0, 'plain'); a.balls.length = 0; const b = a.spawnBall(300, 500, false); b.vx = 0; b.vy = 500; b.speed = 500; game.player.x = 1000; })()", sandbox);
+frames(30);
+check('blockbash: a missed ball SPLATS into the junk floor (no hearts lost, blocks intact)', bbS().splat && bbS().balls.length === 0 && bbS().blocks === 1 && G().player.hearts === 3);
+frames(60);
+check('blockbash: the ball is back on the roof within ~1 s of the splat', bbS().balls.length === 1 && bbS().balls[0].rest);
+// anti-tunnel: 200 max-speed random shots at a block edge and the truck corner
+check('blockbash: no ball ever tunnels through a block or the truck at max speed', vm.runInContext(`(() => {
+  const a = game.level.arcade; let bad = 0;
+  for (let i = 0; i < 200; i++) {
+    a.blocks.length = 0; a.balls.length = 0; const b = a.addBlock(5, 2, 'tough'); b.hp = 99;
+    const ang = rand(0, Math.PI * 2); const ball = a.spawnBall(b.x + 48 + Math.cos(ang) * 140, b.y + 24 + Math.sin(ang) * 140, false);
+    ball.speed = 620; ball.vx = -Math.cos(ang) * 620; ball.vy = -Math.sin(ang) * 620;
+    for (let f = 0; f < 20; f++) a.stepBall(ball, 1 / 60);
+    const cx = clamp(ball.x, b.x, b.x + b.w), cy = clamp(ball.y, b.y, b.y + b.h);
+    if (Math.hypot(ball.x - cx, ball.y - cy) < ball.r - 1) bad++;
+  }
+  a.blocks.length = 0;
+  const pl = game.player;
+  for (let i = 0; i < 200; i++) {
+    a.balls.length = 0; const ball = a.spawnBall(pl.x + (i % 2 ? pl.w + 10 : -10) + rand(-6, 6), pl.y - 90, false);
+    ball.speed = 620; ball.vx = (i % 2 ? -1 : 1) * rand(60, 300); ball.vy = Math.sqrt(620 * 620 - ball.vx * ball.vx);
+    for (let f = 0; f < 20; f++) a.stepBall(ball, 1 / 60);
+    if (ball.y + ball.r > pl.y + 20 && ball.x > pl.x && ball.x < pl.x + pl.w && ball.y < pl.y + pl.h) bad++;
+  }
+  return bad === 0;
+})()`, sandbox));
+
 // exit path (forced win for now — Task 8 wires the real victory)
 vm.runInContext('game.subWin()', sandbox); frames(320); tap('Space'); frames(10);
 check('blockbash: Space after the party returns to the rally in the truck, nothing leaks',
