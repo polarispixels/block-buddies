@@ -184,8 +184,9 @@ remain the survivors pulse (target highlight).
 
 Lowered on a chain from the crane rail: tire shoulders, engine-block chest with
 a glowing candy core, headlight eyes, a traffic-sign shield in one hand, a
-crane-hook hand. Body box ≈ 340×260, paces x 200 … 1080 across y 150–330
-(sinusoidal bob). HP 12, hittable anywhere on the body (big target); a
+crane-hook hand. Body box ≈ 340×260, paces x 200 … 1080 with a small sinusoidal bob (±9 px)
+around y 150 — his 260-px body already reaches y 410, so a wide vertical swing
+would leave no air for the ball (amended from the original 150–330 sweep). HP 12, hittable anywhere on the body (big target); a
 pulsing bullseye marks the next part to pop. Every 3 hits a part rockets off
 (+10 candy, part burst, `bashclank`): sign shield → left tire → right tire →
 core opens and takes the final 3. Each stage he gets madder:
