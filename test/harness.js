@@ -2740,6 +2740,7 @@ check('arcade kit: ArcadeHud banner + pops tick out', vm.runInContext(`(() => { 
 check('arcade kit: arcadePayout drains at ~90 candy/s into game.candy', vm.runInContext(`(() => { const c0 = game.candy; const m = { payQ: 0, payX: 0, payY: 0 }; arcadePayout(m, 100, 100, 100); for (let i = 0; i < 60; i++) arcadePayTick(m, 1/60); const mid = game.candy - c0; for (let i = 0; i < 60; i++) arcadePayTick(m, 1/60); return mid >= 80 && mid <= 100 && game.candy - c0 === 100 && m.payQ === 0; })()`, sandbox));
 
 // ---------------------------------------------------------------- JUNKYARD BLOCK BASH (v1.29.0)
+check('audio: every bash sfx name is handled', vm.runInContext("['bashhit','bashbreak','bashmiss','bashbump','bashpow','bashclank','bashroar','bashsplit'].every(n => { try { AudioSys.sfx(n); return true; } catch (e) { return false; } }) && !!SONGS.arcade", sandbox));
 vm.runInContext('game.startLevel(7)', sandbox); frames(120);
 check('blockbash: the rally has a press-gated ARCADE cabinet door at x=280',
   vm.runInContext("game.level.subDoors.some(d => d.sub === 'blockbash' && d.press && d.style === 'arcade' && d.cx === 280)", sandbox));

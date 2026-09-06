@@ -48,12 +48,15 @@ const SONGS = {
     b: [48,0,55,0, 45,0,52,0, 50,0,57,0, 43,0,50,55] },
   midnight: { t: 100, mw: 'triangle', // Zombie Town After Dark: dreamy moonlit waltz
     m: [64,0,0,71,0,74, 79,0,0,74,0,71, 76,0,0,72,0,69, 71,0,0,0,0,0, 64,0,0,71,0,76, 79,0,0,76,0,74, 71,0,0,74,0,79, 83,0,0,0,0,0],
-    b: [40,0,0,47,0,0, 36,0,0,43,0,0, 45,0,0,52,0,0, 43,0,0,47,0,0] }
+    b: [40,0,0,47,0,0, 36,0,0,43,0,0, 45,0,0,52,0,0, 43,0,0,47,0,0] },
+  arcade: { t: 160, mw: 'square', h: true, // Junkyard Block Bash: bright major chiptune loop
+    m: [72,76,79,84, 79,76,79,84, 74,77,81,86, 81,77,81,86, 72,76,79,84, 79,84,88,91, 79,0,77,76, 74,0,72,0],
+    b: [48,0,48,0, 53,0,53,0, 50,0,50,0, 55,0,55,0, 48,0,48,0, 53,0,53,0, 45,0,45,0, 48,0,48,0] }
 };
 
 const AudioSys = {
   ctx: null, mg: null, sg: null,
-  song: null, songName: '', stepI: 0, nextT: 0, muted: false,
+  song: null, songName: '', stepI: 0, nextT: 0, muted: false, bashCombo: 0,
 
   unlock() {
     if (!this.ctx) {
@@ -192,6 +195,15 @@ const AudioSys = {
         this.noise(0.3, 0.11, 0.42, 3200);
         this.arp([1250, 1650, 950], 0.06, 0.18, 'sine', 0.05);
         break;
+      // ---- Junkyard Block Bash ----
+      case 'bashhit': { const k = Math.min(8, this.bashCombo || 0); this.tone(520 + k * 60, 780 + k * 60, 0.07, 'square', 0.16); break; } // ball on block, rises with combo
+      case 'bashbreak': this.noise(0.09, 0.22, 0, 2200); this.tone(300, 120, 0.12, 'triangle', 0.18); break; // block crumbles
+      case 'bashmiss': this.tone(240, 60, 0.35, 'sawtooth', 0.2); this.noise(0.25, 0.25, 0.05, 900); break; // splat
+      case 'bashbump': this.tone(180, 620, 0.16, 'square', 0.22); break; // hop BUMP!
+      case 'bashpow': this.arp([72, 76, 79, 84], 0.05, 0.12, 'square', 0.18); break; // capsule caught
+      case 'bashclank': this.tone(900, 300, 0.12, 'square', 0.16); this.noise(0.1, 0.18, 0, 4000); break; // crane / bot part
+      case 'bashroar': this.tone(90, 60, 0.6, 'sawtooth', 0.3); this.noise(0.5, 0.2, 0.05, 500); break; // junkbot
+      case 'bashsplit': this.arp([76, 83, 88], 0.04, 0.1, 'triangle', 0.2); break; // extra ball
     }
   },
 
