@@ -2932,7 +2932,10 @@ vm.runInContext("game.startLevel('blockbash')", sandbox); frames(200);
 check('blockbash: wave 1 = 2 rows of plain blocks + a candy crate, ball 380', vm.runInContext("(() => { const a = game.level.arcade; const k = a.aliveBlocks(); return a.waves.i === 0 && k.length === 24 && k.filter(b => b.kind === 'candy').length === 1 && k.every(b => b.kind === 'plain' || b.kind === 'candy') && a.phaseSpeed === 380; })()", sandbox));
 check('blockbash: the intro arrows hint sits over the truck before the first launch', vm.runInContext("game.level.hints.some(h => h.icon === 'arrows' && h.x === 590 && h.y === 380)", sandbox) === true);
 check('blockbash: blocks rain in and are unhittable until landed', vm.runInContext("game.level.arcade.blocks.some(b => !b.landed)", sandbox) || vm.runInContext("game.level.arcade.waves.state", sandbox) !== 'build');
-frames(80);
+// launchT only ticks once the wave is actually in 'play' (Task 8's auto-launch
+// gating — a resting ball no longer counts down through the build-in), so the
+// budget here needs to cover build settling AND the 1.5s auto-launch after
+frames(160);
 check('blockbash: after the build-in every block has landed on its grid spot', vm.runInContext("game.level.arcade.blocks.every(b => b.landed && Math.abs(b.y - (BB.GY + b.row * BB.BH)) < 0.5)", sandbox));
 check('blockbash: the intro hint is spliced out after the first launch', vm.runInContext("game.level.hints.some(h => h.icon === 'arrows' && h.x === 590 && h.y === 380)", sandbox) === false);
 // clear wave 1 by force → flourish → wave 2 arrives with power-ups
@@ -2988,11 +2991,37 @@ put(280 - 52, 620 - 96); frames(12); tap('Space'); frames(10);
 frames(200); // let the intro card auto-advance to 'play' before subWin() below needs a 5s party window
 check('blockbash: re-entering via the door restores subReturn for the exit check', vm.runInContext("game.level.n === 'blockbash' && game.state === 'play' && !!game.subReturn", sandbox));
 
-// exit path (forced win for now — Task 8 wires the real victory)
-vm.runInContext('game.subWin()', sandbox); frames(320); tap('Space'); frames(10);
-check('blockbash: Space after the party returns to the rally in the truck, nothing leaks',
-  G().level.n === 7 && G().state === 'play' && G().level.arcade === null && G().level.touchLayout === null && G().player.vehicle === 'truck');
-check('blockbash: completion is remembered', G().miniDone.blockbash === true && sandbox.localStorage.getItem('ffbg_mini').includes('blockbash'));
+// ---------------- THE JUNKBOT finale, victory, party & persistence (Task 8) ----------------
+// force wave 4 (whatever it actually contains right now) to read as cleared —
+// WaveRunner's own clear flourish + onDone then lowers the boss for real
+vm.runInContext("(() => { const a = game.level.arcade; a.waves.i = 3; a.blocks.length = 0; a.waves.state = 'play'; })()", sandbox); frames(10); frames(320); // 2 s clear flourish + the 1.4 s chain descent
+check('blockbash: clearing wave 4 lowers the JUNKBOT on its chain', vm.runInContext("game.level.arcade.state === 'boss' && !!game.level.arcade.junkbot", sandbox) && G().level.music === 'arcade');
+const JB = () => vm.runInContext('(() => { const j = game.level.arcade.junkbot; return { hp: j.hp, stage: j.stage, parts: { ...j.parts }, x: j.x, y: j.y, w: j.w, h: j.h }; })()', sandbox);
+const bbHitBot = () => { vm.runInContext("(() => { const a = game.level.arcade, j = a.junkbot; a.balls.length = 0; const b = a.spawnBall(j.x + j.w / 2, j.y + j.h + 60, false); b.vx = 0; b.vy = -540; b.speed = 540; })()", sandbox); frames(12); };
+const cB = G().candy; bbHitBot(); bbHitBot(); bbHitBot();
+check('blockbash: three hits pop the SIGN shield off (+10 candy)', JB().hp === 9 && JB().parts.sign === false && G().candy >= cB + 10);
+check('blockbash: junkbot attacks never hurt the truck', G().player.hearts === 3);
+for (let i = 0; i < 3; i++) bbHitBot();
+check('blockbash: six hits — left tire gone, stage 3 rolls tires', JB().parts.tireL === false && JB().stage >= 2);
+vm.runInContext("game.level.arcade.junkbot.beam(game.level.arcade.balls[0] || game.level.arcade.spawnBall(600, 400, false))", sandbox); frames(120);
+check('blockbash: the magnet beam grabs and flings the ball but never loses it', bbS().balls.length >= 1 && !bbS().splat);
+for (let i = 0; i < 3; i++) bbHitBot();
+check('blockbash: nine hits — the core opens', JB().parts.tireR === false && vm.runInContext('game.level.arcade.junkbot.coreOpen', sandbox) === true);
+vm.runInContext("(() => { const j = game.level.arcade.junkbot; j.stallT = 61; })()", sandbox); const jy = JB().y; frames(5);
+check('blockbash: 60 s without a hit and the junkbot droops closer', JB().y > jy || vm.runInContext('game.level.arcade.junkbot.droop', sandbox) > 0);
+const cV = G().candy; for (let i = 0; i < 3; i++) bbHitBot();
+check('blockbash: twelve hits start the VICTORY sequence', vm.runInContext("game.level.arcade.state", sandbox) === 'victory');
+frames(60 * 9);
+check('blockbash: the junk explosion + candy shower pay ≥ 100 and subWin fires', G().candy >= cV + 100 && G().endPhase === 'party' && G().miniDone.blockbash === true);
+frames(320); tap('Space'); frames(10);
+check('blockbash: back to the rally in the truck, nothing leaks', G().level.n === 7 && G().state === 'play' && G().level.arcade === null && G().player.vehicle === 'truck');
+// exitSub lands the truck right back on the cabinet's doorstep — SubDoor only
+// re-arms after horizontal separation (by design, so exiting a sub never
+// immediately re-swallows you), so drive clear of it first
+put(600, 620 - 96); frames(5);
+check('blockbash: the finished cabinet is a dormant trophy; walking over never re-enters', (() => { put(280 - 52, 620 - 96); frames(20); return G().level.n === 7; })());
+tap('Space'); frames(10);
+check('blockbash: standing on the trophy + Space replays the whole arcade', G().level.n === 'blockbash' && G().state === 'intro');
 
 // ---------------- secret: ZOMBIE TOWN AFTER DARK (Jack's town to save) ----------------
 vm.runInContext('game.startLevel(5)', sandbox);

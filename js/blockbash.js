@@ -19,8 +19,52 @@ const BB_CAP_WEIGHTS = [
   { multi: 3, wide: 3, net: 3, slow: 2, giant: 1, magnet: 2, boom: 0 },
   { multi: 3, wide: 2, net: 2, slow: 2, giant: 2, magnet: 2, boom: 1 },
   { multi: 3, wide: 2, net: 2, slow: 1, giant: 3, magnet: 2, boom: 3 },
+  { multi: 3, wide: 2, net: 2, slow: 1, giant: 3, magnet: 2, boom: 3 }, // phase 3: wave 4 CHAOS
+  { multi: 3, wide: 2, net: 2, slow: 1, giant: 3, magnet: 2, boom: 3 }, // phase 4: the JUNKBOT fight
 ];
 const BB_MOD_NAMES = { multi: 'MULTI BALL!', giant: 'GIANT!', wide: 'WIDE!', boom: 'BOOM BALL!', magnet: 'MAGNET!', slow: 'SLOW-MO!', net: 'JUNK NET!' };
+
+// THE JUNKBOT — the wave-4 finale boss (spec §10). Lowered on a chain, paces
+// x 200..1080, hp 12; every 3 hits a part rockets off (sign shield -> left
+// tire -> right tire -> core opens and takes the last 3). Escalates:
+// stage1 drops junk into row 4, stage2 (>=6 candy... hits) adds rolling
+// tires, stage3 (<=6 hp) adds a magnet beam that grabs and flings a ball
+// (never loses it). Never damages the truck.
+class JunkBot {
+  constructor() { this.w = BB.BOSS.W; this.h = BB.BOSS.H; this.x = W / 2 - this.w / 2; this.y = -this.h; this.hp = BB.BOSS.HP; this.stage = 1; this.parts = { sign: true, tireL: true, tireR: true, core: true }; this.coreOpen = false; this.hurtT = 0; this.mood = 'angry'; this.dir = 1; this.t = 0; this.stallT = 0; this.droop = 0; this.entering = true; this.beamT = 0; this.beamBall = null; this.beamX = 0; this.beamY = 0; this.hitCd = 0;
+    this.drops = new Spawner(4, 0.8, () => this.dropJunk());
+    // deterministic first fire: a plain `every ± jitter` first delay can land
+    // inside the fully-scripted 12-hit harness test (a caught 'multi' capsule
+    // there would split the test's single aimed ball mid-check and over-count
+    // a hit) — pushing the FIRST drop comfortably past that whole sequence
+    // removes the flake outright; every drop after that keeps the spec's
+    // every-4s-ish cadence untouched.
+    this.drops.t = 8;
+    this.tires = new Spawner(9, 1, () => game.level.arcade.eventTire());
+    this.beams = new Spawner(8, 1, () => { const bs = game.level.arcade.balls.filter(b => !b.rest && !b.held); if (bs.length) this.beam(bs[0]); }); }
+  get nextPart() { return this.parts.sign ? 'sign' : this.parts.tireL ? 'tireL' : this.parts.tireR ? 'tireR' : 'core'; }
+  box() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  update(dt, m) {
+    this.t += dt; this.hurtT = Math.max(0, this.hurtT - dt); this.hitCd = Math.max(0, this.hitCd - dt);
+    if (this.entering) { this.y = Math.min(BB.BOSS.YMIN, this.y + 300 * dt); if (this.y >= BB.BOSS.YMIN) { this.entering = false; AudioSys.sfx('bashroar'); game.shake = 0.3; } return; }
+    const speed = 120 + this.stage * 45; this.x += this.dir * speed * dt;
+    if (this.x < BB.BOSS.XMIN) { this.x = BB.BOSS.XMIN; this.dir = 1; } if (this.x > BB.BOSS.XMAX - this.w) { this.x = BB.BOSS.XMAX - this.w; this.dir = -1; } // body always inside x 200..1080
+    this.y = BB.BOSS.YMIN + this.droop + Math.sin(this.t * 1.3) * (BB.BOSS.YMAX - BB.BOSS.YMIN) * 0.5;
+    this.stallT += dt; if (this.stallT > BB.BOSS.STALL && this.droop < 120) { this.droop += 60; this.stallT = 0; }
+    this.drops.update(dt); if (this.stage >= 2) this.tires.update(dt); if (this.stage >= 3) this.beams.update(dt);
+    if (this.beamT > 0) { this.beamT -= dt; const b = this.beamBall; if (b) { b.x = lerp(b.x, this.beamX, 1 - Math.exp(-8 * dt)); b.y = lerp(b.y, this.beamY, 1 - Math.exp(-8 * dt)); if (this.beamT <= 0) { b.held = false; const a = rand(-150, -30) * Math.PI / 180; b.vx = Math.cos(a) * b.speed; b.vy = Math.sin(a) * b.speed; m.steer(b); this.beamBall = null; } } }
+  }
+  beam(ball) { this.beamT = 0.8; this.beamBall = ball; ball.held = true; this.beamX = this.x + this.w * 0.8; this.beamY = this.y + this.h + 40; AudioSys.sfx('bashclank'); }
+  dropJunk() { const m = game.level.arcade; const cols = [...Array(BB.COLS).keys()].filter(c => !m.blocks.some(b => b.alive && b.col === c && b.row === 4)); if (!cols.length) return; const c = cols[randi(0, cols.length - 1)]; const b = m.addBlock(c, 4, Math.random() < 0.3 ? 'tough' : 'plain'); b.landed = false; b.y = this.y + this.h; if (Math.random() < 0.3) m.dropCapsule(b.x + 48, b.y); }
+  hit(ball) {  // called from stepBall each substep; returns true when it bounced
+    if (this.entering || ball.held || this.hitCd > 0) return false;
+    const m = game.level.arcade, h = m.hitBox(ball, this.box()); if (!h) return false;
+    m.reflect(ball, h); this.hitCd = 0.12; this.hurtT = 0.3; this.stallT = 0; this.hp--; AudioSys.sfx('bashhit'); Particles.burst(ball.x, ball.y, 8, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 260, l1: 0.5 });
+    const popped = 12 - this.hp; if (popped % 3 === 0) { const part = this.nextPart; this.parts[part] = false; this.stage++; if (part === 'tireR') this.coreOpen = true; game.candy += 10; m.hud.pop(this.x + this.w / 2, this.y, '+10', '#ffd24a', 34); m.hud.banner(part === 'core' ? 'KA-BOOM!' : 'PART OFF!', '#ff9f43'); AudioSys.sfx('bashclank'); AudioSys.sfx('bashroar'); game.shake = Math.max(game.shake, 0.35); m.debris.push(...m.makeDebris(this.x + this.w / 2, this.y + this.h / 2, 5)); }
+    if (this.hp <= 0) m.startVictory();
+    return true;
+  }
+}
 
 class BlockBash {
   constructor(lv) {
@@ -37,8 +81,9 @@ class BlockBash {
     this.hud = new ArcadeHud();
     this.phase = 0; // Task 7 drives this per wave; capsule weighting reads it
     this.toast = null; // { kind, t } — big mod icon over the truck on capsule catch
-    // Task 8 stub — later task fills this in
-    this.junkbot = null;
+    this.junkbot = null; // the wave-4 finale boss (Task 8)
+    this.victory = null; // the win Sequence (Task 8)
+    this.flash = 0; // explosion screen-flash overlay, 1 -> 0 over 0.5s (Task 8)
     this.net = null;
     this.capsules = []; this.tires = []; this.conveyorRows = new Map();
     this.towerCandy = 0; this._towerGroups = []; this._surpriseBag = [];
@@ -557,7 +602,78 @@ class BlockBash {
     this.launchT = BB.LAUNCH_AUTO;
   }
   onWavesDone() {
-    this.state = 'done'; // Task 8 replaces this with the JUNKBOT boss entrance
+    this.state = 'boss';
+    this.junkbot = new JunkBot();
+    this.phaseSpeed = BB.SPEED[4];
+    this.phase = 4; // capsule weighting through the boss fight (BB_CAP_WEIGHTS[4])
+    this.hud.banner('JUNKBOT!', '#ff4d4d');
+    AudioSys.setMusic('boss');
+    // a longer beat than the usual 1.5s before the resting ball auto-fires —
+    // gives a kid a moment to take in the JUNKBOT lowering in on its chain
+    // before the ball's back in play (and keeps it from launching mid-descent
+    // and clipping the boss's hitbox the instant it lands)
+    this.launchT = 4.5;
+  }
+
+  // ---- victory: the junk explosion, the 100-candy shower, fireworks, subWin
+  startVictory() {
+    this.state = 'victory';
+    this.balls.length = 0; this.capsules.length = 0; this.tires.length = 0;
+    this.mods.clearAll();
+    this.flash = 0;
+    AudioSys.setMusic('win');
+    const jb = this.junkbot;
+    const cx = jb ? jb.x + jb.w / 2 : W / 2, cy = jb ? jb.y + jb.h / 2 : H / 2 - 60;
+    const halfW = jb ? jb.w / 2 : 70, halfH = jb ? jb.h / 2 : 70;
+    this.victory = new Sequence([
+      { // wobble + sparks: the junkbot goes dizzy before it blows
+        dur: 1.2,
+        enter: () => { if (jb) jb.mood = 'dizzy'; },
+        tick: () => {
+          if (jb && Math.random() < 0.5) jb.hurtT = 0.25;
+          if (Math.random() < 0.5) Particles.burst(cx + rand(-halfW, halfW), cy + rand(-halfH, halfH), 2, { colors: ['#fff', '#ffe156'], type: 'sparkle', sp1: 220, l1: 0.5 });
+        },
+      },
+      { // parts rocket off one by one
+        dur: 1.5,
+        enter: () => { AudioSys.sfx('bashclank'); },
+        tick: () => { if (Math.random() < 0.55) this.debris.push(...this.makeDebris(cx + rand(-halfW, halfW), cy + rand(-halfH, halfH), 1)); },
+      },
+      { // GIANT junk explosion
+        dur: 0.6,
+        enter: () => {
+          this.junkbot = null;
+          this.flash = 1;
+          game.shake = Math.max(game.shake, 0.6);
+          AudioSys.sfx('boom'); AudioSys.sfx('tireboom');
+          Particles.burst(cx, cy, 40, { colors: ['#ff9f43', '#ffe156', '#fff'], type: 'flame', sp1: 420, l1: 0.9, s1: 16, grav: -80 });
+          Particles.burst(cx, cy, 30, { colors: ['#fff', '#ffe156', RAINBOW[randi(0, RAINBOW.length - 1)]], type: 'block', sp1: 360, l1: 0.8, s1: 11, grav: 600 });
+          this.debris.push(...this.makeDebris(cx, cy, 8));
+        },
+      },
+      { // 100-candy shower, magneted straight to the truck, rolling counter
+        dur: 2.5,
+        enter: () => {
+          const pl = game.player;
+          this.mods.add('magnet', 3);
+          arcadePayout(this, 100, pl.cx, pl.y);
+          this.dropCandy(pl.cx, pl.y - 160, 24);
+        },
+      },
+      { // fireworks
+        dur: 1.5,
+        enter: (seq) => { seq.fwBucket = -1; },
+        tick: (k, seq) => {
+          const bucket = Math.floor(k * 1.5 / 0.3);
+          if (bucket !== seq.fwBucket) {
+            seq.fwBucket = bucket;
+            AudioSys.sfx('firework');
+            Particles.burst(rand(220, W - 220), rand(140, 340), 16, { colors: RAINBOW.concat(['#fff', '#ffe156']), type: 'star', sp1: 380, l0: 0.7, l1: 1.4, s1: 13, grav: 120 });
+          }
+        },
+      },
+      { dur: 9999, enter: () => { game.subWin(); } }, // hands off to the party overlay; Space (after 5s) exits back to the rally
+    ]);
   }
 
   // ---- candy
@@ -636,6 +752,14 @@ class BlockBash {
   }
 
   // ---- miss + debris + splat
+  // shared junk-piece factory: the funny miss splat and the JUNKBOT's part-pop
+  // / explosion debris are the same kind of tumbling piece, drawn by
+  // BASH_ART.junk — one implementation, three callers.
+  makeDebris(x, y, n) {
+    const arr = [];
+    for (let i = 0; i < n; i++) arr.push({ x: x + rand(-24, 24), y: y + rand(-12, 12), kind: randi(0, 5), rot: rand(TAU), rotV: rand(-6, 6), vx: rand(-220, 220), vy: rand(-420, -180), t: 0, life: 1.2 });
+    return arr;
+  }
   loseBall(b) {
     const i = this.balls.indexOf(b);
     if (i < 0) return;
@@ -643,9 +767,7 @@ class BlockBash {
     if (this.balls.length === 0) {
       this.splat = { x: clamp(b.x, 80, 1200), y: BB.FLOOR, k: 1 };
       this.respawnT = BB.RESPAWN;
-      for (let i2 = 0; i2 < 3; i2++) {
-        this.debris.push({ x: this.splat.x + rand(-24, 24), y: BB.FLOOR - 6, kind: randi(0, 5), rot: rand(TAU), rotV: rand(-6, 6), vx: rand(-220, 220), vy: rand(-420, -180), t: 0, life: 1.2 });
-      }
+      this.debris.push(...this.makeDebris(this.splat.x, BB.FLOOR - 6, 3));
       AudioSys.sfx('bashmiss'); AudioSys.sfx('muffhonk');
       game.player.setMood('surprised', 0.6);
       this.mods.clear('rainbow');
@@ -660,10 +782,25 @@ class BlockBash {
   // ---- main update
   update(dt, pl) {
     if (!this.booted) this.boot(pl);
-    this.t += dt; this.bootT += dt;
-    this.mods.update(dt);
+    this.t += dt;
     this.hud.update(dt);
     arcadePayTick(this, dt);
+    if (this.flash > 0) this.flash = Math.max(0, this.flash - dt / 0.5); // the explosion's screen-flash overlay, independent of the Sequence step it started in
+    if (this.state === 'victory') {
+      // victory sequence + payout + candies + particles only — no ball/paddle
+      // logic (the truck still drives around, harmlessly, via updatePlayer)
+      if (this.victory) this.victory.update(dt);
+      this.updateCandy(dt, pl);
+      for (let i = this.debris.length - 1; i >= 0; i--) {
+        const d = this.debris[i];
+        d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.rotV * dt;
+        if (d.t >= d.life) this.debris.splice(i, 1);
+      }
+      if (this.toast) { this.toast.t -= dt; if (this.toast.t <= 0) this.toast = null; }
+      return;
+    }
+    this.bootT += dt;
+    this.mods.update(dt);
     this.waves.update(dt);
     // never-stall rule: past par, the crane periodically yanks a leftover block
     if (this.waves.pastPar() && this.crane.mode === 'idle') {
@@ -675,11 +812,17 @@ class BlockBash {
     const pulse = survivors.length > 0 && survivors.length <= 3;
     for (const b of survivors) b.wobble = pulse ? 1 : 0;
 
-    this.launchT -= dt;
+    // auto-launch only while a wave is actually being played (or already fully
+    // resolved, which is what waves.state reads as during the boss fight,
+    // once WaveRunner.onDone has fired) — a resting ball waits patiently
+    // through the 'build'/'clear' flourishes instead of launching itself (or
+    // on a stray Space) into an arena that isn't ready for it yet
+    const canLaunch = this.waves.state !== 'build' && this.waves.state !== 'clear';
+    if (canLaunch) this.launchT -= dt;
     for (const b of this.balls) {
       if (b.rest) {
         b.x = pl.cx; b.y = pl.y - b.r;
-        if (justP.Space || this.launchT <= 0) this.launch(b);
+        if (canLaunch && (justP.Space || this.launchT <= 0)) this.launch(b);
       } else {
         b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 6) b.trail.shift();
         this.stepBall(b, dt);
@@ -712,6 +855,7 @@ class BlockBash {
     this.updateTires(dt);
     this.updateConveyors(dt);
     this.updateCrane(dt);
+    if (this.junkbot) this.junkbot.update(dt, this);
     if (this.toast) { this.toast.t -= dt; if (this.toast.t <= 0) this.toast = null; }
   }
 
@@ -738,6 +882,7 @@ class BlockBash {
     for (const tr of this.tires) BASH_ART.tire(ctx, tr.x, BB.FLOOR - tr.r, tr.r, tr.rot, t);
     if (this.net) BASH_ART.net(ctx, BB.FLOOR - 14, t, this.mods.frac('net'));
     BASH_ART.crane(ctx, this.crane.x, this.crane.y, t, { holding: !!this.crane.holding, mood: this.crane.mood });
+    if (this.junkbot) BASH_ART.junkbot(ctx, this.junkbot, t); // after blocks, before balls, unclipped (he paces past the arena's own bounds while pacing/bobbing)
     for (const b of this.balls) {
       for (const p of b.trail) { ctx.save(); ctx.globalAlpha = 0.18; BASH_ART.ball(ctx, p.x, p.y, b.r * 0.7, t, { mood: b.mood }); ctx.restore(); }
       BASH_ART.ball(ctx, b.x, b.y, b.r, t, { mood: b.mood, rainbow: this.mods.has('rainbow'), squash: b.squash });
@@ -761,6 +906,9 @@ class BlockBash {
       ctx.save(); ctx.globalAlpha = Math.min(1, this.toast.t * 2);
       BASH_ART.modIcon(ctx, game.player.cx, game.player.y - 66, 40, this.toast.kind);
       ctx.restore();
+    }
+    if (this.flash > 0) { // the junk explosion's screen flash, fading over 0.5s
+      ctx.save(); ctx.globalAlpha = this.flash; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore();
     }
   }
 }

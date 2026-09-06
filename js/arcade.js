@@ -67,7 +67,12 @@ class ArcadeHud {
 function arcadePayout(m, n, x, y) { m.payQ = (m.payQ || 0) + n; m.payX = x; m.payY = y; }
 function arcadePayTick(m, dt) {
   if (!m.payQ) return;
-  const k = Math.min(m.payQ, Math.ceil(dt * 90)); m.payQ -= k; game.candy += k;
+  // a fractional accumulator (instead of ceil(dt*90)) so the payout drains at
+  // a true ~90/s regardless of frame rate — ceil was rounding every single
+  // frame up to at least 1, overpaying badly at high fps
+  m.payAcc = (m.payAcc || 0) + dt * 90;
+  const k = Math.min(m.payQ, Math.floor(m.payAcc)); m.payAcc -= k;
+  m.payQ -= k; game.candy += k;
   if (Math.random() < 0.5) AudioSys.sfx('candy');
   if (Math.random() < 0.6) Particles.candyBurst(m.payX + rand(-40, 40), m.payY, 1);
 }
