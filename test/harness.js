@@ -2730,6 +2730,15 @@ check('arcade kit: WaveRunner build → play → clear → next → done, stall 
   w.update(2.1); const s3 = w.state; w.update(1.3); clear = true; w.update(0.02); w.update(2.1);
   return s1 === 'play' && past && s2 === 'clear' && s3 === 'build' && w.state === 'done' && log.join() === 'b0,B0,P0,C0,b1,B1,P1,C1,D';
 })()`, sandbox));
+check('arcade kit: WaveRunner isBuilt hook holds build past buildTime until true (default unchanged when omitted)', vm.runInContext(`(() => {
+  let built = false;
+  const w = new WaveRunner([{ par: 1, build() {} }], { isBuilt: () => built });
+  w.start(); w.update(1.3); const heldByGate = w.state === 'build';
+  built = true; w.update(0.01); const releasedByGate = w.state === 'play';
+  const w2 = new WaveRunner([{ par: 1, build() {} }], {}); // no isBuilt hook at all
+  w2.start(); w2.update(1.3); const defaultUnchanged = w2.state === 'play';
+  return heldByGate && releasedByGate && defaultUnchanged;
+})()`, sandbox));
 check('arcade kit: Sequence runs steps in order with k 0..1 and finishes', vm.runInContext(`(() => {
   const ks = []; const s = new Sequence([{ dur: 1, enter() { ks.push('e0'); }, tick(k) { ks.push(k.toFixed(1)); } }, { dur: 0.5, enter() { ks.push('e1'); } }]);
   s.update(0.5); s.update(0.5); s.update(0.3); s.update(0.3);
@@ -2888,7 +2897,12 @@ check('blockbash: a power block drops a capsule', vm.runInContext('game.level.ar
 vm.runInContext("game.level.arcade.eventTire()", sandbox); vm.runInContext("(() => { const a = game.level.arcade; a.tires[0].x = game.player.cx; })()", sandbox); frames(5);
 check('blockbash: a giant tire spins the truck out briefly (no damage)', vm.runInContext('game.level.arcade.spinT', sandbox) > 0 && G().player.hearts === 3);
 frames(60); check('blockbash: the spin-out ends and control returns', vm.runInContext('game.level.arcade.spinT', sandbox) <= 0);
-vm.runInContext("(() => { const a = game.level.arcade; a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 100; b.vy = -300; a.steer(b); a.eventSnatch(); })()", sandbox);
+// clear any capsule still falling from the power-block test above (its kind is
+// weighted-random and could be 'multi') and any active mods — this test's own
+// wide, fast paddle sweep chasing the flung ball can otherwise catch a stray
+// capsule in passing and split the ball, flaking the "never lost" assertion
+// below for a reason that has nothing to do with the crane
+vm.runInContext("(() => { const a = game.level.arcade; a.capsules.length = 0; a.mods.clearAll(); a.balls.length = 0; const b = a.spawnBall(600, 300, false); b.vx = 100; b.vy = -300; a.steer(b); a.eventSnatch(); })()", sandbox);
 let bbReleaseVy = null;
 for (let bbF = 0; bbF < 150; bbF++) {
   const bbWasHeld = vm.runInContext("(() => { const b = game.level.arcade.balls[0]; return b ? !!b.held : false; })()", sandbox);
@@ -2906,7 +2920,11 @@ vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; for 
 check('blockbash: a CONVEYOR slides a whole row', vm.runInContext('game.level.arcade.blocks[0].x', sandbox) !== cvx && vm.runInContext('game.level.arcade.blocks.every(b => b.vx === game.level.arcade.blocks[0].vx)', sandbox));
 vm.runInContext("game.level.arcade.candies.length = 0; game.level.arcade.eventTower()", sandbox); frames(180);
 check('blockbash: a JUNK TOWER topples into free candy', vm.runInContext('game.level.arcade.candies.length + game.level.arcade.towerCandy', sandbox) >= 3);
-vm.runInContext("(() => { const a = game.level.arcade; a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
+// rest every ball first — a still-flying ball left over from the snatch test
+// above can otherwise smash one of these two test blocks itself (on top of
+// the crane's own pick), occasionally leaving 0 instead of 1 and flaking this
+// check; the crane's own action is what's under test here, in isolation
+vm.runInContext("(() => { const a = game.level.arcade; a.balls.forEach(b => { b.rest = true; b.held = false; }); a.blocks.length = 0; a.addBlock(3, 0, 'plain'); a.addBlock(8, 0, 'tough'); a.craneClearOne(); })()", sandbox); frames(200);
 check('blockbash: the crane CLEAR yanks one leftover block (and pays for it)', bbS().blocks === 1);
 
 // ---------------- waves, escalation, build-in, anti-stall, intro hints (Task 7) ----------------
@@ -2920,6 +2938,7 @@ check('blockbash: the intro hint is spliced out after the first launch', vm.runI
 // clear wave 1 by force → flourish → wave 2 arrives with power-ups
 vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(10);
 check('blockbash: clearing the board starts the WAVE CLEAR flourish', vm.runInContext("game.level.arcade.waves.state", sandbox) === 'clear' && vm.runInContext("game.level.arcade.hud.bannerText", sandbox) !== null);
+check('blockbash: the flourish collects every ball to ONE resting ball on the roof', vm.runInContext("(() => { const a = game.level.arcade; return a.waves.state === 'clear' && a.balls.length === 1 && a.balls[0].rest; })()", sandbox));
 frames(200);
 check('blockbash: wave 2 brings power/candy/split/tough blocks and speed 430', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 1 && ks.includes('power') && ks.includes('split') && ks.includes('tough') && a.phaseSpeed === 430; })()", sandbox));
 // anti-stall: past par the crane starts clearing
@@ -2928,8 +2947,34 @@ const nb0 = bbS().blocks; frames(60 * 6);
 check('blockbash: past par the crane yanks leftover blocks — a wave can never stall', bbS().blocks < nb0);
 vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(210);
 check('blockbash: wave 3 = moving junk (conveyor rows, fallers, runners, barrels, surprises), speed 480', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 2 && a.conveyorRows.size >= 2 && ks.includes('faller') && ks.includes('runner') && ks.includes('boom') && ks.includes('surprise') && a.phaseSpeed === 480; })()", sandbox));
-vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox); frames(210);
-check('blockbash: wave 4 = CHAOS with rainbow blocks, 4 barrels, 2 balls, speed 520', vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return a.waves.i === 3 && ks.filter(k => k === 'rainbow').length === 2 && ks.filter(k => k === 'boom').length >= 4 && a.balls.length >= 2 && a.phaseSpeed === 520; })()", sandbox));
+vm.runInContext("(() => { const a = game.level.arcade; for (const b of a.blocks) a.breakBlock(b, 'test'); })()", sandbox);
+// wave 4 has the deepest/densest build-in (60 blocks, up to ~1.5s of fallDelay
+// stagger before the last one even starts falling) — sample every frame from
+// the moment its build begins until WaveRunner actually reaches 'play',
+// asserting the isBuilt gate (js/arcade.js) never lets 'play' start while an
+// alive block is still unlanded, and that it doesn't run away either.
+let bb4BuildAt = null, bb4PlayAt = null, bb4Bad = false, bb4Snap = null;
+for (let bbF = 0; bbF < 400; bbF++) {
+  frames(1);
+  const st = vm.runInContext("(() => { const a = game.level.arcade; return { i: a.waves.i, state: a.waves.state, unlanded: a.blocks.some(b => b.alive && !b.landed) }; })()", sandbox);
+  if (st.i === 3 && bb4BuildAt === null) {
+    bb4BuildAt = bbF;
+    // snapshot the freshly-built layout THIS frame, before any block can land
+    // and become hittable — the resting ball auto-launches on its own timer
+    // and can otherwise legitimately smash a rainbow/boom block sometime
+    // during the long (isBuilt-gated) build window, corrupting a count
+    // sampled only once play arrives
+    bb4Snap = vm.runInContext("(() => { const a = game.level.arcade, ks = a.aliveBlocks().map(b => b.kind); return { rainbow: ks.filter(k => k === 'rainbow').length, boom: ks.filter(k => k === 'boom').length, phaseSpeed: a.phaseSpeed }; })()", sandbox);
+  }
+  if (bb4BuildAt !== null && st.state === 'play') {
+    if (st.unlanded) bb4Bad = true;
+    bb4PlayAt = bbF;
+    break;
+  }
+}
+check('blockbash: wave 4 build-in never lets play start with an unlanded block', bb4BuildAt !== null && !bb4Bad);
+check('blockbash: wave 4 build-in reaches play within 4s (isBuilt gate does not stall)', bb4PlayAt !== null && (bb4PlayAt - bb4BuildAt) <= 240);
+check('blockbash: wave 4 = CHAOS with rainbow blocks, 4 barrels, 2 balls, speed 520', bb4Snap !== null && bb4Snap.rainbow === 2 && bb4Snap.boom >= 4 && bb4Snap.phaseSpeed === 520 && vm.runInContext('game.level.arcade.balls.length', sandbox) >= 2);
 check('blockbash: the ball speed cap holds under bump + chaos', vm.runInContext("(() => { const a = game.level.arcade; const b = a.balls[0]; b.rest = false; b.bumpT = 1; a.steer(b); return b.speed <= 620; })()", sandbox));
 
 // Task 7's wave checks re-entered via game.startLevel('blockbash'), which

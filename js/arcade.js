@@ -27,7 +27,7 @@ class WaveRunner {
   update(dt) {
     if (this.state === 'done') return;
     this.stateT += dt;
-    if (this.state === 'build' && this.stateT >= this.buildTime) { this.state = 'play'; this.stateT = 0; if (this.h.onPlay) this.h.onPlay(this.i); }
+    if (this.state === 'build' && this.stateT >= this.buildTime && (!this.h.isBuilt || this.h.isBuilt())) { this.state = 'play'; this.stateT = 0; if (this.h.onPlay) this.h.onPlay(this.i); }
     else if (this.state === 'play') { this.stallT += dt; if (this.h.isClear && this.h.isClear()) this.skip(); }
     else if (this.state === 'clear' && this.stateT >= this.clearTime) this.next();
   }

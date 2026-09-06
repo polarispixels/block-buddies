@@ -60,6 +60,7 @@ class BlockBash {
       onClear: (i) => this.onWaveClear(i),
       onDone: () => this.onWavesDone(),
       isClear: () => this.aliveBlocks().filter((b) => !b.tower).length === 0,
+      isBuilt: () => this.blocks.every((b) => !b.alive || b.landed),
     });
   }
   boot(pl) {
@@ -490,7 +491,9 @@ class BlockBash {
 
   // ---- wave layouts (spec §9): WaveRunner calls build() at the top of each
   // wave, before onWaveBuild runs — so a wave's own blocks/conveyors/towers are
-  // already in place by the time onWaveBuild collects the balls and banners in
+  // already in place by the time onWaveBuild banners the wave in and re-steers
+  // the ball (which onWaveClear already collected to one, at the end of the
+  // PREVIOUS wave's flourish)
   buildWave1() { // LEARN: 2 rows plain + one candy crate
     this.addWaveGrid(2, { '1,5': 'candy' });
   }
@@ -527,21 +530,10 @@ class BlockBash {
   onWaveBuild(i) {
     this.phase = i; this.phaseSpeed = BB.SPEED[i]; this.stallAcc = 0;
     this.hud.banner('WAVE ' + (i + 1) + '!');
-    // collect every ball back to the roof as ONE resting ball; extra balls get
-    // a small plop (mods are untouched — only ball count/position resets)
-    const pl = game.player;
-    for (const b of this.balls.slice(1)) {
-      AudioSys.sfx('plop');
-      Particles.burst(b.x, b.y, 4, { colors: ['#9a9a9a', '#7d7d7d'], type: 'circle', sp1: 180, l1: 0.5, s1: 6, grav: 400 });
-    }
-    this.balls.length = Math.min(this.balls.length, 1);
-    if (this.balls.length === 0) this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), true);
-    else { const b0 = this.balls[0]; b0.rest = true; b0.held = false; b0.vx = 0; b0.vy = 0; }
-    for (const b of this.balls) this.steer(b); // re-steer to the new phase speed
-    this.launchT = BB.LAUNCH_AUTO;
+    for (const b of this.balls) this.steer(b); // re-steer surviving balls to the new phase speed
   }
   onWavePlay(i) {
-    if (i === 3) { // wave 4 starts with 2 balls — added post-collection so it survives onWaveBuild's roundup
+    if (i === 3) { // wave 4 starts with 2 balls — added here (not in build()) so it survives onWaveClear's roundup, which already ran before this wave's build()
       const pl = game.player;
       const nb = this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), false);
       this.launch(nb);
@@ -551,6 +543,18 @@ class BlockBash {
     this.hud.banner('WAVE CLEAR!', '#7be07b');
     AudioSys.sfx('cheer');
     Particles.burst(W / 2, H / 2 - 60, 24, { colors: RAINBOW.concat(['#fff', '#ffe156']), type: 'confetti', sp1: 340, l0: 1, l1: 1.8, s1: 12, grav: 260, up: 160 });
+    // the 2s WAVE CLEAR flourish: every ball collects back to the roof as ONE
+    // resting ball; extra balls get a small plop (mods are untouched — only
+    // ball count/position resets)
+    const pl = game.player;
+    for (const b of this.balls.slice(1)) {
+      AudioSys.sfx('plop');
+      Particles.burst(b.x, b.y, 4, { colors: ['#9a9a9a', '#7d7d7d'], type: 'circle', sp1: 180, l1: 0.5, s1: 6, grav: 400 });
+    }
+    this.balls.length = Math.min(this.balls.length, 1);
+    if (this.balls.length === 0) this.spawnBall(pl.cx, pl.y - (this.mods.has('giant') ? BB.GIANT_R : BB.BALL_R), true);
+    else { const b0 = this.balls[0]; b0.rest = true; b0.held = false; b0.vx = 0; b0.vy = 0; }
+    this.launchT = BB.LAUNCH_AUTO;
   }
   onWavesDone() {
     this.state = 'done'; // Task 8 replaces this with the JUNKBOT boss entrance
@@ -719,9 +723,17 @@ class BlockBash {
   }
   draw(ctx, t) {
     if (this.splat) BASH_ART.splat(ctx, this.splat.x, this.splat.y, t, this.splat.k);
+    // clip everything that can sit above the rail or beyond the side walls while
+    // raining in / conveyor-wrapping (candy, blocks, junk debris) to the arena
+    // rect, so it emerges from under the rail and slides behind the walls
+    // instead of drawing over them. Balls/capsules/crane/tires stay unclipped —
+    // they're already confined to the arena, and the crane's chain must still
+    // reach up into the rail.
+    ctx.save(); ctx.beginPath(); ctx.rect(BB.L, BB.TOP, BB.R - BB.L, BB.FLOOR - BB.TOP); ctx.clip();
     for (const c of this.candies) drawCandy(ctx, c.x, c.y, 15, c.kind || 0, t); // BASH_ART has no dedicated candyDrop; reuse the shared util.js candy piece like every other level's pickups
     for (const b of this.blocks) if (b.alive) BASH_ART.block(ctx, b, t);
     for (const d of this.debris) BASH_ART.junk(ctx, d.x, d.y, d.kind, d.rot, 1);
+    ctx.restore();
     for (const c of this.capsules) BASH_ART.capsule(ctx, c.x, c.y, c.kind, t);
     for (const tr of this.tires) BASH_ART.tire(ctx, tr.x, BB.FLOOR - tr.r, tr.r, tr.rot, t);
     if (this.net) BASH_ART.net(ctx, BB.FLOOR - 14, t, this.mods.frac('net'));
