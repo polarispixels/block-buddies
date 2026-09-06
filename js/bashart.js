@@ -146,7 +146,9 @@ const BASH_ART = {
     ctx.fillStyle = '#c7cbd6';
     for (let i = 0; i < 6; i++) {
       const tx = cx - 75 + i * 30;
-      ctx.beginPath(); ctx.moveTo(tx, 96); ctx.lineTo(tx + 14, 96); ctx.lineTo(tx + 7, 116); ctx.closePath(); ctx.fill();
+      // tip stays above y=106 (block row 0 starts at y=110) so nothing the
+      // rail draws overlaps the top row of blocks
+      ctx.beginPath(); ctx.moveTo(tx, 96); ctx.lineTo(tx + 14, 96); ctx.lineTo(tx + 7, 105); ctx.closePath(); ctx.fill();
     }
     drawFace(ctx, cx, 66, 28, 'angry', t, 9);
     ctx.restore();
@@ -418,12 +420,28 @@ const BASH_ART = {
         ctx.strokeStyle = '#a83c26'; ctx.lineWidth = Math.max(1.5, s * 0.06); ctx.stroke();
       }
     } else if (kind === 'giant') {
-      ctx.fillStyle = '#ff6b4d';
-      ctx.beginPath(); ctx.arc(0, s * 0.06, s * 0.52, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#a83c26'; ctx.lineWidth = Math.max(1.5, s * 0.07); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(-s * 0.56, -s * 0.52, s * 0.14, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#a83c26'; ctx.lineWidth = Math.max(1, s * 0.035); ctx.stroke();
+      // a small ball with four bright outward-pointing arrows (N/S/E/W) =
+      // "grow bigger" — a plain ball alone was indistinguishable from the
+      // Bouncy Buddy ball itself at capsule/HUD size
+      const br = s * 0.34;
+      const g = ctx.createRadialGradient(-br * 0.3, -br * 0.3, br * 0.1, 0, 0, br);
+      g.addColorStop(0, '#ff9a7a'); g.addColorStop(1, BB_DRUM2);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, br, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#7a1810'; ctx.lineWidth = Math.max(1.5, s * 0.06); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.ellipse(-br * 0.32, -br * 0.34, br * 0.28, br * 0.16, -0.5, 0, TAU); ctx.fill();
+      const aGap = br + s * 0.13, aLen = s * 0.24, aBase = s * 0.19;
+      ctx.fillStyle = '#4ee0a0'; ctx.strokeStyle = '#1a6a48'; ctx.lineWidth = Math.max(1, s * 0.035);
+      ctx.lineJoin = 'round';
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const px = -dy, py = dx; // perpendicular, for the arrow's base width
+        ctx.beginPath();
+        ctx.moveTo(dx * (aGap + aLen), dy * (aGap + aLen));
+        ctx.lineTo(dx * aGap + px * aBase * 0.5, dy * aGap + py * aBase * 0.5);
+        ctx.lineTo(dx * aGap - px * aBase * 0.5, dy * aGap - py * aBase * 0.5);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
     } else if (kind === 'wide') {
       ctx.fillStyle = BB_RUST;
       rr(ctx, -s * 0.56, -s * 0.16, s * 1.12, s * 0.32, s * 0.09); ctx.fill();
