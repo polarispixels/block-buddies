@@ -53,7 +53,7 @@ want to play again?
 
 - Bounds: walls at x = 40 and x = 1240 (drawn as stacked-tire bumpers with
   faces), ceiling y = 90 (under a crane rail; the HUD lives above), floor y = 620.
-  "Below floor" = ball centre y > 640 = a miss.
+  "Below floor" = the ball's TOP edge past y 640 (it buries itself in the junk) = a miss.
 - Block grid: 12 columns × 96 px (x 64 … 1216), rows 48 px tall from y = 110
   (row 0) to row 4 (y 302–350). Truck roof ≈ y 523 → ≥ 170 px of open air.
 - Truck paddle: input `keys.ArrowLeft/Right`; accel 2600 px/s², max 520 px/s,
