@@ -3098,7 +3098,7 @@ check('blockbash: every wave layout keeps its blocks inside the arena once lande
 })()`, sandbox));
 // the paddle clamp both lets the truck occupy each wall exactly AND actually
 // pulls a truck driven past a wall back to it (a real clamp, not a no-op)
-check('blockbash: the truck can reach both arena walls (paddle clamp allows x=40 and x=1240-w)', vm.runInContext(`(() => {
+check('blockbash: the truck can reach both arena walls (paddle clamp allows x=BB.L and x=BB.R-w)', vm.runInContext(`(() => {
   const a = game.level.arcade, pl = game.player;
   const x0 = pl.x, vx0 = pl.vx, w0 = pl.w;
   a.booted = true; pl.w = 104; // this check runs while still in the trophy-replay
@@ -3107,36 +3107,43 @@ check('blockbash: the truck can reach both arena walls (paddle clamp allows x=40
   // clobbering the forced x; the truck's real width is 104 (boardTruck), not
   // whatever on-foot size the player still has this early
   pl.x = -500; pl.vx = 0; a.updatePlayer(pl, 1 / 60);
-  const leftOk = Math.abs(pl.x - 40) < 0.01;
+  const leftOk = Math.abs(pl.x - BB.L) < 0.01;
   pl.x = 5000; pl.vx = 0; a.updatePlayer(pl, 1 / 60);
-  const rightOk = Math.abs(pl.x - (1240 - pl.w)) < 0.01;
+  const rightOk = Math.abs(pl.x - (BB.R - pl.w)) < 0.01;
   pl.x = x0; pl.vx = vx0; pl.w = w0;
   return leftOk && rightOk;
 })()`, sandbox));
 // the JUNKBOT's box (pacing + sinusoidal bob) never wanders past the walls, and
 // its bottom stays close enough to the roof that a straight-up ball always
 // reaches it — checked through several full bob periods so the invariant
-// isn't a one-frame fluke. The anti-stall droop (spec: 60px, twice max) is a
-// deliberate, temporary exception that pulls the boss CLOSER to the paddle
-// (easier to hit, not harder), so it's exercised separately, not against the
-// same tight bound.
-check('blockbash: the junkbot box stays inside x 40..1240 with bottom <= 420 through a full pacing cycle', vm.runInContext(`(() => {
+// isn't a one-frame fluke. The anti-stall droop (spec §10, amended: one step
+// of 60 px, never twice) is a deliberate, temporary exception that pulls the
+// boss CLOSER to the paddle (easier to hit, not harder), so it's exercised
+// separately, not against the same tight bound.
+check('blockbash: the junkbot box stays inside x BB.L..BB.R with bottom <= 420 through a full pacing cycle', vm.runInContext(`(() => {
   const j = new JunkBot();
   j.entering = false; j.y = BB.BOSS.YMIN; j.droop = 0;
   let bad = false;
   for (let i = 0; i < 60 * 15; i++) {
     j.update(1 / 60, game.level.arcade);
-    if (j.x < 40 || j.x + j.w > 1240 || j.y + j.h > 420) bad = true;
+    if (j.x < BB.L || j.x + j.w > BB.R || j.y + j.h > 420) bad = true;
   }
   return !bad;
 })()`, sandbox));
-check('blockbash: the anti-stall droop only ever pulls the junkbot closer to the paddle, never off the floor', vm.runInContext(`(() => {
+check('blockbash: the anti-stall droop applies once (spec §10, amended: one step of 60 px, never twice) and the escalated box still stays inside x BB.L..BB.R with bottom <= 480', vm.runInContext(`(() => {
   const j = new JunkBot();
-  j.entering = false; j.y = BB.BOSS.YMIN; j.droop = 120; // both droop steps applied (spec: 60px, twice max)
+  j.entering = false; j.y = BB.BOSS.YMIN;
+  // force the stall clock past BB.BOSS.STALL TWICE via real update() calls
+  // (never by poking j.droop directly) — droop must cap at one 60px step
+  j.stallT = BB.BOSS.STALL + 1; j.update(1 / 60, game.level.arcade);
+  const droopAfterFirst = j.droop;
+  j.stallT = BB.BOSS.STALL + 1; j.update(1 / 60, game.level.arcade);
+  const droopAfterSecond = j.droop;
+  if (droopAfterFirst !== 60 || droopAfterSecond !== 60) return false;
   let bad = false;
   for (let i = 0; i < 60 * 8; i++) {
     j.update(1 / 60, game.level.arcade);
-    if (j.x < 40 || j.x + j.w > 1240 || j.y + j.h > BB.FLOOR) bad = true;
+    if (j.x < BB.L || j.x + j.w > BB.R || j.y + j.h > 480) bad = true;
   }
   return !bad;
 })()`, sandbox));
@@ -3183,20 +3190,9 @@ function bbRun(maxFrames, clumsy) {
           let raw = (tgt.x - BB.L) + tgt.vx * t, m = raw % (2 * width); if (m < 0) m += 2 * width;
           tx = BB.L + (m <= width ? m : 2 * width - m);
         } else tx = tgt.x; // still rising/flat: no reliable landing yet, just shadow it
-        // during a wave, don't sit dead-centre under the predicted landing spot:
-        // a perfectly-centred catch returns the ball almost straight up (paddle
-        // english is near zero at the middle), which can settle into a stable
-        // back-and-forth that never sweeps into the last few columns. Nudge the
-        // aim toward wherever blocks remain — the same "lean toward the fuller
-        // side" instinct launch() itself already uses for the opening serve —
-        // so catches pick up some spread instead of orbiting forever.
-        if (a.state === 'play') {
-          const alive = a.aliveBlocks();
-          if (alive.length) {
-            let sum = 0; for (const b of alive) sum += b.x + b.w / 2;
-            tx = tx * 0.7 + (sum / alive.length) * 0.3;
-          }
-        }
+        // (no aim bias toward remaining blocks — a five-year-old chases the
+        // ball, not the block layout; wall-reflection prediction + the
+        // low-ball hop below are both still "watch the ball" strategies)
       } else tx = caps ? caps.x : (a.blocks.length ? 640 : pl.cx);
       return { state: a.state, endPhase: game.endPhase, px: pl.cx, tx, rest: a.balls.some(b => b.rest), bally: tgt ? tgt.y : 0 }; })()`, sandbox);
     if (!st || st.endPhase === 'party') break;

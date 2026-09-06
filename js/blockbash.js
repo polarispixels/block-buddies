@@ -11,14 +11,16 @@ const BB = {
   LAUNCH_AUTO: 1.5, RESPAWN: 0.9,
   CAPSULE_VY: 220, CANDY_DRIFT: 140, FLOOR_CANDY_T: 6, MAX_BALLS: 6,
   MODS: { giant: 10, wide: 12, boom: 8, magnet: 10, slow: 6, net: 12, rainbow: 6 },
-  // Task 9 playability gate: tuned down from [45, 55, 65, 75] / 2.5 — a full
-  // simulated run of the "keep the truck under the ball" tracking policy
-  // occasionally landed within 15% of the 5.5-min normal-run ceiling (one
-  // measured run hit 323s of a 330s cap) because a less-lucky run leans more
-  // heavily on the anti-stall crane to finish a wave; pulling par and the
-  // clear cadence in gives that safety net more headroom without touching
-  // how fast an actively-playing run clears blocks on its own.
-  PAR: [36, 44, 52, 60], STALL_EVERY: 2,
+  // Task 9 playability gate, re-tuned in fix round 1: [45,55,65,75]/2.5 ->
+  // [36,44,52,60]/2 -> [26,32,38,44]/1.5. Fix round 1 removed the tracking
+  // policy's block-aim bias (a five-year-old chases the ball, not the block
+  // layout), so a "keep the truck under the ball" run now leans on the
+  // never-stall crane for most of a wave's tail rather than landing every
+  // hit — pulling par and the clear cadence in further keeps a pure-tracker
+  // run inside the required 180-280s window without touching how fast an
+  // actively-playing run clears blocks on its own (that's still governed by
+  // BB.CAP/BB.SPEED, untouched).
+  PAR: [26, 32, 38, 44], STALL_EVERY: 1.5,
   BOSS: { HP: 12, W: 340, H: 260, XMIN: 200, XMAX: 1080, YMIN: 150, YMAX: 330, STALL: 60 }
 };
 // phase-weighted capsule mix (phase 0/1/2+): multi/wide/net favoured early, boom/giant later
@@ -62,7 +64,9 @@ class JunkBot {
     // added; a bob using the full (YMAX-YMIN) range blew straight through
     // that — and briefly poked the box above the arena's own TOP wall)
     this.y = BB.BOSS.YMIN + this.droop + Math.sin(this.t * 1.3) * 9;
-    this.stallT += dt; if (this.stallT > BB.BOSS.STALL && this.droop < 120) { this.droop += 60; this.stallT = 0; }
+    // spec §10 (amended): droops ONCE, not twice — one step of 60px caps body
+    // bottom at YMIN+60+H+bob <= 479, clear of a roof-resting ball at 506
+    this.stallT += dt; if (this.stallT > BB.BOSS.STALL && this.droop < 60) { this.droop += 60; this.stallT = 0; }
     this.drops.update(dt); if (this.stage >= 2) this.tires.update(dt); if (this.stage >= 3) this.beams.update(dt);
     if (this.beamT > 0) { this.beamT -= dt; const b = this.beamBall; if (b) { b.x = lerp(b.x, this.beamX, 1 - Math.exp(-8 * dt)); b.y = lerp(b.y, this.beamY, 1 - Math.exp(-8 * dt)); if (this.beamT <= 0) { b.held = false; const a = rand(-150, -30) * Math.PI / 180; b.vx = Math.cos(a) * b.speed; b.vy = Math.sin(a) * b.speed; m.steer(b); this.beamBall = null; } } }
   }
@@ -119,6 +123,7 @@ class BlockBash {
       isClear: () => this.aliveBlocks().filter((b) => !b.tower).length === 0,
       isBuilt: () => this.blocks.every((b) => !b.alive || b.landed),
     });
+    this.waves.clearTime = 1.5; // Task 9 re-tune (was 2s default) — trims the 4x WAVE CLEAR flourish a bit more off a pure-tracker run
   }
   boot(pl) {
     this.booted = true; this.bootT = 0;
