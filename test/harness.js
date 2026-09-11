@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'ride.js', 'beams.js', 'arcade.js', 'bashart.js', 'blockbash.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'planetart.js', 'ride.js', 'beams.js', 'arcade.js', 'bashart.js', 'blockbash.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -1608,6 +1608,72 @@ check('drawBlock replaces the tile for every slot and receives wobble/dim/idx in
   vm.runInContext('game.testHooksInfo', sandbox).idx === 2 && typeof vm.runInContext('game.testHooksInfo', sandbox).dim === 'boolean');
 check('shipped modes keep 84x84 tile solids (the hooks are opt-in)',
   vm.runInContext("[new LetterBlocksMachine(620), new EndingLetterBlocksMachine(620), new PatternBlocksMachine(620), new CountBlocksMachine(620)].every(m => m.solids.every(s => s.w === 84 && s.h === 84 && s.y + s.h === 430))", sandbox));
+
+check('PL_ART draws every planet skin at 64/96/140, moons, rocket, pad, bubble, cues and the door without throwing',
+  vm.runInContext(`(() => { try {
+    const c = document.getElementById('game').getContext('2d');
+    for (const sk of PL_SKINS) for (const d of [64, 96, 140]) { PL_ART.planet(c, 100, 100, d, sk, 'happy', 1); PL_ART.planet(c, 100, 100, d, sk, 'surprised', 2); }
+    PL_ART.moon(c, 10, 10, 22); PL_ART.moonRow(c, 300, 200, 7, 22); PL_ART.moonRow(c, 300, 200, 1, 22);
+    PL_ART.rocket(c, 300, 250, 170, 1, 0); PL_ART.rocket(c, 300, 250, 170, 1, 1);
+    PL_ART.pad(c, 300, 250, 200, 1); PL_ART.bubble(c, 700, 150, 300, 170, 420, 120);
+    for (const k of ['biggest', 'smallest', 'most', 'fewest']) PL_ART.cue(c, 700, 120, k, 150);
+    PL_ART.gravGen(c, 110, 620, 1); PL_ART.door(c, 430, 2340, 1, { glow: true }); PL_ART.door(c, 430, 2340, 1, { glow: false });
+    return PL_SKINS.length === 6 && new Set(PL_SKINS.map(s => s.c)).size === 6;
+  } catch (e) { console.log('PL_ART threw', e); return false; } })()`, sandbox));
+
+// ---- mode 5: PLANET BLOCKS (standalone machine; the room is checked in the Space Maze section) ----
+vm.runInContext('game.testPB = new PlanetBlocksMachine(620);', sandbox);
+const PLB = () => vm.runInContext('game.testPB', sandbox);
+const pbAnswerIsRight = () => {
+  const m = PLB(), c = m.mode.cur, p = c.planets, a = p[m.answer];
+  const key = c.kind === 'biggest' || c.kind === 'smallest' ? 'size' : 'moons';
+  const vals = p.map(q => q[key]);
+  const want = c.kind === 'biggest' || c.kind === 'most' ? Math.max(...vals) : Math.min(...vals);
+  return a[key] === want && vals.filter(v => v === want).length === 1;
+};
+check('planet round 1 is BIGGEST with three distinct sizes, three distinct skins and one honest answer',
+  PLB().mode.cur.kind === 'biggest' && new Set(PLB().mode.cur.planets.map(p => p.size)).size === 3 &&
+  new Set(PLB().mode.cur.planets.map(p => p.skin.name)).size === 3 && pbAnswerIsRight());
+check('planet solids are the planets: each solid is as wide as its planet, underside at G-190, and the answer solid is the widest',
+  PLB().solids.every((s, i) => s.w === PLB().mode.cur.planets[PLB().slots[i].value].size && s.y + s.h === 430) &&
+  PLB().solids[PLB().slots.findIndex(sl => sl.value === PLB().answer)].w === Math.max(...PLB().solids.map(s => s.w)));
+const pbKinds = [], pbSeen = { biggest: 0, smallest: 0, most: 0, fewest: 0 };
+let pbOk = true, pbGapOk = true, pbMoonOk = true;
+for (let r = 0; r < 14; r++) {
+  const m = PLB(), c = m.mode.cur;
+  pbKinds.push(c.kind); pbSeen[c.kind]++;
+  if (!pbAnswerIsRight()) pbOk = false;
+  const sizes = c.planets.map(p => p.size).sort((a, b) => a - b);
+  if (c.kind === 'biggest' || c.kind === 'smallest') { if (sizes[1] - sizes[0] < 12 || sizes[2] - sizes[1] < 12 || c.planets.some(p => p.moons !== 0)) pbGapOk = false; }
+  else { if (!c.planets.every(p => p.size === 96) || new Set(c.planets.map(p => p.moons)).size !== 3 || c.planets.some(p => p.moons < 1 || p.moons > 7)) pbMoonOk = false; }
+  const right = m.slots.find(sl => sl.value === m.answer);
+  vm.runInContext(`game.testPB.onAnswer(game.testPB.solids[${right.idx}])`, sandbox);
+  for (let i = 0; i < 130; i++) vm.runInContext('game.testPB.update(1/60)', sandbox);
+}
+check('the planet ladder: rounds 1-2 biggest, smallest by round 4, most moons for rounds 5-6, all four kinds by round 14',
+  pbKinds[0] === 'biggest' && pbKinds[1] === 'biggest' && pbKinds.slice(2, 4).includes('smallest') &&
+  pbKinds[4] === 'most' && pbKinds[5] === 'most' && Object.values(pbSeen).every(n => n > 0));
+check('every planet round has exactly one honest answer', pbOk);
+check('size rounds: gaps >= 12px and no moons; moon rounds: equal 96px planets with three distinct counts 1-7', pbGapOk && pbMoonOk);
+check('from round 7 on the question never repeats three times in a row',
+  pbKinds.slice(6).every((k, i, a) => i < 2 || !(a[i - 1] === k && a[i - 2] === k)));
+check('each planet solve pays 1 candy; every fifth solve throws the bonus party (+2)', (() => {
+  vm.runInContext('game.testPB2 = new PlanetBlocksMachine(620); game.candy = 0;', sandbox);
+  const pays = [];
+  for (let r = 0; r < 5; r++) {
+    const c0 = G().candy;
+    const m = vm.runInContext('game.testPB2', sandbox), right = m.slots.find(sl => sl.value === m.answer);
+    vm.runInContext(`game.testPB2.onAnswer(game.testPB2.solids[${right.idx}])`, sandbox);
+    for (let i = 0; i < 130; i++) vm.runInContext('game.testPB2.update(1/60)', sandbox);
+    pays.push(G().candy - c0);
+  }
+  return pays.slice(0, 4).every(p => p === 1) && pays[4] === 3;
+})());
+check('a wrong planet bump wobbles it and leaves the round idle', (() => {
+  const m = PLB(), wrong = m.slots.find(sl => sl.value !== m.answer);
+  vm.runInContext(`game.testPB.onAnswer(game.testPB.solids[${wrong.idx}])`, sandbox);
+  return PLB().state === 'idle' && PLB().wobble[wrong.idx] > 0;
+})());
 
 // ---------------- secret: COUNTING BLOCKS (Mountain World) ----------------
 vm.runInContext('game.startLevel(4)', sandbox);

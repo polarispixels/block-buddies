@@ -3062,3 +3062,142 @@ class CountBlocksMachine extends PuzzleBlocksMachine {
     } else if (this.state === 'idle') this.lit = 0;
   }
 }
+
+// ================================================================ planet blocks
+// PLANET BLOCKS (v1.30.0): Puzzle Blocks mode #5 and the first COMPARISON
+// mode (the spec's reasoning rung). The three answer blocks ARE planets —
+// the engine's opt-in `blockSize`/`drawBlock` hooks size the solids to the
+// planets — and the rocket's thought bubble asks BIGGEST / SMALLEST /
+// MOST MOONS / FEWEST MOONS with a no-reading cue (three silhouettes, the
+// wanted one gold). Rounds are generated on an invisible per-visit ladder.
+const PL_LAYOUT = { ROCKET_X: 300, PAD_Y: 250, BUBBLE: { x: 700, y: 150, w: 320, h: 180 } };
+const PL_WORD = { biggest: 'BIGGEST', smallest: 'SMALLEST', most: 'MOST MOONS', fewest: 'FEWEST MOONS' };
+// tier = rounds solved so far this visit. `sizes` = the pool three distinct
+// diameters are drawn from (min pairwise gap `gap`); `moonGap` = min gap
+// between the three moon counts (1-7). Sizes are never within 12px.
+const PL_TIERS = [
+  { rounds: 2, kinds: ['biggest'],  sizes: [64, 96, 140], gap: 12 },
+  { rounds: 1, kinds: ['biggest'],  sizes: [72, 96, 120, 140], gap: 20 },
+  { rounds: 1, kinds: ['smallest'], sizes: [64, 96, 140], gap: 12 },
+  { rounds: 2, kinds: ['most'],     moonGap: 2 },
+  { rounds: 1e9, kinds: ['biggest', 'smallest', 'most', 'fewest'], sizes: [64, 80, 96, 112, 128, 140], gap: 18, moonGap: 1 }
+];
+function plTier(roundNo) {
+  let acc = 0;
+  for (const t of PL_TIERS) { acc += t.rounds; if (roundNo < acc) return t; }
+  return PL_TIERS[PL_TIERS.length - 1];
+}
+// all 3-combinations of `pool` whose sorted pairwise gaps are >= gap
+function plTriples(pool, gap) {
+  const out = [];
+  for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) for (let k = j + 1; k < pool.length; k++) {
+    const t = [pool[i], pool[j], pool[k]].sort((a, b) => a - b);
+    if (t[1] - t[0] >= gap && t[2] - t[1] >= gap) out.push(t);
+  }
+  return out;
+}
+function plPickSizes(tier, avoidKey) {
+  const opts = plTriples(tier.sizes, Math.max(12, tier.gap || 12)).filter(t => t.join() !== avoidKey);
+  return shuffleLB(opts.length ? opts : plTriples(tier.sizes, 12))[0];
+}
+function plPickMoons(tier, avoidKey) {
+  const opts = plTriples([1, 2, 3, 4, 5, 6, 7], tier.moonGap || 1).filter(t => t.join() !== avoidKey);
+  return shuffleLB(opts)[0];
+}
+class PlanetBlocksMachine extends PuzzleBlocksMachine {
+  constructor(groundY) {
+    const mode = {
+      // entries are just a shuffle source — every round is generated
+      entries: [0, 1, 2, 3, 4, 5].map(i => ({ i })),
+      roundNo: 0,
+      kinds: [],        // history, so the mixed tier never asks the same thing 3x running
+      lastTrio: '',     // never the same size/moon trio twice in a row
+      cur: null,        // {kind, planets: [{size, moons, skin}]}
+      holdTime: 1.1,
+      round() {
+        const tier = plTier(this.roundNo++);
+        let kind;
+        do kind = tier.kinds[randi(0, tier.kinds.length - 1)];
+        while (tier.kinds.length > 1 && this.kinds.length >= 2 && this.kinds[this.kinds.length - 1] === kind && this.kinds[this.kinds.length - 2] === kind);
+        this.kinds.push(kind);
+        const sizeRound = kind === 'biggest' || kind === 'smallest';
+        const trio = sizeRound ? plPickSizes(tier, this.lastTrio) : plPickMoons(tier, this.lastTrio);
+        this.lastTrio = trio.join();
+        const vals = shuffleLB(trio.slice());
+        const skins = shuffleLB(PL_SKINS.slice()).slice(0, 3);
+        const planets = vals.map((v, i) => ({ size: sizeRound ? v : 96, moons: sizeRound ? 0 : v, skin: skins[i] }));
+        const key = sizeRound ? 'size' : 'moons';
+        const want = kind === 'biggest' || kind === 'most' ? Math.max(...vals) : Math.min(...vals);
+        this.cur = { kind, planets };
+        return { correct: planets.findIndex(p => p[key] === want), options: [0, 1, 2] };
+      },
+      blockSize(v) { const s = this.cur.planets[v].size; return { w: s, h: s }; },
+      drawBlock(ctx, v, x, y, w, h, info) {
+        const p = this.cur.planets[v];
+        if (p.moons) PL_ART.moonRow(ctx, x, y - h / 2 - 22, p.moons, 22);
+        PL_ART.planet(ctx, x, y, w, p.skin, info.wobble > 0 ? 'surprised' : 'happy', game.t);
+      },
+      drawChoice(ctx, v, x, y, size) { // only used for the flight into the bubble
+        const p = this.cur.planets[v];
+        PL_ART.planet(ctx, x, y, size, p.skin, 'grin', game.t);
+      },
+      flyTarget: () => ({ x: PL_LAYOUT.BUBBLE.x, y: PL_LAYOUT.BUBBLE.y + 6 }),
+      drawPrompt(ctx, e, phase) {
+        const m = this.machine, t = game.t, B = PL_LAYOUT.BUBBLE;
+        // the rocket on its hovering pad (rises and flames during hold)
+        const lift = m ? m.rocketT : 0;
+        PL_ART.pad(ctx, PL_LAYOUT.ROCKET_X, PL_LAYOUT.PAD_Y, 220, t);
+        PL_ART.rocket(ctx, PL_LAYOUT.ROCKET_X, PL_LAYOUT.PAD_Y - lift * lift * 700, 170, t, lift > 0 ? 1 : 0);
+        // the thought bubble: cue + word, or the delivered planet with a green ring
+        PL_ART.bubble(ctx, B.x, B.y, B.w, B.h, PL_LAYOUT.ROCKET_X + 40, PL_LAYOUT.PAD_Y - 150);
+        if (phase === 'hold' || phase === 'won') {
+          const p = this.cur.planets[m.answer];
+          PL_ART.planet(ctx, B.x, B.y + 6, 64, p.skin, 'grin', t);
+          ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.arc(B.x, B.y + 6, 44, 0, TAU); ctx.stroke();
+        } else {
+          PL_ART.cue(ctx, B.x, B.y - 22, this.cur.kind, 150);
+          outlineText(ctx, PL_WORD[this.cur.kind], B.x, B.y + 62, 34, '#5a4a8a', '#fff');
+        }
+        if (m && m.bonusT > 0) { // the every-fifth-solve star banner (shared with counting)
+          const k = Math.min(1, (1.6 - m.bonusT) * 3);
+          for (let i = 0; i < 5; i++) {
+            const sx = 640 + (i - 2) * 90, sy = 300 - Math.sin(t * 6 + i) * 6 - (1 - k) * 60;
+            ctx.fillStyle = '#ffd24a';
+            starPath(ctx, sx, sy, 22 * k, 9 * k); ctx.fill();
+            ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 3; ctx.stroke();
+          }
+        }
+      },
+      onCorrect() { // `this` = the machine
+        game.candy++;
+        AudioSys.sfx('candy');
+        Particles.candyBurst(PL_LAYOUT.BUBBLE.x, PL_LAYOUT.BUBBLE.y, 8);
+        if ((this.roundsWon + 1) % 5 === 0) {
+          game.candy += 2;
+          this.bonusT = 1.6;
+          AudioSys.sfx('fanfare');
+          Particles.candyBurst(640, 300, 14);
+          Particles.burst(640, 300, 40, { type: 'confetti', colors: RAINBOW, sp0: 120, sp1: 420, l0: 0.8, l1: 1.6, up: 200 });
+        }
+      }
+    };
+    super(groundY, mode);
+    mode.machine = this;
+    this.rocketT = 0;   // blast-off progress 0..1 during hold
+    this.bonusT = 0;
+  }
+  update(dt) {
+    super.update(dt);
+    if (this.bonusT > 0) this.bonusT = Math.max(0, this.bonusT - dt);
+    if (this.state === 'hold') {
+      if (this.rocketT === 0) AudioSys.sfx('whoosh');
+      this.rocketT = Math.min(1, this.rocketT + dt / 0.9);
+      if (chance(0.6)) Particles.burst(PL_LAYOUT.ROCKET_X + rand(-12, 12), PL_LAYOUT.PAD_Y - this.rocketT * this.rocketT * 700, 2,
+        { type: 'flame', colors: ['#ff9f43', '#ffe156'], sp1: 120, l1: 0.5, s1: 12, grav: 120, up: -80 });
+    } else if (this.state === 'idle') this.rocketT = 0;
+  }
+  // the room interior behind solids + hero: the gravity generator that
+  // explains why this space room has a floor to jump from
+  drawBack(ctx, t) { PL_ART.gravGen(ctx, 110, this.g, t); }
+}
