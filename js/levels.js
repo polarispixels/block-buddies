@@ -29,6 +29,7 @@ const LEVEL_META = {
   letterblocks: { name: 'LETTER BLOCKS', theme: 'meadow', music: 'meadow' },
   endingblocks: { name: 'ENDING BLOCKS', theme: 'cloud', music: 'cloud' },
   countblocks: { name: 'COUNTING BLOCKS', theme: 'mountain', music: 'mountain' }, // Quantity Blocks: Count the Objects
+  planetblocks: { name: 'PLANET BLOCKS', theme: 'space', music: 'space' }, // Puzzle Blocks mode #5: biggest / smallest / most / fewest moons
   flowerland: { name: 'RAINBOW SPIDER FLOWER LAND', theme: 'meadow', music: 'forest' }, // Jack's storybook level (js/flowerland.js)
   surf: { name: 'OCEAN SURF', theme: 'ocean', music: 'dirt' }, // the surfboard ride (js/surf.js); 'ocean' = sky + clouds only
   blockbash: { name: 'JUNKYARD BLOCK BASH', theme: 'dirt', music: 'arcade' }, // Arcade Mode #1 (js/blockbash.js)
@@ -631,6 +632,10 @@ function buildLevel(n) {
     // (offset left of the spawn column so the door arms itself immediately)
     lv.subDoors.push(new SubDoor(180, 18 * CELL, 'zerog', 'asteroid'));
     pick(lv, 265, 1760, 'candy'); pick(lv, 230, 1990, 'candy'); pick(lv, 200, 2200, 'candy');
+    // PLANET BLOCKS: a ringed-planet hatch on the same pocket floor, well to
+    // the right of the asteroid crack — press-gated so a swim-by never
+    // hijacks the maze (the learning-door rule)
+    lv.subDoors.push(new SubDoor(430, 18 * CELL, 'planetblocks', 'planet', { press: true }));
   }
 
   if (n === 10) { // ---------------- DINO JUNGLE (bonus)
@@ -1400,6 +1405,23 @@ function buildLevel(n) {
     lv.decor.pines = [{ x: 40, s: 1.1 }, { x: 1240, s: 0.9 }]; lv.decor.peaks = true;
   }
 
+  if (n === 'planetblocks') { // ---------------- PLANET BLOCKS (biggest / smallest / most / fewest moons)
+    // The Space Maze's learning room and the first COMPARISON mode: the
+    // counting room's single screen in space clothes. Gravity is ON (a
+    // humming gravity generator explains it) so the on-foot bonk branch
+    // fires — the three planets hovering over the launch pad ARE the answer
+    // blocks. Candy per solve, continuous replay, always-open EXIT door.
+    lv.w = 1280; lv.h = 720;
+    lv.space = false; lv.water = false;
+    lv.plainSky = true; // no decorative background planets — only the answers are planets
+    lv.playerStart = { x: 90, y: G - 94 };
+    addGround(lv, 0, 1280, G);
+    lv.puzzle = new PlanetBlocksMachine(G);
+    for (const s of lv.puzzle.solids) lv.solids.push(s);
+    lv.exitDoors.push(new ExitDoor(1150, G));
+    lv.checks.push(new Checkpoint(120, G));
+  }
+
   if (n === 'piperoom') { // ---------------- SECRET PIPE ROOM (cause & effect)
     // One single non-scrolling screen so the whole machine is observable at
     // once: hoppers up top, eater machines below, mis-aimed chutes between.
@@ -1867,20 +1889,22 @@ function drawBG(ctx, lv, cam, t) {
       ctx.fill();
     }
     ctx.restore();
-    // ringed planet (with a face, obviously)
-    const px2 = 1020 - cam.x * 0.04, py2 = 150 - cam.y * 0.03;
-    ctx.fillStyle = '#ffb35c';
-    ctx.beginPath(); ctx.arc(px2, py2, 52, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#ffd9a0'; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.ellipse(px2, py2 + 6, 84, 22, -0.25, 0, TAU); ctx.stroke();
-    drawFace(ctx, px2, py2 - 4, 46, 'sleepy', t, 61);
-    // little red planet
-    const rx2 = 220 - cam.x * 0.06, ry2 = 520 - cam.y * 0.04;
-    ctx.fillStyle = '#e86a5a';
-    ctx.beginPath(); ctx.arc(rx2, ry2, 26, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#c04a3f';
-    ctx.beginPath(); ctx.arc(rx2 - 8, ry2 - 5, 6, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(rx2 + 9, ry2 + 8, 4, 0, TAU); ctx.fill();
+    if (!lv.plainSky) {
+      // ringed planet (with a face, obviously)
+      const px2 = 1020 - cam.x * 0.04, py2 = 150 - cam.y * 0.03;
+      ctx.fillStyle = '#ffb35c';
+      ctx.beginPath(); ctx.arc(px2, py2, 52, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#ffd9a0'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.ellipse(px2, py2 + 6, 84, 22, -0.25, 0, TAU); ctx.stroke();
+      drawFace(ctx, px2, py2 - 4, 46, 'sleepy', t, 61);
+      // little red planet
+      const rx2 = 220 - cam.x * 0.06, ry2 = 520 - cam.y * 0.04;
+      ctx.fillStyle = '#e86a5a';
+      ctx.beginPath(); ctx.arc(rx2, ry2, 26, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#c04a3f';
+      ctx.beginPath(); ctx.arc(rx2 - 8, ry2 - 5, 6, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(rx2 + 9, ry2 + 8, 4, 0, TAU); ctx.fill();
+    }
     // shooting star sometimes
     if (chance(0.008)) {
       Particles.burst(cam.x + rand(0, W), cam.y + rand(0, 300), 1, { colors: ['#fff'], type: 'sparkle', sp0: 500, sp1: 700, a0: 2.6, a1: 2.9, grav: 0, l0: 0.5, l1: 0.8, s1: 10, up: 0 });

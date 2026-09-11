@@ -1732,6 +1732,73 @@ check('re-entering COUNTING BLOCKS starts the ladder over (fresh machine, tiny g
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
+// ---------------- secret: PLANET BLOCKS (Space Maze, v1.30.0) ----------------
+vm.runInContext('game.startLevel(9)', sandbox);
+frames(150);
+check('the Space Maze start pocket has a press-gated planet hatch on its floor',
+  vm.runInContext("game.level.subDoors.some(d => d.sub === 'planetblocks' && d.style === 'planet' && d.press && d.groundY === 18 * 130)", sandbox));
+put(430 - 28, 2250);
+frames(20);
+check('swimming over the planet hatch never auto-enters', G().level.n === 9);
+tap('Space');
+frames(10);
+check('standing on the hatch + Space enters PLANET BLOCKS', G().level.n === 'planetblocks');
+frames(150); // intro card
+const PBR = () => vm.runInContext('game.level.puzzle', sandbox);
+check('the planet room has gravity (the hero lands on the floor), one exit door, no enemies, plain sky',
+  G().level.space === false && G().level.water === false && G().player.y + G().player.h === 620 &&
+  G().level.exitDoors.length === 1 && G().level.spiders.length === 0 && G().level.plainSky === true &&
+  vm.runInContext('game.level.puzzle instanceof PlanetBlocksMachine', sandbox));
+check('the room adopted the machine\'s three planet solids',
+  PBR().solids.every(s => G().level.solids.includes(s)));
+const pbCandy0 = G().candy;
+const pbWrong = PBR().slots.find(s => s.value !== PBR().answer);
+put(pbWrong.x - 28, 620 - 94);
+tap('ArrowUp');
+frames(40);
+check('a real jump into a wrong planet wobbles it, pays nothing, stays idle',
+  G().candy === pbCandy0 && PBR().state === 'idle');
+// bonk the correct planet for real — whatever its size this round
+const pbRight = PBR().slots.find(s => s.value === PBR().answer);
+put(pbRight.x - 28, 620 - 94);
+tap('ArrowUp');
+frames(40);
+check('a real jump into the correct planet locks the round', PBR().state !== 'idle');
+frames(130);
+check('planet candy is paid exactly once and a new round follows', G().candy === pbCandy0 + 1 && PBR().state === 'idle' && PBR().mode.roundNo === 2);
+// hitbox generosity: force a round with the NARROWEST (64) and WIDEST (140)
+// planets and bonk each from the floor for real
+vm.runInContext(`game.level.puzzle.mode.cur.planets = [{size: 64, moons: 0, skin: PL_SKINS[0]}, {size: 140, moons: 0, skin: PL_SKINS[1]}, {size: 96, moons: 0, skin: PL_SKINS[2]}];
+game.level.puzzle.mode.cur.kind = 'smallest'; game.level.puzzle.answer = 0;
+game.level.puzzle.slots[0].value = 0; game.level.puzzle.slots[1].value = 1; game.level.puzzle.slots[2].value = 2; game.level.puzzle.layoutSolids();`, sandbox);
+put(PBR().slots[0].x - 28, 620 - 94);
+tap('ArrowUp');
+frames(40);
+check('a ground jump bonks even the smallest (64px) planet', PBR().state !== 'idle');
+frames(130);
+vm.runInContext(`game.level.puzzle.mode.cur.planets = [{size: 64, moons: 0, skin: PL_SKINS[0]}, {size: 140, moons: 0, skin: PL_SKINS[1]}, {size: 96, moons: 0, skin: PL_SKINS[2]}];
+game.level.puzzle.mode.cur.kind = 'biggest'; game.level.puzzle.answer = 1;
+game.level.puzzle.slots[0].value = 0; game.level.puzzle.slots[1].value = 1; game.level.puzzle.slots[2].value = 2; game.level.puzzle.layoutSolids();`, sandbox);
+put(PBR().slots[1].x - 28, 620 - 94);
+tap('ArrowUp');
+frames(40);
+check('a ground jump bonks the biggest (140px) planet', PBR().state !== 'idle');
+frames(130);
+put(1150 - 35, 620 - 94);
+frames(5);
+check('the exit door returns to the Space Maze with no puzzle leak and no completion flag',
+  G().level.n === 9 && G().state === 'play' && G().level.puzzle === null && !G().miniDone.planetblocks && G().level.space === true);
+put(700, 2250);
+frames(10);
+put(430 - 28, 2250);
+frames(10);
+tap('Space');
+frames(160);
+check('re-entering PLANET BLOCKS starts the ladder over (round 1, biggest)',
+  G().level.n === 'planetblocks' && PBR().mode.roundNo === 1 && PBR().mode.cur.kind === 'biggest' && PBR().roundsWon === 0);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- secret: RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0) ----------------
 // a per-frame policy runner: `fn(state)` returns the keys to hold THIS frame
 function flRun(n, fn) {

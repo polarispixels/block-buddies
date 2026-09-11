@@ -4387,6 +4387,7 @@ class SubDoor {
         this.armed = false;
         if (this.style === 'pipe') AudioSys.sfx('blorp'); // FWOOOP — sucked in!
         if (this.style === 'asteroid') AudioSys.sfx('whoosh'); // pulled through the crack
+        if (this.style === 'planet') AudioSys.sfx('whoosh'); // through the hatch
         if (this.style === 'ladder') AudioSys.sfx('monkey'); // welcomed up the tree
         if (this.style === 'garage') AudioSys.sfx('hornhit'); // the band waves you in
         if (this.style === 'moonwell') { AudioSys.sfx('whoosh'); AudioSys.sfx('bells'); } // up into the night
@@ -4408,6 +4409,7 @@ class SubDoor {
         : this.style === 'moonwell' ? ['#e8ecff', '#bfd0ff', '#ffe156']
         : this.style === 'stagegate' ? ['#ffe156', '#7be07b', '#fff']
         : this.style === 'arcade' ? ['#ffe156', '#ff4d4d', '#4aa3ff']
+        : this.style === 'planet' ? ['#b06cf0', '#ffe156', '#7fd8ff']
         : ['#fff', '#bfe8ff'];
       Particles.burst(this.cx + rand(-34, 34), this.y + rand(10, this.h - 10), 1, { colors: cols, type: 'sparkle', sp1: 25, grav: -50, l1: 0.8, s1: 8, up: 0 });
     }
@@ -4517,6 +4519,9 @@ class SubDoor {
     } else if (this.style === 'surfboard') {
       // a surfboard planted in the seafloor sand (Ocean Surf)
       SURF_ART.surfDoor(ctx, cx, g, t, { glow: !done });
+    } else if (this.style === 'planet') {
+      // a ringed planet hatch on the maze floor (Planet Blocks)
+      PL_ART.door(ctx, cx, g, t, { glow: !done });
     } else if (this.style === 'rainbow') {
       // a shimmering rainbow ring standing on the ground
       for (let i = 0; i < RAINBOW.length; i++) {
