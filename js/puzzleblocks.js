@@ -2528,6 +2528,14 @@ const LB_ICONS = {
 //                                        rounds the machine locks into
 //                                        phase 'won' and fires onWin once
 //                                        (continuous-play modes omit these)
+//   blockSize(value)? -> {w, h}         answer solids sized per choice (the
+//                                        engine keeps the UNDERSIDE at G-190
+//                                        and centres the box on the slot);
+//                                        default 84x84 tiles
+//   drawBlock(ctx, value, x, y, w, h, info)?
+//                                        draw the whole answer object (no tile);
+//                                        info = {wobble, dim, idx}. Default:
+//                                        blue tile + drawChoice inside
 // Values are compared with === so modes should use primitives (letters,
 // numbers, color names) as choice values.
 class PuzzleBlocksMachine {
@@ -2576,9 +2584,21 @@ class PuzzleBlocksMachine {
     this.answer = round.correct;
     const options = shuffleLB(round.options);
     for (let i = 0; i < 3; i++) this.slots[i].value = options[i];
+    this.layoutSolids();
     this.state = 'idle';
     this.flyT = 0; this.holdT = 0; this.flyFrom = -1;
     this.wobble = [0, 0, 0];
+  }
+  // size every answer solid for its current value (blockSize hook) — the
+  // underside stays at G-190 so a ground jump always bonks it
+  layoutSolids() {
+    for (let i = 0; i < 3; i++) {
+      const sz = this.mode.blockSize ? this.mode.blockSize(this.slots[i].value) : { w: 84, h: 84 };
+      const s = this.solids[i];
+      s.w = sz.w; s.h = sz.h;
+      s.x = this.slots[i].x - sz.w / 2;
+      s.y = this.g - 190 - sz.h;
+    }
   }
   onAnswer(solid) {
     const i = solid.idx;
@@ -2630,21 +2650,29 @@ class PuzzleBlocksMachine {
   draw(ctx) {
     this.mode.drawPrompt(ctx, this.current, this.state);
     for (let i = 0; i < 3; i++) {
-      const sl = this.slots[i];
-      const bx = sl.x, by = this.g - 190 - this.bh / 2;
+      const sl = this.slots[i], s = this.solids[i];
       const wob = this.wobble[i] > 0 ? Math.sin(this.wobble[i] * 40) * 6 : 0;
+      const dim = this.state !== 'idle' && i !== this.flyFrom;
+      const flying = i === this.flyFrom && this.state === 'fly';
+      if (this.mode.drawBlock) {
+        if (flying) continue; // the object is in the air — drawn by the fly branch below
+        ctx.save();
+        ctx.globalAlpha = dim ? 0.5 : 1;
+        this.mode.drawBlock(ctx, sl.value, sl.x + wob, s.y + s.h / 2, s.w, s.h, { wobble: this.wobble[i], dim, idx: i });
+        ctx.restore();
+        continue;
+      }
+      const bx = sl.x, by = this.g - 190 - this.bh / 2;
       ctx.save();
       ctx.translate(bx + wob, by);
-      ctx.globalAlpha = (this.state !== 'idle' && i !== this.flyFrom) ? 0.5 : 1;
+      ctx.globalAlpha = dim ? 0.5 : 1;
       const g = ctx.createLinearGradient(0, -this.bh / 2, 0, this.bh / 2);
       g.addColorStop(0, '#7fd8ff'); g.addColorStop(1, '#4aa3ff');
       ctx.fillStyle = g;
       rr(ctx, -this.bw / 2, -this.bh / 2, this.bw, this.bh, this.bw * 0.18); ctx.fill();
       ctx.strokeStyle = 'rgba(30,40,70,0.5)'; ctx.lineWidth = 3;
       rr(ctx, -this.bw / 2, -this.bh / 2, this.bw, this.bh, this.bw * 0.18); ctx.stroke();
-      if (!(i === this.flyFrom && this.state === 'fly')) {
-        this.drawChoice(ctx, sl.value, 0, 4, this.bw * 0.55);
-      }
+      if (!flying) this.drawChoice(ctx, sl.value, 0, 4, this.bw * 0.55);
       ctx.restore();
     }
     if (this.state === 'fly') {
@@ -2652,8 +2680,9 @@ class PuzzleBlocksMachine {
       const t = this.mode.flyTarget ? this.mode.flyTarget(this.current) : { x: this.cx, y: 285 };
       const p = this.flyT / 0.6;
       const ex = lerp(sl.x, t.x, p);
-      const ey = lerp(this.g - 190 - this.bh / 2, t.y, p) - Math.sin(p * Math.PI) * 80;
-      this.drawChoice(ctx, sl.value, ex, ey, lerp(this.bw * 0.55, 44, p));
+      const s0 = this.solids[this.flyFrom];
+      const ey = lerp(s0.y + s0.h / 2, t.y, p) - Math.sin(p * Math.PI) * 80;
+      this.drawChoice(ctx, sl.value, ex, ey, lerp(this.mode.drawBlock ? s0.h : this.bw * 0.55, 44, p));
     }
   }
 }

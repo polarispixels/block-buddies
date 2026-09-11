@@ -1582,6 +1582,33 @@ check('every solve pays 1 candy; the fifth solve throws the bonus party (+2 extr
 check('letter rooms keep the engine default hold (holdTime is opt-in per mode)',
   vm.runInContext('new LetterBlocksMachine(620).mode.holdTime === undefined', sandbox));
 
+// ---------------- Puzzle Blocks engine: object-shaped answers (blockSize / drawBlock hooks, v1.30.0) ----------------
+vm.runInContext(`
+game.testHooks = new PuzzleBlocksMachine(620, {
+  entries: [{ a: 1 }, { a: 2 }],
+  round: () => ({ correct: 2, options: [0, 1, 2] }),
+  blockSize: v => ({ w: 64 + v * 38, h: 64 + v * 38 }),
+  drawPrompt() {},
+  drawBlock(ctx, v, x, y, w, h, info) { game.testHooksDrawn = (game.testHooksDrawn || 0) + 1; game.testHooksInfo = info; }
+});`, sandbox);
+const TH = () => vm.runInContext('game.testHooks', sandbox);
+check('blockSize resizes each answer solid per its slot value',
+  TH().solids.every((s, i) => s.w === 64 + TH().slots[i].value * 38 && s.h === s.w));
+check('resized solids keep their underside pinned at G-190 and stay centred on the slot',
+  TH().solids.every((s, i) => s.y + s.h === 620 - 190 && Math.abs(s.x + s.w / 2 - TH().slots[i].x) < 0.01));
+check('resized solids never overlap each other',
+  TH().solids[0].x + TH().solids[0].w < TH().solids[1].x && TH().solids[1].x + TH().solids[1].w < TH().solids[2].x);
+const thSolidIds = TH().solids.slice();
+vm.runInContext('game.testHooks.nextPuzzle()', sandbox);
+check('a new round re-lays out the SAME three solid objects (the level keeps its references)',
+  TH().solids.every((s, i) => s === thSolidIds[i]) && TH().solids.every(s => s.puzzleBlock && s.skipDraw));
+vm.runInContext('game.testHooks.wobble[1] = 0.3; game.testHooks.draw(document.getElementById("game").getContext("2d"))', sandbox);
+check('drawBlock replaces the tile for every slot and receives wobble/dim/idx info',
+  vm.runInContext('game.testHooksDrawn', sandbox) === 3 &&
+  vm.runInContext('game.testHooksInfo', sandbox).idx === 2 && typeof vm.runInContext('game.testHooksInfo', sandbox).dim === 'boolean');
+check('shipped modes keep 84x84 tile solids (the hooks are opt-in)',
+  vm.runInContext("[new LetterBlocksMachine(620), new EndingLetterBlocksMachine(620), new PatternBlocksMachine(620), new CountBlocksMachine(620)].every(m => m.solids.every(s => s.w === 84 && s.h === 84 && s.y + s.h === 430))", sandbox));
+
 // ---------------- secret: COUNTING BLOCKS (Mountain World) ----------------
 vm.runInContext('game.startLevel(4)', sandbox);
 frames(150);
