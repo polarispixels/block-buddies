@@ -38,6 +38,7 @@ release spec. Maintenance rules:
 | 16 | Linear world chains | Flow/framework | ✅ shipped v1.20.0 — worlds are ordered stage lists (`WORLD_STAGES`); stage archways end stages with a light STAGE CLEAR beat, final-stage stars complete the world (full party + unlock), `ffbg_stage` title resume; spec in `docs/superpowers/specs/2026-08-29-linear-world-chains-design.md` (see CHANGELOG 1.20.0) |
 | 20 | Junkyard Block Bash | Arcade Mode #1 | ✅ shipped v1.29.0 — Breakout through Block Buddies: the truck as paddle, Bouncy Buddy ball, 10 block kinds, 7 power-up capsules, 4 surprise events, 4 escalating never-stall waves, the 12-hp JUNKBOT finale (4 parts, 3 attack stages) and its 100-candy victory shower, off a press-gated arcade cabinet (x=280) at the Monster Truck Rally's start; debuts the reusable `js/arcade.js` kit (`Mods`/`WaveRunner`/`Sequence`/`Spawner`/`ArcadeHud`/payout) and the `lv.arcade` engine slot (see CHANGELOG 1.29.0) |
 | 21 | Blaster Run (fast shooting: move, jump, shoot targets at heights) | Arcade Mode #2 | 🎯 next arcade release |
+| 22 | Planet Blocks: biggest / smallest / most / fewest moons | Puzzle Blocks mode | ✅ shipped v1.30.0 — `PlanetBlocksMachine` (mode #5, the first COMPARISON mode), the planets themselves are the answer blocks via new opt-in `blockSize`/`drawBlock` engine hooks; press-gated planet hatch on the Space Maze's start-pocket floor (see CHANGELOG 1.30.0) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark
@@ -367,6 +368,10 @@ obvious interpretation per picture).
 - *content* — data tables like `LB_WORDS`.
 Extend the engine only when a real mode needs it (the multi-step/ordered-answer
 architecture for Build-the-Word and Sequence Blocks is explicitly deferred).
+Planet Blocks (v1.30.0) added the engine's first such extension: opt-in
+`mode.blockSize(value)`/`mode.drawBlock(ctx,value,x,y,w,h,info)` hooks so a
+mode's answer solids can be object-shaped (sized/drawn per round) instead of
+a generic tile — the four earlier modes are untouched by it.
 
 **Mode backlog** (families; see spec for full detail):
 - **A. Letters/phonics**: A1 beginning ✅ · A2 ending ✅ (v1.22.0) · A3 middle (vowels) ·
@@ -374,8 +379,9 @@ architecture for Build-the-Word and Sequence Blocks is explicitly deferred).
   A7 word families · A8 build-the-entire-word (multi-step, future)
 - **B. Vocabulary/classification**: categories (animal/food/vehicle...) ·
   finer categories · opposites · descriptive ("WHAT COLOR?")
-- **C. Numbers** (proves it's not just literacy): count objects · numeral ↔
-  quantity · simple +/− · biggest/smallest · missing-number sequences
+- **C. Numbers** (proves it's not just literacy): count objects ✅ (v1.24.0) ·
+  numeral ↔ quantity · simple +/− · biggest/smallest ✅ (C5, v1.30.0, shipped
+  as biggest/smallest/most/fewest moons) · missing-number sequences
 - **D. Shapes/spatial**: identify · match-by-shape-blocks · above/below/beside
 - **E. Patterns** (high priority — reasoning, no reading): alternating · shape ·
   growing · AAB-style

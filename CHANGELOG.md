@@ -8,6 +8,30 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.30.0] - 2026-09-10
+
+### Added
+- **PLANET BLOCKS — Puzzle Blocks mode #5, the first COMPARISON mode** (Jack
+  asked for "planets in space"). A press-gated ringed-planet hatch
+  (`SubDoor` style `'planet'`, x=430 on the Space Maze's start-pocket floor,
+  beside the Zero-G crack) opens a single-screen space room with GRAVITY
+  (`'planetblocks'`, a humming gravity generator explains it). A rocket on a
+  hovering pad shows what it wants in a thought bubble — BIGGEST / SMALLEST
+  / MOST MOONS / FEWEST MOONS — with a no-reading cue (three silhouettes,
+  the wanted one gold with a star). The three planets hovering over the pad
+  ARE the answer blocks: bump the right one and it flies into the bubble,
+  the rocket blasts off, +1 candy; every fifth solve throws the bonus party
+  (+2). Wrong bumps wobble a surprised planet and change nothing. Invisible
+  per-visit ladder (`PL_TIERS`): biggest with far-apart sizes → closer sizes
+  → smallest → most moons far apart → all four questions mixed with moon
+  counts as close as 4/5/6 and no question three times running. Six planet
+  skins (`js/planetart.js`, `PL_ART`, contact-sheet reviewed at 64/96/140).
+- **Engine: object-shaped answers.** `PuzzleBlocksMachine` gained two
+  opt-in hooks — `mode.blockSize(value)` (solids re-sized per round with the
+  underside pinned at G-190) and `mode.drawBlock(...)` (draw the whole
+  answer instead of a tile) — plus `layoutSolids()`. The four shipped modes
+  are untouched (harness-asserted 84×84).
+
 ## [1.29.0] - 2026-09-06
 
 ### Added

@@ -3209,5 +3209,5 @@ class PlanetBlocksMachine extends PuzzleBlocksMachine {
   }
   // the room interior behind solids + hero: the gravity generator that
   // explains why this space room has a floor to jump from
-  drawBack(ctx, t) { PL_ART.gravGen(ctx, 110, this.g, t); }
+  drawBack(ctx, t) { PL_ART.gravGen(ctx, 210, this.g, t); }
 }
