@@ -1637,11 +1637,12 @@ check('planet round 1 is BIGGEST with three distinct sizes, three distinct skins
 check('planet solids are the planets: each solid is as wide as its planet, underside at G-190, and the answer solid is the widest',
   PLB().solids.every((s, i) => s.w === PLB().mode.cur.planets[PLB().slots[i].value].size && s.y + s.h === 430) &&
   PLB().solids[PLB().slots.findIndex(sl => sl.value === PLB().answer)].w === Math.max(...PLB().solids.map(s => s.w)));
-const pbKinds = [], pbSeen = { biggest: 0, smallest: 0, most: 0, fewest: 0 };
+const pbKinds = [], pbSeen = { biggest: 0, smallest: 0, most: 0, fewest: 0 }, pbTrios = [];
 let pbOk = true, pbGapOk = true, pbMoonOk = true;
 for (let r = 0; r < 14; r++) {
   const m = PLB(), c = m.mode.cur;
   pbKinds.push(c.kind); pbSeen[c.kind]++;
+  pbTrios.push(c.planets.map(p => c.kind === 'biggest' || c.kind === 'smallest' ? p.size : p.moons).sort((a, b) => a - b).join());
   if (!pbAnswerIsRight()) pbOk = false;
   const sizes = c.planets.map(p => p.size).sort((a, b) => a - b);
   if (c.kind === 'biggest' || c.kind === 'smallest') { if (sizes[1] - sizes[0] < 12 || sizes[2] - sizes[1] < 12 || c.planets.some(p => p.moons !== 0)) pbGapOk = false; }
@@ -1657,6 +1658,7 @@ check('every planet round has exactly one honest answer', pbOk);
 check('size rounds: gaps >= 12px and no moons; moon rounds: equal 96px planets with three distinct counts 1-7', pbGapOk && pbMoonOk);
 check('from round 7 on the question never repeats three times in a row',
   pbKinds.slice(6).every((k, i, a) => i < 2 || !(a[i - 1] === k && a[i - 2] === k)));
+check('consecutive planet rounds never repeat the same size or moon trio', pbTrios.every((t, i) => i === 0 || t !== pbTrios[i - 1]));
 check('each planet solve pays 1 candy; every fifth solve throws the bonus party (+2)', (() => {
   vm.runInContext('game.testPB2 = new PlanetBlocksMachine(620); game.candy = 0;', sandbox);
   const pays = [];

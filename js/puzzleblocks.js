@@ -3074,11 +3074,13 @@ const PL_LAYOUT = { ROCKET_X: 300, PAD_Y: 250, BUBBLE: { x: 700, y: 150, w: 320,
 const PL_WORD = { biggest: 'BIGGEST', smallest: 'SMALLEST', most: 'MOST MOONS', fewest: 'FEWEST MOONS' };
 // tier = rounds solved so far this visit. `sizes` = the pool three distinct
 // diameters are drawn from (min pairwise gap `gap`); `moonGap` = min gap
-// between the three moon counts (1-7). Sizes are never within 12px.
+// between the three moon counts (1-7). Each size pool has at least 4 valid
+// triples so "never the same trio twice in a row" always has a real choice
+// (a 3-element pool only yields one triple, which would force a repeat).
 const PL_TIERS = [
-  { rounds: 2, kinds: ['biggest'],  sizes: [64, 96, 140], gap: 12 },
+  { rounds: 2, kinds: ['biggest'],  sizes: [64, 88, 112, 140], gap: 24 },
   { rounds: 1, kinds: ['biggest'],  sizes: [72, 96, 120, 140], gap: 20 },
-  { rounds: 1, kinds: ['smallest'], sizes: [64, 96, 140], gap: 12 },
+  { rounds: 1, kinds: ['smallest'], sizes: [64, 88, 112, 140], gap: 24 },
   { rounds: 2, kinds: ['most'],     moonGap: 2 },
   { rounds: 1e9, kinds: ['biggest', 'smallest', 'most', 'fewest'], sizes: [64, 80, 96, 112, 128, 140], gap: 18, moonGap: 1 }
 ];
@@ -3116,9 +3118,17 @@ class PlanetBlocksMachine extends PuzzleBlocksMachine {
       holdTime: 1.1,
       round() {
         const tier = plTier(this.roundNo++);
-        let kind;
-        do kind = tier.kinds[randi(0, tier.kinds.length - 1)];
-        while (tier.kinds.length > 1 && this.kinds.length >= 2 && this.kinds[this.kinds.length - 1] === kind && this.kinds[this.kinds.length - 2] === kind);
+        // candidates: the tier's kinds minus any that would make three in a row
+        const hist = this.kinds;
+        let cands = tier.kinds.filter(k => !(hist.length >= 2 && hist[hist.length - 1] === k && hist[hist.length - 2] === k));
+        if (!cands.length) cands = tier.kinds.slice();
+        // variety first: only the kinds asked LEAST often so far this visit are
+        // eligible (random among ties) — every question shows up within the
+        // first four mixed rounds, and no kind ever dominates
+        const cnt = k => hist.filter(h => h === k).length;
+        const least = Math.min(...cands.map(cnt));
+        cands = cands.filter(k => cnt(k) === least);
+        const kind = cands[randi(0, cands.length - 1)];
         this.kinds.push(kind);
         const sizeRound = kind === 'biggest' || kind === 'smallest';
         const trio = sizeRound ? plPickSizes(tier, this.lastTrio) : plPickMoons(tier, this.lastTrio);
