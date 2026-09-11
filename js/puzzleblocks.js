@@ -2655,7 +2655,8 @@ class PuzzleBlocksMachine {
       const dim = this.state !== 'idle' && i !== this.flyFrom;
       const flying = i === this.flyFrom && this.state === 'fly';
       if (this.mode.drawBlock) {
-        if (flying) continue; // the object is in the air — drawn by the fly branch below
+        // an object that flew away stays away until the next round
+        if (flying || (this.state === 'hold' && i === this.flyFrom)) continue; // the object is in the air — drawn by the fly branch below
         ctx.save();
         ctx.globalAlpha = dim ? 0.5 : 1;
         this.mode.drawBlock(ctx, sl.value, sl.x + wob, s.y + s.h / 2, s.w, s.h, { wobble: this.wobble[i], dim, idx: i });
@@ -3166,8 +3167,8 @@ class PlanetBlocksMachine extends PuzzleBlocksMachine {
           ctx.strokeStyle = '#7be07b'; ctx.lineWidth = 6;
           ctx.beginPath(); ctx.arc(B.x, B.y + 6, 44, 0, TAU); ctx.stroke();
         } else {
-          PL_ART.cue(ctx, B.x, B.y - 22, this.cur.kind, 150);
-          outlineText(ctx, PL_WORD[this.cur.kind], B.x, B.y + 62, 34, '#5a4a8a', '#fff');
+          PL_ART.cue(ctx, B.x, B.y - 8, this.cur.kind, 136);
+          outlineText(ctx, PL_WORD[this.cur.kind], B.x, B.y + 66, 34, '#5a4a8a', '#fff');
         }
         if (m && m.bonusT > 0) { // the every-fifth-solve star banner (shared with counting)
           const k = Math.min(1, (1.6 - m.bonusT) * 3);

@@ -71,10 +71,12 @@ answer.
 
 | rounds | kinds | sizes (px diameter) | moon counts |
 |---|---|---|---|
-| 1–2 | biggest | far apart: pick 3 of {64, 96, 140} | — |
-| 3–4 | biggest, then smallest | closer: 3 of {72, 96, 120, 140} with min gap 20 | — |
+| 1–2 | biggest | far apart: 3 of {64, 88, 112, 140}, min gap 24 | — |
+| 3–4 | biggest, then smallest | round 3 biggest: 3 of {72, 96, 120, 140}, min gap 20; round 4 smallest: 3 of {64, 88, 112, 140}, min gap 24 | — |
 | 5–6 | most | — | far apart: three counts with min gap 2 from 1–7 |
-| 7+ | random of all four | moderate: min gap 18 from {64…140} | close: min gap 1 from 1–7 (e.g. 4/5/6), never the same trio twice in a row |
+| 7+ | random of all four; the least-used question so far is asked first (random among ties), so every question appears within the first four mixed rounds | moderate: min gap 18 from {64…140} | close: min gap 1 from 1–7 (e.g. 4/5/6), never the same trio twice in a row |
+
+Every pool yields at least four gap-valid triples, so excluding the previous round's trio always leaves a choice.
 
 Never the same kind three times in a row from round 7 on (so the bubble keeps
 mattering). Sizes are never within 12px of each other (no trick-the-eye

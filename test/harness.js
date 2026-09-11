@@ -1745,6 +1745,8 @@ frames(10);
 check('standing on the hatch + Space enters PLANET BLOCKS', G().level.n === 'planetblocks');
 frames(150); // intro card
 const PBR = () => vm.runInContext('game.level.puzzle', sandbox);
+put(200 - 28, 300); // a real fall from mid-air, clear of any planet slot (mid slot is at x 640)
+frames(60);
 check('the planet room has gravity (the hero lands on the floor), one exit door, no enemies, plain sky',
   G().level.space === false && G().level.water === false && G().player.y + G().player.h === 620 &&
   G().level.exitDoors.length === 1 && G().level.spiders.length === 0 && G().level.plainSky === true &&
@@ -1752,12 +1754,14 @@ check('the planet room has gravity (the hero lands on the floor), one exit door,
 check('the room adopted the machine\'s three planet solids',
   PBR().solids.every(s => G().level.solids.includes(s)));
 const pbCandy0 = G().candy;
-const pbWrong = PBR().slots.find(s => s.value !== PBR().answer);
+const pbWrongIdx = PBR().slots.findIndex(s => s.value !== PBR().answer);
+const pbWrong = PBR().slots[pbWrongIdx];
 put(pbWrong.x - 28, 620 - 94);
 tap('ArrowUp');
-frames(40);
+frames(12);
 check('a real jump into a wrong planet wobbles it, pays nothing, stays idle',
-  G().candy === pbCandy0 && PBR().state === 'idle');
+  G().candy === pbCandy0 && PBR().state === 'idle' && PBR().wobble[pbWrongIdx] > 0);
+frames(28); // let the 0.4s wobble finish decaying before the next real jump
 // bonk the correct planet for real — whatever its size this round
 const pbRight = PBR().slots.find(s => s.value === PBR().answer);
 put(pbRight.x - 28, 620 - 94);
@@ -1788,7 +1792,7 @@ put(1150 - 35, 620 - 94);
 frames(5);
 check('the exit door returns to the Space Maze with no puzzle leak and no completion flag',
   G().level.n === 9 && G().state === 'play' && G().level.puzzle === null && !G().miniDone.planetblocks && G().level.space === true);
-put(700, 2250);
+put(560, 2250); // an open maze cell, well clear of the hatch, to disarm re-entry
 frames(10);
 put(430 - 28, 2250);
 frames(10);
@@ -4134,6 +4138,13 @@ check('game is titled Block Buddies everywhere', (function () {
   const man = fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8');
   return idx.includes('<title>Block Buddies: The Adventures of Jack-Jack and Becca</title>') &&
     JSON.parse(man).name === 'Block Buddies: The Adventures of Jack-Jack and Becca';
+})());
+
+check('sw.js precaches every script index.html loads', (function () {
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const scripts = [...idx.matchAll(/<script src="(js\/[a-z0-9]+\.js)"><\/script>/g)].map(m => m[1]);
+  return scripts.length > 20 && scripts.every(s => sw.includes(`'${s}'`));
 })());
 
 // ---------------- title: character select + level select ----------------
