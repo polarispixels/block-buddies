@@ -4321,6 +4321,15 @@ tap('Space');
 frames(3);
 check('a DIRECT (non-map) maze party still advances into the station and marks the maze done on the map',
   G().level.n === 'space2' && G().mapReturn === 0 && MP("isCompleted(9, 'maze')") && MP("isUnlocked(9, 'station')"));
+check('the space map theme draws every icon in every state, the cursor and the background without throwing',
+  vm.runInContext(`(() => { try {
+    const c = document.getElementById('game').getContext('2d'), th = MAP_THEMES.space, m = new WorldMap(9);
+    th.drawBG(c, 1, m);
+    for (const n of WORLD_MAPS[9].nodes) for (const state of ['hidden', 'locked', 'open', 'done']) for (const selected of [false, true]) th.drawNode(c, n, { state, selected, reveal: 0.5 }, 2);
+    th.drawCursor(c, 300, 300, 1, 1); th.drawCursor(c, 300, 300, 0, 1);
+    m.draw(c);
+    return typeof th.drawCursor === 'function';
+  } catch (e) { console.log('map theme threw', e); return false; } })()`, sandbox));
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 

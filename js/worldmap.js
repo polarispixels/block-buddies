@@ -107,15 +107,102 @@ const MapProgress = {
   onLevelDone(levelId) { const f = this.findNode(levelId); if (f) this.complete(f.w, f.node.id); }
 };
 
-// ---- themes: background + node art per biome (space is filled in by the art task) ----
+// ---- themes: background + node art per biome ----
 const MAP_THEMES = {
   space: {
     music: 'space',
-    drawBG(ctx, t, map) { ctx.fillStyle = '#14103a'; ctx.fillRect(0, 0, W, H); },
+    bgLv: null,
+    drawBG(ctx, t, map) {
+      if (!this.bgLv) { this.bgLv = newLevel(9); this.bgLv.plainSky = false; }
+      drawBG(ctx, this.bgLv, { x: 0, y: 0 }, t);
+      drawLevelIcon(ctx, W / 2, 62, 34, 'space', t);
+    },
+    // node icons — every one with a face, readable at ~90px
+    icon(ctx, kind, x, y, s, t, gray) {
+      ctx.save();
+      if (gray) { ctx.filter = 'grayscale(1)'; ctx.globalAlpha *= 0.55; }
+      if (kind === 'maze') { // a blue-gray asteroid criss-crossed by maze lines
+        ctx.fillStyle = '#6a7fb0';
+        ctx.beginPath(); ctx.arc(x, y, s, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#3d4f80'; ctx.lineWidth = s * 0.09; ctx.lineCap = 'round';
+        ctx.save(); ctx.beginPath(); ctx.arc(x, y, s * 0.92, 0, TAU); ctx.clip();
+        for (const [ax, ay, bx, by] of [[-0.9, -0.4, 0.2, -0.4], [0.2, -0.4, 0.2, 0.3], [-0.5, 0.1, -0.5, 0.9], [-0.5, 0.5, 0.7, 0.5], [0.7, -0.9, 0.7, 0.1]]) {
+          ctx.beginPath(); ctx.moveTo(x + ax * s, y + ay * s); ctx.lineTo(x + bx * s, y + by * s); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(30,20,60,0.5)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, s, 0, TAU); ctx.stroke();
+        drawFace(ctx, x, y - s * 0.05, s * 0.9, 'happy', t, 9);
+      } else if (kind === 'station') { // the saucer station: dome, hull, lit windows, antenna
+        ctx.strokeStyle = '#b8b4c8'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x, y - s * 0.6); ctx.lineTo(x, y - s * 1.1); ctx.stroke();
+        ctx.fillStyle = '#ff5a5a'; ctx.beginPath(); ctx.arc(x, y - s * 1.12, s * 0.09, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(127,216,255,0.6)'; ctx.beginPath(); ctx.arc(x, y - s * 0.3, s * 0.5, Math.PI, TAU); ctx.fill();
+        const g = ctx.createLinearGradient(x, y - s * 0.4, x, y + s * 0.4);
+        g.addColorStop(0, '#d8dce8'); g.addColorStop(1, '#8a8fa8');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(x, y, s * 1.15, s * 0.42, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#3d3766'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, s * 1.15, s * 0.42, 0, 0, TAU); ctx.stroke();
+        for (let i = -2; i <= 2; i++) { ctx.fillStyle = (Math.floor(t * 2 + i) % 3 === 0) ? '#ffe156' : '#7fd8ff'; ctx.beginPath(); ctx.arc(x + i * s * 0.4, y + s * 0.05, s * 0.09, 0, TAU); ctx.fill(); }
+        drawFace(ctx, x, y - s * 0.32, s * 0.55, 'happy', t, 5);
+      } else if (kind === 'asteroid') { // the cracked Zero-G asteroid with gold light leaking out
+        ctx.fillStyle = '#7a7a8c';
+        ctx.beginPath(); ctx.moveTo(x - s, y + s * 0.3); ctx.lineTo(x - s * 0.7, y - s * 0.7); ctx.lineTo(x + s * 0.2, y - s); ctx.lineTo(x + s, y - s * 0.2); ctx.lineTo(x + s * 0.8, y + s * 0.8); ctx.lineTo(x - s * 0.3, y + s); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#4a4a5c'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.strokeStyle = '#ffe156'; ctx.lineWidth = s * 0.1; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x + s * 0.1, y - s * 0.9); ctx.lineTo(x - s * 0.15, y - s * 0.2); ctx.lineTo(x + s * 0.2, y + s * 0.2); ctx.lineTo(x, y + s * 0.9); ctx.stroke();
+        for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1; ctx.fillStyle = '#ffe156'; starPath(ctx, x + Math.cos(a) * s * 0.9, y + Math.sin(a) * s * 0.9, s * 0.16, s * 0.07); ctx.fill(); }
+        drawFace(ctx, x - s * 0.3, y + s * 0.15, s * 0.6, 'sleepy', t, 2);
+      } else if (kind === 'planet') {
+        PL_ART.planet(ctx, x, y, s * 1.9, PL_SKINS[0], 'happy', t);
+      }
+      ctx.restore();
+    },
     drawNode(ctx, node, st, t) {
-      ctx.fillStyle = st.state === 'hidden' ? 'rgba(255,255,255,0.15)' : st.state === 'locked' ? '#777' : '#ffb35c';
-      ctx.beginPath(); ctx.arc(node.x, node.y, 44, 0, TAU); ctx.fill();
-      outlineText(ctx, st.state === 'hidden' ? '?' : node.id, node.x, node.y + 70, 22, '#fff', '#3a2a4a');
+      const x = node.x, y = node.y, s = 44;
+      if (st.state === 'hidden') { // a faint twinkling "?" — something is out there
+        ctx.save();
+        ctx.globalAlpha = 0.25 + 0.15 * Math.sin(t * 2 + x);
+        ctx.fillStyle = '#b06cf0';
+        ctx.beginPath(); ctx.arc(x, y, s * 1.1, 0, TAU); ctx.fill();
+        outlineText(ctx, '?', x, y + 6, 44, '#fff', '#5a4a86');
+        ctx.restore();
+        return;
+      }
+      if (st.selected) { // pulsing gold ring
+        ctx.save();
+        ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 6; ctx.globalAlpha = 0.6 + 0.3 * Math.sin(t * 4);
+        ctx.beginPath(); ctx.arc(x, y, s * 1.55 + Math.sin(t * 4) * 3, 0, TAU); ctx.stroke();
+        ctx.restore();
+      }
+      this.icon(ctx, node.icon, x, y, s, t, st.state === 'locked');
+      if (st.state === 'locked') { // padlock
+        ctx.save();
+        ctx.fillStyle = '#ffe156'; ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 3;
+        rr(ctx, x - 16, y + 4, 32, 26, 6); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(x, y + 4, 11, Math.PI, TAU); ctx.stroke();
+        ctx.restore();
+      }
+      if (st.state === 'done') { // gold star badge
+        ctx.save();
+        ctx.fillStyle = '#ffe156'; ctx.strokeStyle = '#a86a10'; ctx.lineWidth = 3;
+        starPath(ctx, x + s * 0.95, y - s * 0.95, 20, 9); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      // tucked close under the icon, above the controller's fixed spacebar-hint zone (y+96)
+      if (node.label) outlineText(ctx, node.label, x, y + s + 14, 26, '#fff', '#3a2a4a');
+    },
+    // the hero's little rocket hovers over the selected node, flame on while gliding
+    drawCursor(ctx, x, y, flying, t) {
+      const bob = Math.sin(t * 3) * 5;
+      const baseY = y - 70 + bob, s = 96;
+      PL_ART.rocket(ctx, x, baseY, s, t, flying ? 1 : 0);
+      // the pilot's actual head, scaled to fit inside the rocket's window
+      ctx.save();
+      ctx.translate(x, baseY - s * 0.5);
+      ctx.scale(0.5, 0.5);
+      drawHead(ctx, 0, 0, game.character, t, false);
+      ctx.restore();
     }
   }
 };
