@@ -93,6 +93,16 @@ function frames(n, hold = {}) {
   }
 }
 const G = () => vm.runInContext('game', sandbox);
+// drawPartyOverlay only draws (via the global outlineText) — no return value
+// to read — so capture its calls by swapping outlineText for a recorder for
+// one render, same trick as the AudioSys.arp interception check elsewhere.
+// Returns the SECOND outlineText string, the party subtitle line.
+const partySubtitle = () => vm.runInContext(`(() => {
+  const orig = outlineText, calls = [];
+  outlineText = (c, s) => calls.push(s);
+  try { drawPartyOverlay(); } finally { outlineText = orig; }
+  return calls[1];
+})()`, sandbox);
 
 // ---------------- boot & title ----------------
 frames(30);
@@ -1792,6 +1802,8 @@ put(1150 - 35, 620 - 94);
 frames(5);
 check('the exit door returns to the Space Maze with no puzzle leak and no completion flag',
   G().level.n === 9 && G().state === 'play' && G().level.puzzle === null && !G().miniDone.planetblocks && G().level.space === true);
+check('but the room DOES earn its map star just by being visited and left (noWin exitSub hook, v1.31.0 review)',
+  vm.runInContext("MapProgress.isCompleted(9, 'planets')", sandbox));
 put(560, 2250); // an open maze cell, well clear of the hatch, to disarm re-entry
 frames(10);
 put(430 - 28, 2250);
@@ -2265,7 +2277,10 @@ check('station: ...flies through space toward the green planet', STN().escape.na
 tap('Space'); frames(5);
 check('station: Space skips the rest: the crash-landing teaser ends in WORLD WIN — Dino Jungle unlocked',
   !G().cut && G().endPhase === 'party' && G().unlocked === 10 && G().wonWorld === 9 && STN().escape.done && STN().escape.name === 'teaser');
-frames(320);
+frames(60); // past drawPartyOverlay's own 0.8s fade-in gate before its text renders
+check('station: a DIRECT (non-map) win card says NEXT STOP, since Space chains straight into Dino Jungle',
+  G().mapReturn === 0 && partySubtitle() === 'NEXT STOP: DINO JUNGLE!');
+frames(260);
 tap('Space'); frames(10);
 check('station: Space after the party starts world 10 directly — the crash-landing that opens THE GREAT DINOSAUR RESCUE',
   G().level.n === 'jungle2');
@@ -3684,6 +3699,9 @@ frames(170);
 vm.runInContext('TouchUI.press("Escape")', sandbox);
 frames(3);
 check('escape: a synthetic touch press cannot quit the level', G().state === 'play');
+// TouchUI.press has no matching release — clear it at the source so a later
+// real tap('Escape') still registers as a fresh keydown
+vm.runInContext('keys.Escape = false;', sandbox);
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
 
@@ -4150,6 +4168,26 @@ check('sw.js precaches every script index.html loads', (function () {
 // ---------------- WORLD MAP: data + progress (v1.31.0) ----------------
 check('WORLD_MAPS declares the Space map with four nodes and three paths',
   vm.runInContext("WORLD_MAPS[9] && WORLD_MAPS[9].theme === 'space' && WORLD_MAPS[9].nodes.length === 4 && WORLD_MAPS[9].paths.length === 3 && WORLD_MAPS[9].nodes.map(n => n.level).join() === '9,zerog,planetblocks,space2'", sandbox));
+// regression: a stage node whose level isn't in its world's chain (indexOf
+// -> -1) must never be inferred "unlocked" just because prog (>= 0) >= -1
+vm.runInContext(`
+  WORLD_MAPS[999] = { theme: 'space', nodes: [
+    { id: 'real',  level: 999,           kind: 'stage', x: 0, y: 0, icon: 'x' },
+    { id: 'bogus', level: 'not-in-chain', kind: 'stage', x: 0, y: 0, icon: 'x' }
+  ], paths: [] };
+  game.stageProg[999] = 0; game.unlocked = 1;
+`, sandbox);
+check('inference never unlocks a stage node absent from the chain (i === -1 regression)',
+  vm.runInContext("MapProgress.isUnlocked(999, 'bogus')", sandbox) === false);
+vm.runInContext("delete WORLD_MAPS[999]; delete MapProgress.data[999];", sandbox);
+// malformed ffbg_map: a hand-edited "c" as a string, no "d" at all — load()
+// must coerce both to arrays instead of throwing on the first push
+vm.runInContext(`localStorage.setItem('ffbg_map', JSON.stringify({ 9: { u: ['maze'], c: 'x' } }))`, sandbox);
+check('MapProgress.load() tolerates a malformed ffbg_map entry and complete() does not throw',
+  vm.runInContext(`(() => {
+    try { MapProgress.load(); MapProgress.complete(9, 'maze'); return Array.isArray(MapProgress.data[9].d) && Array.isArray(MapProgress.data[9].c); }
+    catch (e) { return false; }
+  })()`, sandbox));
 // fresh save: nothing in ffbg_map, no progress
 vm.runInContext("localStorage.removeItem('ffbg_map'); game.stageProg = {}; game.unlocked = 9; game.miniDone = {}; MapProgress.load();", sandbox);
 const MP = (expr) => vm.runInContext('MapProgress.' + expr, sandbox);
@@ -4188,15 +4226,17 @@ vm.runInContext("localStorage.removeItem('ffbg_map'); MapProgress.data = {}; gam
 frames(3);
 
 // ---------------- WORLD MAP: the Space star chart (v1.31.0) ----------------
-// NOTE: unlockAll() sets game.unlocked = 10, which — via MapProgress's legacy
-// "beaten" inference (unlocked > w) — would make world 9's map look fully
-// beaten before it's ever been visited. That inference exists for REAL old
-// saves (unlocked only exceeds w once w's worldWin actually fires) and is
-// correct there; it's just the wrong tool to reach for here. game.unlocked =
-// 9 makes digit 8 reachable (needs unlocked >= 9) without tripping it.
-vm.runInContext("game.resetProgress(); game.unlocked = 9; game.goTitle();", sandbox);
+vm.runInContext("game.resetProgress(); game.goTitle();", sandbox);
 frames(3);
 check('resetProgress clears ffbg_map', sandbox.localStorage.getItem('ffbg_map') === null);
+// unlockAll() now freezes every world's map at its TRUE pre-cheat state
+// before raising game.unlocked, so it's safe to use directly here — no more
+// standing in for it with a hand-set game.unlocked = 9.
+vm.runInContext("game.unlockAll();", sandbox);
+frames(3);
+check('fresh save + unlockAll leaves world 9\'s map at its true, unvisited state: maze open, station locked, rooms hidden',
+  MP("nodeState(9, WORLD_MAPS[9].nodes[0])") === 'open' && MP("nodeState(9, WORLD_MAPS[9].nodes[3])") === 'locked' &&
+  MP("nodeState(9, WORLD_MAPS[9].nodes[1])") === 'hidden' && MP("nodeState(9, WORLD_MAPS[9].nodes[2])") === 'hidden');
 check('the map touch layout is left/right/star only', vm.runInContext("game.openMap(9); TouchUI.layout().map(b => b.key).join()", sandbox) === 'ArrowLeft,ArrowRight,Space');
 vm.runInContext('game.goTitle()', sandbox);
 frames(3);
@@ -4212,15 +4252,14 @@ check('Right cannot move onto a locked or hidden node', M().sel === 0);
 vm.runInContext("game.map.tap({x: WORLD_MAPS[9].nodes[3].x, y: WORLD_MAPS[9].nodes[3].y})", sandbox);
 frames(2);
 check('tapping the locked station only boings', G().state === 'map');
+check('tapping a hidden "?" node is inert: returns true so it never falls through to a tap-anywhere launch',
+  vm.runInContext("game.map.tap({x: WORLD_MAPS[9].nodes[1].x, y: WORLD_MAPS[9].nodes[1].y})", sandbox) === true &&
+  G().state === 'map' && M().sel === 0);
 tap('Space');
 frames(3);
 check('Space launches the maze as a FULL map-launched level',
   G().level.n === 9 && G().state === 'intro' && G().mapReturn === 9 && G().subReturn === null && MP("recent(9)") === 'maze');
 // Escape inside a map-launched level returns to the map, not the title
-// (an earlier section's TouchUI.press("Escape") synthetic touch has no
-// matching release, leaving keys.Escape stuck true forever — reset it so a
-// real tap() can register as a fresh keydown)
-vm.runInContext('keys.Escape = false;', sandbox);
 tap('Escape');
 frames(3);
 check('Escape in a map-launched level returns to the map', G().state === 'map' && M().w === 9);
@@ -4249,7 +4288,20 @@ tap('Space');
 frames(3);
 check('Space on the station starts 8-2 as a map-launched level', G().level.n === 'space2' && G().mapReturn === 9);
 // hold-to-return: a tap does nothing, a 1 s hold returns to the map
-frames(150);
+frames(150); // past the intro card, solidly in 'play'
+// the hold button/timer are inert during a cutscene or the party (those
+// screens have their own Space handling) — v1.31.0 review fix
+vm.runInContext("TouchUI.enabled = true; game.cut = { name: 'x', t: 0 };", sandbox);
+vm.runInContext("TouchUI.mapHoldStart(9)", sandbox);
+frames(70);
+check('the hold-to-return timer never fires during a cutscene', G().state === 'play' && G().level.n === 'space2');
+vm.runInContext("game.cut = null; TouchUI.mapHold = null;", sandbox);
+// a second finger can never steal or rebind an in-progress hold (v1.31.0 review fix)
+vm.runInContext("TouchUI.mapHoldStart(1); TouchUI.mapHoldStart(2); TouchUI.mapHoldEnd(1);", sandbox);
+frames(70);
+check('mapHoldStart pins the first finger: a second start is ignored, so ending the first cancels the hold cleanly',
+  G().state === 'play' && G().level.n === 'space2');
+vm.runInContext("TouchUI.mapHold = null;", sandbox);
 vm.runInContext('TouchUI.enabled = true; TouchUI.mapHoldStart(7)', sandbox);
 frames(10);
 vm.runInContext('TouchUI.mapHoldEnd(7)', sandbox);
@@ -4290,16 +4342,20 @@ frames(150);
 put(1150 - 35, 620 - 94);
 frames(5);
 check('its exit door returns INTO the maze', G().level.n === 9 && G().state === 'play');
+check('the no-win room earned its star just by being visited and left, even entered through the in-maze door',
+  MP("isCompleted(9, 'planets')"));
 // map-launched rooms return to the map
 vm.runInContext('game.openMap(9)', sandbox);
 frames(3);
-check('both rooms are now selectable on the map', M().stateOf(1) === 'done' && M().stateOf(2) === 'open');
+check('both rooms are now selectable AND starred on the map (planets earned its star on the exit above)',
+  M().stateOf(1) === 'done' && M().stateOf(2) === 'done');
 vm.runInContext("game.map.launch(2)", sandbox);
 frames(160);
 check('Planet Blocks launched from the map is a full level with no host', G().level.n === 'planetblocks' && G().subReturn === null && G().mapReturn === 9);
 put(1150 - 35, 620 - 94);
 frames(5);
-check('its exit door returns to the MAP when map-launched', G().state === 'map' && M().w === 9 && MP("recent(9)") === 'planets');
+check('its exit door returns to the MAP when map-launched, still shown as done',
+  G().state === 'map' && M().w === 9 && MP("recent(9)") === 'planets' && M().stateOf(2) === 'done');
 vm.runInContext("game.map.launch(1)", sandbox);
 frames(160);
 vm.runInContext("if (!game.mazeDone) game.subWin();", sandbox);
@@ -4321,6 +4377,31 @@ tap('Space');
 frames(3);
 check('a DIRECT (non-map) maze party still advances into the station and marks the maze done on the map',
   G().level.n === 'space2' && G().mapReturn === 0 && MP("isCompleted(9, 'maze')") && MP("isUnlocked(9, 'station')"));
+// map-launched station straight through worldWin(9) (mirrors the map-launched
+// maze block earlier in this section). The real station playthrough is
+// covered end-to-end in the SPACE 8-2 section above, so worldWin(9) is the
+// sanctioned finale fallback here — same convention as the Zero-G subWin()
+// fallback used earlier for the in-maze rooms.
+vm.runInContext("MapProgress.reset(); game.stageProg = { 9: 1 }; game.miniDone = {}; game.unlocked = 9; game.goTitle();", sandbox);
+frames(3);
+vm.runInContext("game.openMap(9)", sandbox);
+frames(3);
+check('setup: the station is unlocked via inferred stage progress', M().stateOf(3) === 'open');
+vm.runInContext("game.map.launch(3)", sandbox);
+frames(160);
+check('map-launched the station as a full level with no host to return into',
+  G().level.n === 'space2' && G().mapReturn === 9 && G().subReturn === null);
+vm.runInContext("game.worldWin(9);", sandbox);
+frames(60); // past drawPartyOverlay's own 0.8s fade-in gate before its text renders
+check('a MAP-launched win card says the world is now open, not a straight chain into it',
+  partySubtitle() === 'DINO JUNGLE IS OPEN!');
+frames(260); // (60 already elapsed) past the party's 5s Space gate
+tap('Space');
+frames(3);
+check('map-launched station worldWin: Space returns to the map with world 10 unlocked and the station starred',
+  G().state === 'map' && G().unlocked === 10 && G().stageProg[9] === 0 && MP("isCompleted(9, 'station')") && M().w === 9);
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
 check('the space map theme draws every icon in every state, the cursor and the background without throwing',
   vm.runInContext(`(() => { try {
     const c = document.getElementById('game').getContext('2d'), th = MAP_THEMES.space, m = new WorldMap(9);

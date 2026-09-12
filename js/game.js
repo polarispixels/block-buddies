@@ -101,6 +101,12 @@ game.setCharacter = function (who) {
   if (px2) Particles.burst(px2.x, px2.y, 10, { colors: ['#ffe156', '#ff8fb0', '#fff'], type: 'star', sp1: 220, l1: 0.6, s1: 9, grav: 200 });
 };
 game.unlockAll = function () { // secret combo: Up×5 fast on the title (keyboard only)
+  // freeze every map at its TRUE pre-cheat state first: MapProgress.get(w)
+  // infers + persists an entry from today's real progress. Raising
+  // game.unlocked below would otherwise make the "beaten" (unlocked > w)
+  // legacy-inference branch fire for maps not yet visited, wrongly starring
+  // stages (e.g. the station) that were never played.
+  for (const w in WORLD_MAPS) MapProgress.get(+w);
   game.unlocked = 10;
   game.selLevel = 10;
   try { localStorage.setItem('ffbg_unlocked', '10'); } catch (e) {}
@@ -255,6 +261,11 @@ game.enterSub = function (id) {
   AudioSys.setMusic(lv.music);
 };
 game.exitSub = function () {
+  // rooms with no win state (Planet Blocks) earn their map star just by
+  // being visited and left — before EITHER return path below, since both
+  // the in-maze return (subReturn) and the map return share this exit.
+  const nf = MapProgress.findNode(game.level.n);
+  if (nf && nf.node.noWin) MapProgress.onLevelDone(game.level.n);
   const r = game.subReturn;
   if (!r) { game.returnToMap(); return; }
   game.subReturn = null;
@@ -975,7 +986,7 @@ function update(dt) {
   }
   AudioSys.update();
   // hold-to-return-to-map touch button: 1s hold inside a map-launched level
-  if (TouchUI.mapHold && game.mapReturn && game.state !== 'map' && game.state !== 'title') {
+  if (TouchUI.mapHold && game.mapReturn && game.state !== 'map' && game.state !== 'title' && !game.cut && !game.endPhase) {
     TouchUI.mapHold.t += dt;
     if (TouchUI.mapHold.t >= 1) { TouchUI.mapHold = null; game.returnToMap(); }
   }
@@ -1239,7 +1250,7 @@ function drawTouchUI() {
     }
     ctx.restore();
   }
-  if (game.mapReturn && game.state !== 'map' && game.state !== 'title') { // hold-to-return-to-map button (v1.31.0)
+  if (game.mapReturn && game.state !== 'map' && game.state !== 'title' && !game.cut && !game.endPhase) { // hold-to-return-to-map button (v1.31.0); hidden during cutscenes/party — those have their own Space handling
     const b = TouchUI.mapBtn, k = TouchUI.mapHold ? Math.min(1, TouchUI.mapHold.t) : 0;
     ctx.save();
     ctx.globalAlpha = 0.5 + k * 0.4; ctx.fillStyle = '#fff';
@@ -1419,7 +1430,8 @@ function drawPartyOverlay() {
       outlineText(ctx, 'YOU BUILT A DINO TEAM!', W / 2, 212, 36, '#ffe156', '#2f5a2a');
     } else if (game.level.n === 'space2') {
       outlineText(ctx, 'ESCAPED!', W / 2, 140, 84, '#a8ff3c', '#1a1a40');
-      outlineText(ctx, 'NEXT STOP: DINO JUNGLE!', W / 2, 212, 36, '#ffe156', '#1a1a40');
+      // map-launched: the Space press returns to the map, not straight into Dino Jungle
+      outlineText(ctx, game.mapReturn ? 'DINO JUNGLE IS OPEN!' : 'NEXT STOP: DINO JUNGLE!', W / 2, 212, 36, '#ffe156', '#1a1a40');
     } else if (game.level.n === 'surf') {
       outlineText(ctx, 'KRAKEN BUDDIES!', W / 2, 140, 76, '#7fd8ff', '#2a3a86');
       outlineText(ctx, 'YOU SURFED THE WHOLE OCEAN!', W / 2, 212, 34, '#ffe156', '#2a3a86');

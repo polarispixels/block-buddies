@@ -494,6 +494,16 @@ hooks, the touch hold-to-return button) is already generic. A natural next
 candidate is any world that grows a third stage or a cluster of optional
 secret rooms worth surfacing on one screen.
 
+Follow-ups (not yet built):
+- A "new world opened!" beat on the map itself when a final stage's worldWin
+  unlocks the next world, so that news lands on the map screen a player is
+  actually looking at, not just the title's medallion row.
+- Real touch-event coverage for `TouchUI.start`'s map/hold wiring — the
+  harness drives it entirely through the `mapHoldStart`/`mapHoldEnd`/`tap`
+  APIs directly, never a synthesized `touchstart`/`touchend` through
+  `TouchUI.start` itself, which is the same blind spot the title's tap
+  handling already has.
+
 ---
 
 # Recommended Development Order

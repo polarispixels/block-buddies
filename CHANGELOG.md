@@ -33,6 +33,14 @@ entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
   completed / last-played per world). Old saves are inferred once from
   `ffbg_stage`, `ffbg_unlocked` and `ffbg_mini`; the Down×5 reset clears it.
 
+### Fixed
+- Planet Blocks (a no-win room) now earns its map star just by being visited
+  and left through its exit door, whether entered from the map or through
+  the in-maze hatch.
+- Up×5 unlock-all now freezes every world's map at its true pre-cheat state
+  first, so it can no longer wrongly star a stage (e.g. the Alien Space
+  Station) that was never actually played.
+
 ## [1.30.0] - 2026-09-10
 
 ### Added

@@ -104,7 +104,9 @@ is a two-stage chain now (no star `Gate`s left); beating each boss/finale unlock
 bonus worlds as before (zombie→6, magma→7, rally→8, coronation→9, the
 station's escape pod→10) and party exits chain 5→6→7→8→9→10→title (internal n). Picking a
 world (medallion/digit/Space → `game.startWorld`) resumes at the furthest
-stage reached; a beaten world restarts at stage 1. Title digit keys use
+stage reached; a beaten world restarts at stage 1 (worlds without a map;
+mapped worlds open their map with the cursor on the last destination
+played). Title digit keys use
 DISPLAYED numbers: 0 = meadow … 9 = jungle (digit d starts internal d+1).
 Persistence (localStorage): `ffbg_unlocked` (1-10), `ffbg_stage` (furthest
 stage per world, "w:idx,...", additive — old saves unaffected), `ffbg_char`
@@ -296,7 +298,14 @@ cleared by `goTitle` and any non-map `startWorld`. Only Space World
 - **Touch**: `TouchUI.layout()` — left thumb ◀▶ (+▼ duck), right thumb big
   JUMP + ★ action; underwater/space the right cluster becomes ▲▼. Tap
   anywhere = action (menus work by tapping). Title has tappable portraits
-  and level medallions via `game.titleTap`.
+  and level medallions via `game.titleTap`. On the map (`game.state ===
+  'map'`, v1.31.0) the layout drops to ◀▶ + ★ only (no jump/duck — tap a
+  node directly via `game.map.tap`, matching the title's tap-anywhere
+  convention). A map-launched level shows a round hold-to-return button
+  (`TouchUI.mapBtn`, `TouchUI.mapHoldStart`/`mapHoldEnd`): hold 1.0s to
+  return to that world's map; the button and its timer are hidden/inactive
+  during cutscenes (`game.cut`) and the party (`game.endPhase`), which have
+  their own Space handling.
 - **Title**: Escape (justK, keyboard only) quits any level back here — skipped
   while `document.fullscreenElement` is set, since the browser owns that Esc
   press to exit fullscreen; since v1.31.0, a map-launched level goes to its
@@ -316,7 +325,7 @@ cleared by `goTitle` and any non-map `startWorld`. Only Space World
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 1011 checks; must print
+  actual badge/footer values). 1024 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

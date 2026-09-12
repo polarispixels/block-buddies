@@ -14,7 +14,7 @@ const WORLD_MAPS = {
     nodes: [
       { id: 'maze',    level: 9,              kind: 'stage',    x: 250,  y: 470, icon: 'maze',     label: '8-1' },
       { id: 'zerog',   level: 'zerog',        kind: 'optional', x: 470,  y: 250, icon: 'asteroid' },
-      { id: 'planets', level: 'planetblocks', kind: 'optional', x: 700,  y: 520, icon: 'planet' },
+      { id: 'planets', level: 'planetblocks', kind: 'optional', x: 700,  y: 520, icon: 'planet', noWin: true },
       { id: 'station', level: 'space2',       kind: 'stage',    x: 1010, y: 300, icon: 'station',  label: '8-2', requires: ['maze'] }
     ],
     paths: [['maze', 'zerog'], ['maze', 'planets'], ['maze', 'station']]
@@ -33,7 +33,12 @@ const MapProgress = {
         const obj = JSON.parse(raw);
         for (const w in obj) {
           const e = obj[w];
-          if (e && Array.isArray(e.u)) this.data[w] = { u: e.u.slice(), d: (e.d || []).slice(), c: (e.c || []).slice(), l: e.l || null };
+          if (e && Array.isArray(e.u)) this.data[w] = {
+            u: e.u.slice(),
+            d: Array.isArray(e.d) ? e.d.slice() : [],
+            c: Array.isArray(e.c) ? e.c.slice() : [],
+            l: e.l || null
+          };
         }
       }
     } catch (e) { this.data = {}; }
@@ -59,7 +64,7 @@ const MapProgress = {
     for (const n of m.nodes) {
       if (n.kind === 'stage') {
         const i = chain.indexOf(n.level);
-        if (i === 0 || prog >= i || beaten) e.u.push(n.id);
+        if (i === 0 || (i > 0 && prog >= i) || beaten) e.u.push(n.id);
         if ((i >= 0 && prog > i) || beaten) e.c.push(n.id);
       } else if (game.miniDone && game.miniDone[n.level]) { e.d.push(n.id); e.c.push(n.id); }
     }
@@ -68,7 +73,6 @@ const MapProgress = {
     this.save();
     return e;
   },
-  node(w, id) { const m = WORLD_MAPS[w]; return m ? m.nodes.find(n => n.id === id) : null; },
   isUnlocked(w, id) { const e = this.get(w); return !!e && e.u.includes(id); },
   isDiscovered(w, id) { const e = this.get(w); return !!e && e.d.includes(id); },
   isCompleted(w, id) { const e = this.get(w); return !!e && e.c.includes(id); },
@@ -86,7 +90,7 @@ const MapProgress = {
   // all complete; returns the newly unlocked ids (queued for the reveal)
   complete(w, id) {
     const e = this.get(w), m = WORLD_MAPS[w];
-    if (!e) return [];
+    if (!e || !m) return [];
     if (!e.c.includes(id)) e.c.push(id);
     const fresh = [];
     for (const n of m.nodes) {
@@ -122,8 +126,29 @@ const MAP_THEMES = {
     },
     // node icons — every one with a face, readable at ~90px
     icon(ctx, kind, x, y, s, t, gray) {
+      if (gray) {
+        // Portable "locked silhouette" — no ctx.filter (Safari < 17 ignores
+        // it). The map background is already painted opaque behind every
+        // node, so tinting straight onto ctx would have 'source-atop' fill
+        // that WHOLE opaque area, not just the icon's own shape. Instead,
+        // draw the full-colour icon into a transparent offscreen buffer
+        // first, so source-atop only ever sees the icon's own alpha, then
+        // stamp the tinted result back onto the main canvas.
+        const pad = s * 3, off = document.createElement('canvas');
+        off.width = pad * 2; off.height = pad * 2;
+        const octx = off.getContext('2d');
+        octx.translate(pad - x, pad - y);
+        this.icon(octx, kind, x, y, s, t, false);
+        octx.globalCompositeOperation = 'source-atop';
+        octx.fillStyle = '#6a6a78';
+        octx.fillRect(0, 0, off.width, off.height);
+        ctx.save();
+        ctx.globalAlpha *= 0.55;
+        ctx.drawImage(off, x - pad, y - pad);
+        ctx.restore();
+        return;
+      }
       ctx.save();
-      if (gray) { ctx.filter = 'grayscale(1)'; ctx.globalAlpha *= 0.55; }
       if (kind === 'maze') { // a blue-gray asteroid criss-crossed by maze lines
         ctx.fillStyle = '#6a7fb0';
         ctx.beginPath(); ctx.arc(x, y, s, 0, TAU); ctx.fill();
@@ -249,7 +274,7 @@ class WorldMap {
     for (let i = 0; i < this.nodes.length; i++) {
       const n = this.nodes[i], st = this.stateOf(i);
       if (Math.hypot(p.x - n.x, p.y - n.y) > 62) continue;
-      if (st === 'hidden') return false;
+      if (st === 'hidden') return true; // a "?" node is inert — never falls through to tap-anywhere launch
       if (st === 'locked') { AudioSys.sfx('boing'); return true; }
       this.sel = i;
       this.launch(i);
@@ -259,15 +284,17 @@ class WorldMap {
   }
   update(dt) {
     this.t += dt;
+    let fanfare = false;
     for (const r of this.reveal) {
       const was = r.t;
       r.t += dt;
       if (was === 0) {
         const n = this.nodes.find(n => n.id === r.id);
-        AudioSys.sfx('fanfare');
+        fanfare = true;
         Particles.burst(n.x, n.y, 30, { colors: RAINBOW.concat(['#ffe156']), type: 'confetti', sp1: 320, l0: 0.8, l1: 1.8, s1: 11, grav: 260, up: 220 });
       }
     }
+    if (fanfare) AudioSys.sfx('fanfare'); // one reveal batch, one fanfare — not per node
     if (justP.ArrowLeft) this.moveSel(-1);
     if (justP.ArrowRight) this.moveSel(1);
     // the rocket cursor glides to the selected node

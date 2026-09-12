@@ -341,7 +341,7 @@ const TouchUI = {
   fsBtn: { x: W / 2, y: 44, r: 34 },
   mapBtn: { x: 272, y: 44, r: 30 }, // hold-to-return-to-map button (v1.31.0)
   mapHold: null,
-  mapHoldStart(id) { this.mapHold = { id, t: 0 }; },
+  mapHoldStart(id) { if (this.mapHold) return; this.mapHold = { id, t: 0 }; },
   mapHoldEnd(id) { if (this.mapHold && this.mapHold.id === id) this.mapHold = null; },
   layout() {
     const water = typeof game !== 'undefined' && game.level && game.level.water && game.state !== 'title';
