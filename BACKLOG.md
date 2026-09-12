@@ -39,6 +39,7 @@ release spec. Maintenance rules:
 | 20 | Junkyard Block Bash | Arcade Mode #1 | ✅ shipped v1.29.0 — Breakout through Block Buddies: the truck as paddle, Bouncy Buddy ball, 10 block kinds, 7 power-up capsules, 4 surprise events, 4 escalating never-stall waves, the 12-hp JUNKBOT finale (4 parts, 3 attack stages) and its 100-candy victory shower, off a press-gated arcade cabinet (x=280) at the Monster Truck Rally's start; debuts the reusable `js/arcade.js` kit (`Mods`/`WaveRunner`/`Sequence`/`Spawner`/`ArcadeHud`/payout) and the `lv.arcade` engine slot (see CHANGELOG 1.29.0) |
 | 21 | Blaster Run (fast shooting: move, jump, shoot targets at heights) | Arcade Mode #2 | 🎯 next arcade release |
 | 22 | Planet Blocks: biggest / smallest / most / fewest moons | Puzzle Blocks mode | ✅ shipped v1.30.0 — `PlanetBlocksMachine` (mode #5, the first COMPARISON mode), the planets themselves are the answer blocks via new opt-in `blockSize`/`drawBlock` engine hooks; press-gated planet hatch on the Space Maze's start-pocket floor (see CHANGELOG 1.30.0) |
+| 23 | World Map layer | Flow/framework | ✅ shipped v1.31.0 — a reusable, data-driven star-chart screen (`js/worldmap.js`, `game.state === 'map'`) between the title and a world's destinations, Space World first: `WORLD_MAPS[w]`/`MAP_THEMES[theme]` data + art, `MapProgress` on the additive `ffbg_map` key (unlocked/discovered/completed/last-played, inferred once from legacy saves), the `WorldMap` controller (rocket cursor, launch, reveal-with-confetti), touch hold-to-return button; other biomes need only their own `WORLD_MAPS`/`MAP_THEMES` entry to get a map (see CHANGELOG 1.31.0) |
 
 Shipped precursors for context: Secrets Pack II (v1.10.0), Jungle Treehouse
 Trail (v1.11.0), Pit Stop Beat Bash (v1.12.0), Zombie Town After Dark
@@ -470,6 +471,28 @@ breadth rather than overfitting to one genre):
   crossover (steering + a boost `Mod`) if a faster, more literally
   "arcade" racing beat is wanted alongside Blaster Run's shooting-gallery
   beat.
+
+## 13. World Map Layer
+
+**World Maps** (item 23, ✅ shipped v1.31.0) is a new reusable screen —
+a data-driven star chart between the title and a world's destinations —
+built the same three-layer way as Puzzle Blocks and Arcade Mode: DATA
+(`WORLD_MAPS[w] = {theme, nodes, paths}`), PROGRESS (`MapProgress`, one
+additive save key `ffbg_map`, legacy saves inferred once), SCREEN
+(`MAP_THEMES[theme]` art + the `WorldMap` controller on `game.state ===
+'map'`). Space World is the first instance: 8-1 Space Maze and 8-2 Alien
+Space Station as required stage nodes, the Zero-G Star Chamber and Planet
+Blocks as optional nodes that stay hidden until Jack finds their doors
+inside the maze (which keep working exactly as before).
+
+**Other biomes can now define a map too** — a new `WORLD_MAPS[w]` entry
+(nodes, paths, unlock `requires`) plus a matching `MAP_THEMES[theme]` (art
+for `drawBG`/`drawNode`, an optional `drawCursor`, `music`) is the whole
+hookup; the `WorldMap` controller and all the flow wiring (`game.startWorld`
+opening the map, `game.mapReturn`/`returnToMap`, the party/Escape/exitSub
+hooks, the touch hold-to-return button) is already generic. A natural next
+candidate is any world that grows a third stage or a cluster of optional
+secret rooms worth surfacing on one screen.
 
 ---
 

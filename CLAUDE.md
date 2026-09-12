@@ -59,6 +59,7 @@ step, zero dependencies. The design doc's success metric governs everything:
 | `js/bashart.js` | `BASH_ART`: Junkyard Block Bash's whole contact-sheet-reviewed art pack (blocks per kind + damage states, ball moods, capsule icons, junk floor/walls/rail/crane, giant tire, JunkBot parts + poses, junk debris, the arcade cabinet door, the wide-mod plow). Pure drawing functions, no game-state reads |
 | `js/blockbash.js` | JUNKYARD BLOCK BASH (v1.29.0), Arcade Mode #1 — Breakout through Block Buddies: `BB` constants, `BB_CAP_WEIGHTS`, the `JunkBot` class (the wave-4/5 finale boss), and `BlockBash` on `lv.arcade` (`updatePlayer` truck-paddle physics, `update`, `drawBack`, `draw`, `drawFront`) — balls/blocks/capsules/candy/crane/tires are plain object literals, `WAVES` is an instance field |
 | `js/dinoart.js` / `js/junglescene.js` / `js/rescue.js` | THE GREAT DINOSAUR RESCUE (v1.28.0, world 10's stage ONE): `DINO_ART` (five baby kinds with moods, adults incl. the ride-able rex with a `saddle`, herd/silhouettes, fruit/peels/trees, prints, nests with ghost silhouettes, bat, sound rings, the crash cinematic frames, candy pile), `JG_SCENE` (storm/calm jungle + cave backdrops, `groundPlate` kinds, water, debris, thorn wall + fire patch, valve, bud, launch pad, crystals, nursery, the barrier set, rainbow/blooms, run props), and `js/rescue.js` = `BabyDino` follower chain (`parade`), `DinoRescue` on `lv.puzzle` (crash cut, five rescues, barrier team moves via ghost spots, `finale` cut) and `DinoRun` on `lv.ride` (RideMode's third instance: T-rex run, mega launch, candy platform, party → Space → `stageClear(10)`). |
+| `js/worldmap.js` | WORLD MAP LAYER (v1.31.0), a reusable data-driven star chart between the title and a world's destinations: `WORLD_MAPS[w]` (theme, nodes `{id, level, kind:'stage'\|'optional', x, y, icon, label?, requires?}`, dotted `paths`; Space World = `WORLD_MAPS[9]`), `MapProgress` (unlocked/discovered/completed/last-played per world, additive `ffbg_map` key, infers a first-sight entry from `ffbg_stage`/`ffbg_unlocked`/`ffbg_mini`, generic `onEnter`/`onLevelDone` hooks by level id), `MAP_THEMES[theme]` (`drawBG`/`drawNode`/`drawCursor`/`music`; `MAP_THEMES.space` reuses `newLevel(9)`'s starfield/nebula sky with `plainSky = true` so the level's decorative planets don't collide with map nodes — a reusable trick for any future biome's map background), and the `WorldMap` controller on `game.map` (selection, rocket-cursor tween, launch, tap, reveal-with-confetti animation) driving `game.state === 'map'`. A new biome's map is one `WORLD_MAPS` entry + one `MAP_THEMES` entry; the controller itself knows nothing about space. |
 | `js/stationart.js` / `js/stationscene.js` / `js/station.js` | THE ALIEN SPACE STATION 8-2 (v1.27.0): `ST_ART` (alien spiders + boss, eyes, web glob/wrap, pods, the escape cinematic frames), `ST_SCENE` (station walls/floors/lights/decor, the battery/socket/cable kit, every machine), and `js/station.js` = the reusable **PowerGrid kit** (`Battery` follow-item, `Socket` Space-plug / Space-pull / eject-hot (never automatic since v1.28.1 — an auto-plug re-grabbed a cell Jack had just pulled) with a spacebar hint, `Machine` kinds door/elevator/gravity/bridge/vending/hologram/hand/robot/fan/laser/magnet/baydoor, `PowerGrid` container) + `AlienSpider` (in lv.spiders; kinds crawl/jump/drop/vent/shooter/thrown; pops into real candy; web globs set `pl.webT`) + `GiantSpider` (shielded spider factory; hp 6) + `AlienStation` on `lv.puzzle` (lighting director → `lv.darkAlpha`/`lv.playerLight`, acts, arena seal + `stationboss` cut, the `escape` cinematic → `worldWin(9)`). Engine hooks: `drawFront` (above darkness), `drawCinematic`, `lv.gravK`, `pl.webT`, `game.advanceStage`. |
 | `js/surfart.js` / `js/surf.js` | OCEAN SURF (v1.26.0), Ride Mode's second instance: `SURF_ART` (surfboard, sea, waves, shark, red ski ramps, floating chest, the monster-truck pirate boat, cannonball/splash/target ring, the Kraken with a controllable arm tentacle returning its tip, rock, island props, giant chest, surfboard door) and `OceanSurf` on `lv.ride` (phases by distance, wipeout→swim→remount, boat encounters enter→shoot→rev→ram→leave, the Kraken boss with rocks + the re-spawning rainbow block, the victory script friend→boatgrab→pickup→launch→coast→done, the island's giant chest paying `SURF.BIG_CANDY`). Engine: ride gate releases on `state === 'done'`, rides may supply `drawRider`, `lv.skyCam` lets a 720-tall level's camera rise for a launch, theme `'ocean'` = sky + clouds only. |
 | `js/flowerart.js` / `js/flowerscene.js` | Art packs for RAINBOW SPIDER FLOWER LAND (Jack's level, v1.25.0): `FL_ART` creatures (rainbow/grump giant spiders with `scale` + moods, magic shroom, flower person, flower hat, bubble dragon, race bot, captain, gold bar, bubble) and `FL_SCENE` scenery (giant flowers incl. broken, rainbow-block castle, spider-home dome, pirate ship + `SHIP_DECK`, cloud island, tiny clouds, flags, party decor, gold chest, the meadow's flower door). Pure drawing functions, contact-sheet reviewed; no game-state reads. |
@@ -86,7 +87,7 @@ renumber the internals (breaks `ffbg_unlocked` saves).
 | 6 | Lava World | lava | fire ignites spiders → panic → explosion chains; lava pools; KING MAGMA boss (ice×3→power ram→rainbow) | Candy Volcano eruption |
 | 7 | Monster Truck Rally | dirt | STAGE 6-1 is the DESERT SAND SLIDE ('sandslide', js/ride.js): pattern puzzle → boogie board → procedural downhill ride collecting 5 truck parts → victory run → mega-ramp launch; arriving sets `game.partsDelivered` so the rally's TruckBuild starts in `delivered` mode (token hunt skipped, ceremony fires on approach; a direct startLevel(7) keeps the classic hunt); a press-gated back-door SubDoor (`{goTo: 'sandslide'}`, x=140) at the rally start replays the slide, tutorial skipped via `game.slideReplay`. A press-gated `SubDoor` style `'arcade'` (x=280, free build zone) opens JUNKYARD BLOCK BASH ('blockbash', js/blockbash.js), Arcade Mode #1: the truck as a Breakout paddle, Bouncy Buddy the ball, 10 block kinds, 7 capsules, 4 escalating waves, the JUNKBOT finale, a 100-candy victory shower. Then Build-Your-Truck (find wheels/engine/core, assembly ceremony — or delivered) then `vehicle='truck'`, ramps+auto backflips, turbo pad, dirt tornadoes | finish line → grandstand + Candy Trophy |
 | 8 | Unicorn Forest | forest | `vehicle='unicorn'`, Up-mash = wing flight + glitter, horn always fires rainbows, Centipede chains | castle coronation → permanent crown (`game.royal`) |
-| 9 | Space Maze | space | `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens; Planet Blocks learning room (press-gated planet hatch x=430 on the start-pocket floor) — Puzzle Blocks mode #5, biggest/smallest/most/fewest moons, gravity on inside | golden star → MAZE MASTER (befriends all aliens) → Space advances to THE ALIEN SPACE STATION 8-2 ('space2', js/station.js): the Black Hallway → battery routing → the Giant Spider → the escape pod cinematic crash-lands in Dino Jungle = `worldWin(9)` |
+| 9 | Space Maze | space | Picking Space World (displayed "8") from the title opens the SPACE MAP (`js/worldmap.js`, `WORLD_MAPS[9]`, v1.31.0) instead of launching a stage directly — a star chart with 8-1 Space Maze, the Zero-G Star Chamber, Planet Blocks, and 8-2 Alien Space Station as nodes on dotted paths; `lv.space` (weightless swim), 44×19 BFS-verified maze, saucer aliens; Planet Blocks learning room (press-gated planet hatch x=430 on the start-pocket floor) — Puzzle Blocks mode #5, biggest/smallest/most/fewest moons, gravity on inside | golden star → MAZE MASTER (befriends all aliens) → Space advances to THE ALIEN SPACE STATION 8-2 ('space2', js/station.js): the Black Hallway → battery routing → the Giant Spider → the escape pod cinematic crash-lands in Dino Jungle = `worldWin(9)`; either finish returns to the SPACE MAP with that node starred |
 | 10 | Dino Jungle | jungle | STAGE ONE is THE GREAT DINOSAUR RESCUE ('jungle2', js/rescue.js): the pod crash → five rescues → parade → landslide teamwork → reunion → T-rex victory run → party → stageClear(10). Then the classic jungle (stage two): `FireBreather` dinos (jump the telegraphed flame), vine spiders, Dino Key mission (ancient gate + 3 lost eggs: platform / mushroom-bounce / flame-timed), friendly dinos (longnecks/trike/T-Rex) | GIANT SPINOSAURUS boss in the valley (ice×3 douses flames→fire×3 hiccups→rainbow; both-side arena walls via `game.spinoWalls`, `lv.bossX` trigger) → golden star → party |
 
 Progression (LINEAR WORLD CHAINS since v1.20.0): each world is an ordered
@@ -108,7 +109,24 @@ DISPLAYED numbers: 0 = meadow … 9 = jungle (digit d starts internal d+1).
 Persistence (localStorage): `ffbg_unlocked` (1-10), `ffbg_stage` (furthest
 stage per world, "w:idx,...", additive — old saves unaffected), `ffbg_char`
 ('boy'/'girl'), `ffbg_royal` ('1' after coronation → crown drawn everywhere
-via `drawBoy`/`drawHead`).
+via `drawBoy`/`drawHead`), `ffbg_map` (v1.31.0, additive: per-world unlocked/
+discovered/completed/last-played node ids for any world with a `WORLD_MAPS`
+entry; legacy saves are inferred once from the three keys above; wiped by
+Down×5 reset).
+
+**World Maps (v1.31.0, `js/worldmap.js`)**: a world with a `WORLD_MAPS` entry
+opens its star chart (`game.state === 'map'`) instead of a stage when picked
+from the title (medallion/digit/Space, all via `game.startWorld`); a direct
+`game.startLevel` is never map-launched. `game.mapReturn` names the world
+whose map launched the current level (0 = none); `game.returnToMap()` records
+stage progress like an archway would, then reopens that map. Precedence:
+`game.subReturn` (an in-level door) always wins over `mapReturn` — in-maze
+secret rooms still return into the maze exactly as before. `mapReturn` is
+consulted by the party's Space press, `exitSub` (when there's no
+`subReturn`), the `'stageclear'` state, and Escape (see Title below); it's
+cleared by `goTitle` and any non-map `startWorld`. Only Space World
+(`WORLD_MAPS[9]`) has a map so far; another biome opting in is one
+`WORLD_MAPS`/`MAP_THEMES` entry each.
 
 ## Key subsystems
 
@@ -281,11 +299,15 @@ via `drawBoy`/`drawHead`).
   and level medallions via `game.titleTap`.
 - **Title**: Escape (justK, keyboard only) quits any level back here — skipped
   while `document.fullscreenElement` is set, since the browser owns that Esc
-  press to exit fullscreen. Hero picker (Up/Down or tap; girl has curly blonde hair), level
+  press to exit fullscreen; since v1.31.0, a map-launched level goes to its
+  map first (`game.mapReturn` → `returnToMap()`), and Escape on the map
+  itself goes to the title. Hero picker (Up/Down or tap; girl has curly blonde hair), level
   picker (Left/Right ring or tap medallion, digits 0-9 [displayed numbers] jump, Space = play
-  selected). Secret combos (physical keyboard only, via `justK` — touch
+  selected — digit 8/picking Space World opens its map instead, see World Maps
+  above). Secret combos (physical keyboard only, via `justK` — touch
   presses can't fire them; ≤1.2s between presses): Up×5 = unlock all worlds
-  (`game.unlockAll`), Down×5 = wipe saves & reset (`game.resetProgress`).
+  (`game.unlockAll`), Down×5 = wipe saves & reset (`game.resetProgress`, also
+  clears `ffbg_map`).
 
 ## Testing & verification (do this every change)
 
@@ -294,7 +316,7 @@ via `drawBoy`/`drawHead`).
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 971 checks; must print
+  actual badge/footer values). 1011 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

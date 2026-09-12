@@ -8,6 +8,31 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.31.0] - 2026-09-12
+
+### Added
+- **WORLD MAPS — a reusable star-chart layer, Space World first.** Picking
+  Space World (displayed "8") on the unchanged title screen now opens a
+  Space star chart (`js/worldmap.js`, `game.state === 'map'`) instead of a
+  stage: four nodes on dotted paths — 8-1 Space Maze, the Zero-G Star
+  Chamber, Planet Blocks, 8-2 Alien Space Station — a rocket cursor with the
+  hero's face (Left/Right glide, Space or tap launches, Escape or the
+  back button returns to the title). Required stages show gray with a
+  padlock until unlocked; optional rooms are faint "?" nebulae until Jack
+  finds their doors inside the maze (which keep working exactly as before);
+  completed nodes wear a gold star; newly unlocked nodes scale in with
+  confetti. The cursor starts on the last destination played — nothing is
+  ever forced to the furthest stage. Completing a map-launched destination
+  (the maze's party, the station's escape pod, Zero-G's star, the Planet
+  Blocks exit door) returns to the map; a physical Escape does too, and on
+  touch a new top-edge map button returns after a one-second hold (a ring
+  fills; a tap does nothing). Data-driven: `WORLD_MAPS[w]` (theme, nodes,
+  paths, unlock requirements) + `MAP_THEMES[theme]` (background, node art,
+  cursor, music) — another biome is one entry each.
+- **Persistence:** one new additive key `ffbg_map` (unlocked / discovered /
+  completed / last-played per world). Old saves are inferred once from
+  `ffbg_stage`, `ffbg_unlocked` and `ffbg_mini`; the Down×5 reset clears it.
+
 ## [1.30.0] - 2026-09-10
 
 ### Added
