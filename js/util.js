@@ -339,8 +339,17 @@ const TouchUI = {
   enabled: false,
   map: {}, // touch identifier -> key code
   fsBtn: { x: W / 2, y: 44, r: 34 },
+  mapBtn: { x: 272, y: 44, r: 30 }, // hold-to-return-to-map button (v1.31.0)
+  mapHold: null,
+  mapHoldStart(id) { this.mapHold = { id, t: 0 }; },
+  mapHoldEnd(id) { if (this.mapHold && this.mapHold.id === id) this.mapHold = null; },
   layout() {
     const water = typeof game !== 'undefined' && game.level && game.level.water && game.state !== 'title';
+    if (typeof game !== 'undefined' && game.state === 'map') return [
+      { key: 'ArrowLeft',  glyph: 'left',  x: 82,      y: H - 105, r: 54 },
+      { key: 'ArrowRight', glyph: 'right', x: 220,     y: H - 105, r: 54 },
+      { key: 'Space',      glyph: 'star',  x: W - 105, y: H - 112, r: 64 }
+    ];
     if (water) return [
       { key: 'ArrowLeft',  glyph: 'left',  x: 82,      y: H - 105, r: 54 },
       { key: 'ArrowRight', glyph: 'right', x: 220,     y: H - 105, r: 54 },
@@ -415,6 +424,11 @@ const TouchUI = {
       }
       // title screen: portraits and level medallions are directly tappable
       if (typeof game !== 'undefined' && game.state === 'title' && game.titleTap && game.titleTap(p)) continue;
+      // world map screen: nodes and the back button are directly tappable
+      if (typeof game !== 'undefined' && game.state === 'map' && game.map && game.map.tap(p)) continue;
+      // hold-to-return-to-map button (only inside a map-launched level)
+      if (typeof game !== 'undefined' && game.mapReturn && game.state !== 'map' && game.state !== 'title' &&
+          Math.hypot(p.x - this.mapBtn.x, p.y - this.mapBtn.y) < this.mapBtn.r * 1.4) { this.mapHoldStart(t.identifier); continue; }
       const b = this.hit(p);
       this.assign(t.identifier, b ? b.key : 'Space');
     }
@@ -430,7 +444,7 @@ const TouchUI = {
     }
   },
   end(e) {
-    for (const t of e.changedTouches) this.assign(t.identifier, null);
+    for (const t of e.changedTouches) { this.mapHoldEnd(t.identifier); this.assign(t.identifier, null); }
   }
 };
 window.addEventListener('touchstart', e => { e.preventDefault(); TouchUI.start(e); }, { passive: false });

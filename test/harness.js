@@ -4187,6 +4187,143 @@ check('inference happens once: a saved entry is not re-inferred', (function () {
 vm.runInContext("localStorage.removeItem('ffbg_map'); MapProgress.data = {}; game.stageProg = {}; game.miniDone = {}; game.unlocked = 10; game.goTitle();", sandbox);
 frames(3);
 
+// ---------------- WORLD MAP: the Space star chart (v1.31.0) ----------------
+// NOTE: unlockAll() sets game.unlocked = 10, which — via MapProgress's legacy
+// "beaten" inference (unlocked > w) — would make world 9's map look fully
+// beaten before it's ever been visited. That inference exists for REAL old
+// saves (unlocked only exceeds w once w's worldWin actually fires) and is
+// correct there; it's just the wrong tool to reach for here. game.unlocked =
+// 9 makes digit 8 reachable (needs unlocked >= 9) without tripping it.
+vm.runInContext("game.resetProgress(); game.unlocked = 9; game.goTitle();", sandbox);
+frames(3);
+check('resetProgress clears ffbg_map', sandbox.localStorage.getItem('ffbg_map') === null);
+check('the map touch layout is left/right/star only', vm.runInContext("game.openMap(9); TouchUI.layout().map(b => b.key).join()", sandbox) === 'ArrowLeft,ArrowRight,Space');
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+tap('Digit8');
+frames(3);
+const M = () => vm.runInContext('game.map', sandbox);
+check('digit 8 opens the SPACE MAP instead of a level', G().state === 'map' && M().w === 9 && G().mapReturn === 0);
+check('a fresh map: cursor on the maze, station locked, rooms hidden',
+  M().nodes[M().sel].id === 'maze' && M().stateOf(3) === 'locked' && M().stateOf(1) === 'hidden' && M().stateOf(2) === 'hidden');
+tap('ArrowRight');
+frames(3);
+check('Right cannot move onto a locked or hidden node', M().sel === 0);
+vm.runInContext("game.map.tap({x: WORLD_MAPS[9].nodes[3].x, y: WORLD_MAPS[9].nodes[3].y})", sandbox);
+frames(2);
+check('tapping the locked station only boings', G().state === 'map');
+tap('Space');
+frames(3);
+check('Space launches the maze as a FULL map-launched level',
+  G().level.n === 9 && G().state === 'intro' && G().mapReturn === 9 && G().subReturn === null && MP("recent(9)") === 'maze');
+// Escape inside a map-launched level returns to the map, not the title
+// (an earlier section's TouchUI.press("Escape") synthetic touch has no
+// matching release, leaving keys.Escape stuck true forever — reset it so a
+// real tap() can register as a fresh keydown)
+vm.runInContext('keys.Escape = false;', sandbox);
+tap('Escape');
+frames(3);
+check('Escape in a map-launched level returns to the map', G().state === 'map' && M().w === 9);
+tap('Escape');
+frames(3);
+check('Escape on the map returns to the title', G().state === 'title');
+// launch by TAP, then finish the maze for real: star -> party -> Space -> map with the station revealed
+vm.runInContext('game.openMap(9)', sandbox);
+frames(3);
+vm.runInContext("game.map.tap({x: WORLD_MAPS[9].nodes[0].x, y: WORLD_MAPS[9].nodes[0].y})", sandbox);
+frames(160);
+check('tapping the maze node launches it', G().level.n === 9 && G().state === 'play');
+vm.runInContext('game.player.x = game.level.goalStar.x - 130; game.player.y = game.level.goalStar.y - 40; game.player.vx = 100;', sandbox);
+frames(60, { ArrowRight: 1 });
+check('the maze star still throws the party when map-launched', G().endPhase === 'party');
+frames(320);
+tap('Space');
+frames(3);
+check('the party\'s Space press returns to the map with the station unlocked and the maze starred',
+  G().state === 'map' && M().w === 9 && M().stateOf(3) === 'open' && M().stateOf(0) === 'done' && G().stageProg[9] === 1 &&
+  sandbox.localStorage.getItem('ffbg_stage').includes('9:1') && M().reveal.some(r => r.id === 'station'));
+tap('ArrowRight');
+frames(3);
+check('Right skips the hidden rooms and lands on the station', M().nodes[M().sel].id === 'station');
+tap('Space');
+frames(3);
+check('Space on the station starts 8-2 as a map-launched level', G().level.n === 'space2' && G().mapReturn === 9);
+// hold-to-return: a tap does nothing, a 1 s hold returns to the map
+frames(150);
+vm.runInContext('TouchUI.enabled = true; TouchUI.mapHoldStart(7)', sandbox);
+frames(10);
+vm.runInContext('TouchUI.mapHoldEnd(7)', sandbox);
+frames(30);
+check('a short tap on the map button never leaves the level', G().state === 'play' && G().level.n === 'space2');
+vm.runInContext('TouchUI.mapHoldStart(8)', sandbox);
+frames(30);
+check('half a second of holding is not enough', G().state === 'play');
+frames(40);
+check('a full hold returns to the map', G().state === 'map' && vm.runInContext('TouchUI.mapHold', sandbox) === null);
+// the in-maze doors keep working from a map-launched maze, and DISCOVER the rooms
+vm.runInContext("game.map.launch(0)", sandbox);
+frames(160);
+put(180 - 28, 2250);
+frames(10);
+check('the asteroid crack still enters ZERO-G via enterSub and discovers it on the map',
+  G().level.n === 'zerog' && G().subReturn !== null && MP("isDiscovered(9, 'zerog')") && !MP("isCompleted(9, 'zerog')"));
+frames(150);
+// the real Zero-G finale (five stars, currents, gate, alien) is fully driven
+// in the ZERO-G STAR CHAMBER section above; re-driving it here would just
+// duplicate ~30 lines of already-covered gameplay to test unrelated MAP
+// wiring, so this section uses the sanctioned subWin() fallback instead.
+vm.runInContext("if (!game.mazeDone) game.subWin();", sandbox);
+frames(320);
+tap('Space');
+frames(3);
+check('the in-maze Zero-G party returns INTO the maze (subReturn wins) and marks it completed',
+  G().level.n === 9 && G().state === 'play' && G().mapReturn === 9 && MP("isCompleted(9, 'zerog')"));
+put(600, 2250);
+frames(10);
+put(430 - 28, 2250);
+frames(10);
+tap('Space');
+frames(10);
+check('the planet hatch still enters PLANET BLOCKS from a map-launched maze and discovers it',
+  G().level.n === 'planetblocks' && G().subReturn !== null && MP("isDiscovered(9, 'planets')"));
+frames(150);
+put(1150 - 35, 620 - 94);
+frames(5);
+check('its exit door returns INTO the maze', G().level.n === 9 && G().state === 'play');
+// map-launched rooms return to the map
+vm.runInContext('game.openMap(9)', sandbox);
+frames(3);
+check('both rooms are now selectable on the map', M().stateOf(1) === 'done' && M().stateOf(2) === 'open');
+vm.runInContext("game.map.launch(2)", sandbox);
+frames(160);
+check('Planet Blocks launched from the map is a full level with no host', G().level.n === 'planetblocks' && G().subReturn === null && G().mapReturn === 9);
+put(1150 - 35, 620 - 94);
+frames(5);
+check('its exit door returns to the MAP when map-launched', G().state === 'map' && M().w === 9 && MP("recent(9)") === 'planets');
+vm.runInContext("game.map.launch(1)", sandbox);
+frames(160);
+vm.runInContext("if (!game.mazeDone) game.subWin();", sandbox);
+frames(320);
+tap('Space');
+frames(3);
+check('a map-launched Zero-G party returns to the map', G().state === 'map' && M().stateOf(1) === 'done');
+check('the back button tap returns to the title', (vm.runInContext("game.map.tap({x: game.map.backBtn.x, y: game.map.backBtn.y})", sandbox), G().state === 'title'));
+// non-map worlds and the direct chain are untouched
+tap('Digit0');
+frames(3);
+check('digit 0 still starts the meadow directly', G().level.n === 1 && G().state === 'intro' && G().mapReturn === 0);
+vm.runInContext("game.goTitle(); game.stageProg = {}; MapProgress.reset(); game.unlocked = 10; game.startLevel(9);", sandbox);
+frames(160);
+vm.runInContext('game.player.x = game.level.goalStar.x - 130; game.player.y = game.level.goalStar.y - 40; game.player.vx = 100;', sandbox);
+frames(60, { ArrowRight: 1 });
+frames(320);
+tap('Space');
+frames(3);
+check('a DIRECT (non-map) maze party still advances into the station and marks the maze done on the map',
+  G().level.n === 'space2' && G().mapReturn === 0 && MP("isCompleted(9, 'maze')") && MP("isUnlocked(9, 'station')"));
+vm.runInContext('game.goTitle()', sandbox);
+frames(3);
+
 // ---------------- title: character select + level select ----------------
 check('default character is boy', G().character === 'boy');
 tap('ArrowUp');

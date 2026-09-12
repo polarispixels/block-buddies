@@ -49,7 +49,7 @@ const game = {
   titleT: 0, titleBoyX: 300, titleBoyD: 1,
   titlePlayer: null, titleSpider: null,
   combo: { up: 0, down: 0, t: 0 }, titleMsg: null,
-  subReturn: null, miniDone: saveMini, stageProg: saveStage, flightStars: 0,
+  subReturn: null, mapReturn: 0, map: null, miniDone: saveMini, stageProg: saveStage, flightStars: 0,
   partsDelivered: false,
   deathPos: null
 };
@@ -61,8 +61,33 @@ const PORTRAITS = [
 ];
 const medalPos = i => ({ x: W / 2 - 382.5 + (i - 1) * 85, y: 688, r: 30 });
 MapProgress.load();
+// ---------------- world maps (v1.31.0, js/worldmap.js) ----------------
+// A world with a WORLD_MAPS entry opens its star chart instead of a stage.
+// game.mapReturn = the world whose map launched the current level (0 = none):
+// the party's Space press, sublevel exits, stage-clear cards and Escape all
+// route back to that map first. subReturn (an in-level door) always wins.
+game.openMap = function (w) {
+  game.map = new WorldMap(w, MapProgress.takeReveal(w));
+  game.mapReturn = 0;
+  game.state = 'map';
+  AudioSys.setMusic(MAP_THEMES[WORLD_MAPS[w].theme].music || 'title');
+};
+game.returnToMap = function () {
+  const w = game.mapReturn;
+  if (!w) return false;
+  const lv = game.level, info = stageInfo(lv.n);
+  // a finished stage records "next stage reached" like an archway would, so
+  // legacy resume + inference stay truthful (worldWin already reset a beaten chain)
+  if (info && info.world === w && game.endPhase === 'party' && !game.wonWorld) {
+    const chain = stageChain(w);
+    if (info.stage + 1 < chain.length && (game.stageProg[w] || 0) < info.stage + 1) { game.stageProg[w] = info.stage + 1; game.saveStageProg(); }
+  }
+  game.openMap(w);
+  return true;
+};
 game.goTitle = function () {
   game.state = 'title';
+  game.mapReturn = 0; game.map = null;
   game.titleT = 0;
   game.selLevel = clamp(game.unlocked, 1, 10);
   AudioSys.setMusic('title');
@@ -94,6 +119,7 @@ game.resetProgress = function () { // secret combo: Down×5 fast on the title (k
     localStorage.removeItem('ffbg_mini');
     localStorage.removeItem('ffbg_stage');
   } catch (e) {}
+  MapProgress.reset();
   game.stageProg = {};
   game.unlocked = 1;
   game.selLevel = 1;
@@ -123,6 +149,8 @@ game.titleTap = function (p) {
 // retry 1-2); a fully-beaten world starts back at stage 1 for free chain
 // replay (worldWin resets its progress).
 game.startWorld = function (w) {
+  if (WORLD_MAPS[w]) { game.openMap(w); return; }
+  game.mapReturn = 0;
   const chain = stageChain(w);
   const st = clamp(game.stageProg[w] || 0, 0, chain.length - 1);
   game.startLevel(chain[st]);
@@ -141,6 +169,7 @@ game.saveStageProg = function () {
 game.stageClear = function (nextId) {
   if (game.state !== 'play' || game.cut || game.endPhase) return;
   game.state = 'stageclear'; game.completeT = 0; game.nextStage = nextId;
+  MapProgress.onLevelDone(game.level.n);
   AudioSys.sfx('fanfare');
   const info = stageInfo(nextId);
   if (info && (game.stageProg[info.world] || 0) < info.stage) {
@@ -155,6 +184,7 @@ game.stageClear = function (nextId) {
 game.worldWin = function (w) {
   if (game.mazeDone) return;
   game.mazeDone = true; // same per-level goal-reached guard as subWin/mazeWin
+  MapProgress.onLevelDone(game.level.n);
   game.endPhase = 'party'; game.partyT = 0;
   AudioSys.setMusic('win');
   AudioSys.sfx('chest');
@@ -206,6 +236,7 @@ game.enterSub = function (id) {
     mazeDone: game.mazeDone, music: game.level.music
   };
   const lv = buildLevel(id);
+  MapProgress.onEnter(id);
   game.level = lv;
   game.player = new Player(lv.playerStart.x, lv.playerStart.y);
   if (lv.flight) game.player.boardUnicorn();
@@ -225,7 +256,7 @@ game.enterSub = function (id) {
 };
 game.exitSub = function () {
   const r = game.subReturn;
-  if (!r) return;
+  if (!r) { game.returnToMap(); return; }
   game.subReturn = null;
   game.level = r.level;
   game.player = r.player;
@@ -245,6 +276,7 @@ game.exitSub = function () {
 game.subWin = function () {
   if (game.mazeDone) return;
   game.mazeDone = true; // per-level goal-reached guard, same as the maze star
+  MapProgress.onLevelDone(game.level.n);
   game.endPhase = 'party'; game.partyT = 0;
   AudioSys.setMusic('win');
   AudioSys.sfx('chest');
@@ -434,6 +466,7 @@ game.startCoronation = function () {
 game.mazeWin = function () {
   if (game.mazeDone) return;
   game.mazeDone = true;
+  MapProgress.onLevelDone(game.level.n);
   game.endPhase = 'party'; game.partyT = 0;
   AudioSys.setMusic('win');
   AudioSys.sfx('chest');
@@ -448,6 +481,7 @@ game.mazeWin = function () {
 };
 // a party's Space press advances into the next chain stage (records progress like an archway)
 game.advanceStage = function (nextId) {
+  MapProgress.onLevelDone(game.level.n);
   const info = stageInfo(nextId);
   if (info && (game.stageProg[info.world] || 0) < info.stage) { game.stageProg[info.world] = info.stage; game.saveStageProg(); }
   game.startLevel(nextId);
@@ -455,6 +489,7 @@ game.advanceStage = function (nextId) {
 game.jungleWin = function () {
   if (game.mazeDone) return; // shares the goal-star guard flag
   game.mazeDone = true;
+  MapProgress.onLevelDone(game.level.n);
   game.endPhase = 'party'; game.partyT = 0;
   AudioSys.setMusic('win');
   AudioSys.sfx('chest');
@@ -867,6 +902,7 @@ function updatePlay(dt) {
     }
     if (game.partyT > 5 && justP.Space) {
       if (game.subReturn) game.exitSub(); // mini-game over — back to the world
+      else if (game.mapReturn) game.returnToMap();
       else if (game.wonWorld) { const w = game.wonWorld; game.wonWorld = 0; if (w < 10) game.startWorld(w + 1); else game.goTitle(); }
       else if (lv.n === 'jungle2') { game.endPhase = null; game.partyT = 0; game.stageClear(10); } // the rescue's party leads into Dino Jungle 9-2
       else if (lv.n === 5) game.startLevel(6); // surprise: the bonus world!
@@ -934,8 +970,15 @@ function update(dt) {
   // Escape quits any level back to the title (desktop QoL). justK = physical
   // keyboard only. While fullscreen the browser owns Esc (it exits fullscreen),
   // so that press is ignored — a second Esc then quits the level.
-  if (justK.Escape && game.state !== 'title' && !document.fullscreenElement) game.goTitle();
+  if (justK.Escape && game.state !== 'title' && !document.fullscreenElement) {
+    if (game.state !== 'map' && game.mapReturn) game.returnToMap(); else game.goTitle();
+  }
   AudioSys.update();
+  // hold-to-return-to-map touch button: 1s hold inside a map-launched level
+  if (TouchUI.mapHold && game.mapReturn && game.state !== 'map' && game.state !== 'title') {
+    TouchUI.mapHold.t += dt;
+    if (TouchUI.mapHold.t >= 1) { TouchUI.mapHold = null; game.returnToMap(); }
+  }
   switch (game.state) {
     case 'title':
       updateTitle(dt);
@@ -977,7 +1020,11 @@ function update(dt) {
     case 'stageclear': // the light between-stages beat (linear chains)
       game.completeT += dt;
       Particles.update(dt);
-      if (game.completeT > 2.4) game.startLevel(game.nextStage);
+      if (game.completeT > 2.4) { if (game.mapReturn) game.returnToMap(); else game.startLevel(game.nextStage); }
+      break;
+    case 'map':
+      game.map.update(dt);
+      Particles.update(dt);
       break;
   }
   endFrameInput();
@@ -1190,6 +1237,19 @@ function drawTouchUI() {
       ctx.lineTo(f.x + dx * s * 0.4, f.y + dy * s);
       ctx.stroke();
     }
+    ctx.restore();
+  }
+  if (game.mapReturn && game.state !== 'map' && game.state !== 'title') { // hold-to-return-to-map button (v1.31.0)
+    const b = TouchUI.mapBtn, k = TouchUI.mapHold ? Math.min(1, TouchUI.mapHold.t) : 0;
+    ctx.save();
+    ctx.globalAlpha = 0.5 + k * 0.4; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#8a7fae'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.stroke();
+    if (k > 0) { ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 5, -Math.PI / 2, -Math.PI / 2 + TAU * k); ctx.stroke(); }
+    // glyph: a tiny star chart (three dots + a line)
+    ctx.fillStyle = '#5a4a86'; ctx.strokeStyle = '#5a4a86'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(b.x - 12, b.y + 8); ctx.lineTo(b.x, b.y - 6); ctx.lineTo(b.x + 12, b.y + 4); ctx.stroke();
+    for (const [ox, oy] of [[-12, 8], [0, -6], [12, 4]]) { ctx.beginPath(); ctx.arc(b.x + ox, b.y + oy, 4.5, 0, TAU); ctx.fill(); }
     ctx.restore();
   }
   for (const b of TouchUI.layout()) {
@@ -1651,8 +1711,14 @@ function drawHead(ctx, x, y, who, t, sel) {
   if (game.royal) drawCrown(ctx, x, y - 17, 13);
   drawFace(ctx, x, y + 6, 34, sel ? 'grin' : 'happy', t, who === 'girl' ? 13 : 3);
 }
+function renderMap() {
+  game.map.draw(ctx);
+  Particles.draw(ctx);
+  drawTouchUI(); // the shared touch layer (fullscreen button etc.), exactly as renderTitle does
+}
 function render() {
   if (game.state === 'title') renderTitle();
+  else if (game.state === 'map') renderMap();
   else renderWorld();
 }
 
