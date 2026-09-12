@@ -60,6 +60,7 @@ const PORTRAITS = [
   { who: 'girl', x: 318, y: 452, r: 46 }
 ];
 const medalPos = i => ({ x: W / 2 - 382.5 + (i - 1) * 85, y: 688, r: 30 });
+MapProgress.load();
 game.goTitle = function () {
   game.state = 'title';
   game.titleT = 0;

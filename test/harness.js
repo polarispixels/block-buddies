@@ -74,7 +74,7 @@ sandbox.AudioContext = class {
 
 let rafCb = null;
 vm.createContext(sandbox);
-for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'planetart.js', 'ride.js', 'beams.js', 'arcade.js', 'bashart.js', 'blockbash.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'levels.js', 'game.js']) {
+for (const f of ['util.js', 'audio.js', 'particles.js', 'entities.js', 'puzzleblocks.js', 'planetart.js', 'ride.js', 'beams.js', 'arcade.js', 'bashart.js', 'blockbash.js', 'flowerart.js', 'flowerscene.js', 'flowerland.js', 'surfart.js', 'surf.js', 'stationart.js', 'stationscene.js', 'station.js', 'dinoart.js', 'junglescene.js', 'rescue.js', 'worldmap.js', 'levels.js', 'game.js']) {
   const code = fs.readFileSync(path.join(ROOT, 'js', f), 'utf8');
   vm.runInContext(code, sandbox, { filename: f });
 }
@@ -4146,6 +4146,46 @@ check('sw.js precaches every script index.html loads', (function () {
   const scripts = [...idx.matchAll(/<script src="(js\/[a-z0-9]+\.js)"><\/script>/g)].map(m => m[1]);
   return scripts.length > 20 && scripts.every(s => sw.includes(`'${s}'`));
 })());
+
+// ---------------- WORLD MAP: data + progress (v1.31.0) ----------------
+check('WORLD_MAPS declares the Space map with four nodes and three paths',
+  vm.runInContext("WORLD_MAPS[9] && WORLD_MAPS[9].theme === 'space' && WORLD_MAPS[9].nodes.length === 4 && WORLD_MAPS[9].paths.length === 3 && WORLD_MAPS[9].nodes.map(n => n.level).join() === '9,zerog,planetblocks,space2'", sandbox));
+// fresh save: nothing in ffbg_map, no progress
+vm.runInContext("localStorage.removeItem('ffbg_map'); game.stageProg = {}; game.unlocked = 9; game.miniDone = {}; MapProgress.load();", sandbox);
+const MP = (expr) => vm.runInContext('MapProgress.' + expr, sandbox);
+check('a fresh Space map unlocks only the maze; the station is locked; both rooms hidden',
+  MP("nodeState(9, WORLD_MAPS[9].nodes[0])") === 'open' && MP("nodeState(9, WORLD_MAPS[9].nodes[3])") === 'locked' &&
+  MP("nodeState(9, WORLD_MAPS[9].nodes[1])") === 'hidden' && MP("nodeState(9, WORLD_MAPS[9].nodes[2])") === 'hidden' && MP("recent(9)") === 'maze');
+check('completing the maze unlocks the station and reports it for the reveal',
+  JSON.stringify(MP("complete(9, 'maze')")) === '["station"]' && MP("isCompleted(9, 'maze')") && MP("isUnlocked(9, 'station')") &&
+  JSON.stringify(MP("takeReveal(9)")) === '["station"]' && JSON.stringify(MP("takeReveal(9)")) === '[]');
+check('completing the maze again unlocks nothing new', JSON.stringify(MP("complete(9, 'maze')")) === '[]');
+check('discovering an optional room makes it selectable but not completed',
+  (MP("discover(9, 'zerog')"), MP("nodeState(9, WORLD_MAPS[9].nodes[1])") === 'open' && !MP("isCompleted(9, 'zerog')")));
+check('ffbg_map round-trips through save/load', (function () {
+  MP("setRecent(9, 'zerog')"); MP('save()');
+  const raw = sandbox.localStorage.getItem('ffbg_map');
+  vm.runInContext('MapProgress.data = {}; MapProgress.load()', sandbox);
+  return raw.includes('"9"') && MP("isUnlocked(9, 'station')") && MP("isDiscovered(9, 'zerog')") && MP("isCompleted(9, 'maze')") && MP("recent(9)") === 'zerog';
+})());
+check('level-id hooks are generic: onEnter discovers, onLevelDone completes, unknown ids are ignored',
+  (MP("onEnter('planetblocks')"), MP("onLevelDone('zerog')"), MP("onEnter('cloudclimb')"), MP("onLevelDone(3)"),
+   MP("isDiscovered(9, 'planets')") && MP("isCompleted(9, 'zerog')") && MP("findNode('cloudclimb')") === null));
+check('reset() wipes the key and the model', (MP('reset()'), sandbox.localStorage.getItem('ffbg_map') === null && MP("has(9)") === false));
+// legacy inference: three save shapes, each with NO ffbg_map
+vm.runInContext("localStorage.removeItem('ffbg_map'); MapProgress.data = {}; game.stageProg = { 9: 1 }; game.unlocked = 9; game.miniDone = {};", sandbox);
+check('legacy ffbg_stage 9:1 infers: station unlocked, maze completed, station not completed',
+  MP("isUnlocked(9, 'station')") && MP("isCompleted(9, 'maze')") && !MP("isCompleted(9, 'station')") && MP("nodeState(9, WORLD_MAPS[9].nodes[2])") === 'hidden');
+vm.runInContext("localStorage.removeItem('ffbg_map'); MapProgress.data = {}; game.stageProg = {}; game.unlocked = 10; game.miniDone = { zerog: true };", sandbox);
+check('legacy world-10-unlocked + zerog mini flag infers: both stages completed, zerog discovered + completed, planets hidden',
+  MP("isCompleted(9, 'maze')") && MP("isCompleted(9, 'station')") && MP("isDiscovered(9, 'zerog')") && MP("isCompleted(9, 'zerog')") && !MP("isDiscovered(9, 'planets')"));
+check('inference happens once: a saved entry is not re-inferred', (function () {
+  MP('save()');
+  vm.runInContext("game.unlocked = 1; game.stageProg = {}; game.miniDone = {}; MapProgress.data = {}; MapProgress.load();", sandbox);
+  return MP("isCompleted(9, 'station')");
+})());
+vm.runInContext("localStorage.removeItem('ffbg_map'); MapProgress.data = {}; game.stageProg = {}; game.miniDone = {}; game.unlocked = 10; game.goTitle();", sandbox);
+frames(3);
 
 // ---------------- title: character select + level select ----------------
 check('default character is boy', G().character === 'boy');
