@@ -93,7 +93,7 @@ const PL_ART = (() => {
       moon(ctx, cx - w / 2 + k * w, y - Math.sin(k * Math.PI) * 14, d);
     }
   }
-  function rocket(ctx, cx, baseY, s = 170, t = 0, flame = 0) {
+  function rocket(ctx, cx, baseY, s = 170, t = 0, flame = 0, showFace = true) {
     const w = s * 0.34;
     ctx.save();
     if (flame > 0) { // exhaust: a flickering teardrop under the nozzle
@@ -128,7 +128,7 @@ const PL_ART = (() => {
     ctx.beginPath(); ctx.arc(cx, baseY - s * 0.5, w * 0.36, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#3f86d8'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(cx, baseY - s * 0.5, w * 0.36, 0, TAU); ctx.stroke();
-    drawFace(ctx, cx, baseY - s * 0.5, w * 0.58, flame > 0 ? 'grin' : 'happy', t, 17);
+    if (showFace) drawFace(ctx, cx, baseY - s * 0.5, w * 0.58, flame > 0 ? 'grin' : 'happy', t, 17);
     ctx.restore();
   }
   function pad(ctx, cx, y, w = 220, t = 0) {

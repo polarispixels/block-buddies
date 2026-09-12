@@ -113,7 +113,10 @@ const MAP_THEMES = {
     music: 'space',
     bgLv: null,
     drawBG(ctx, t, map) {
-      if (!this.bgLv) { this.bgLv = newLevel(9); this.bgLv.plainSky = false; }
+      // plainSky: true — the level's decorative planets sit at fixed spots
+      // ((1020,150) ringed, (220,520) little red) that collide with map
+      // nodes/labels/cursor; keep the starfield/nebula/shooting stars only.
+      if (!this.bgLv) { this.bgLv = newLevel(9); this.bgLv.plainSky = true; }
       drawBG(ctx, this.bgLv, { x: 0, y: 0 }, t);
       drawLevelIcon(ctx, W / 2, 62, 34, 'space', t);
     },
@@ -193,15 +196,15 @@ const MAP_THEMES = {
       if (node.label) outlineText(ctx, node.label, x, y + s + 14, 26, '#fff', '#3a2a4a');
     },
     // the hero's little rocket hovers over the selected node, flame on while gliding
-    drawCursor(ctx, x, y, flying, t) {
+    drawCursor(ctx, x, y, flying, t, who) {
       const bob = Math.sin(t * 3) * 5;
       const baseY = y - 70 + bob, s = 96;
-      PL_ART.rocket(ctx, x, baseY, s, t, flying ? 1 : 0);
+      PL_ART.rocket(ctx, x, baseY, s, t, flying ? 1 : 0, false); // no stock pilot face — drawHead below is the real one
       // the pilot's actual head, scaled to fit inside the rocket's window
       ctx.save();
       ctx.translate(x, baseY - s * 0.5);
       ctx.scale(0.5, 0.5);
-      drawHead(ctx, 0, 0, game.character, t, false);
+      drawHead(ctx, 0, 0, who, t, false);
       ctx.restore();
     }
   }
@@ -297,7 +300,7 @@ class WorldMap {
       ctx.restore();
     }
     // the cursor + spacebar hint (theme may override drawCursor; default = a ring)
-    if (this.theme.drawCursor) this.theme.drawCursor(ctx, this.rx, this.ry, this.flying, t);
+    if (this.theme.drawCursor) this.theme.drawCursor(ctx, this.rx, this.ry, this.flying, t, game.character);
     else { ctx.strokeStyle = '#ffe156'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(this.rx, this.ry, 58 + Math.sin(t * 4) * 4, 0, TAU); ctx.stroke(); }
     if (!this.flying) drawSpacebar(ctx, this.nodes[this.sel].x, this.nodes[this.sel].y + 96, 120, t);
     // back to the title
