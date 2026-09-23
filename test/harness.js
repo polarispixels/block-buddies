@@ -4486,5 +4486,24 @@ for (const n of [1, 2, 3, 4, 5, 10]) {
   check(`soak level ${n} no crash`, ['play', 'dead', 'complete', 'caught', 'intro'].includes(G().state));
 }
 
+// ---------------- CHARACTER GALLERY (docs/characters, v1.31.1) ----------------
+{
+  const galHtml = fs.readFileSync(path.join(ROOT, 'docs', 'characters', 'index.html'), 'utf8');
+  const gameHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const srcs = (h, pre) => [...h.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]).filter(s => s.startsWith(pre)).map(s => s.slice(pre.length));
+  check('character gallery loads exactly the game\'s scripts, in order', JSON.stringify(srcs(galHtml, '../../js/')) === JSON.stringify(srcs(gameHtml, 'js/')));
+  check('docs link to the character gallery', /href="characters\/"/.test(fs.readFileSync(path.join(ROOT, 'docs', 'index.html'), 'utf8')));
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'docs', 'characters', 'catalog.js'), 'utf8'), sandbox, { filename: 'catalog.js' });
+  const cat = vm.runInContext('CHARACTER_CATALOG', sandbox);
+  const ids = cat.map(c => c.id);
+  check('gallery catalog has the proof-of-concept cast with unique ids',
+    ['jack-jack', 'becca', 'unicorn', 'zombie', 'king-magma', 'spinosaurus'].every(i => ids.includes(i)) && new Set(ids).size === ids.length);
+  vm.runInContext("game.character = 'girl'; game.royal = true;", sandbox);
+  let drawErr = null;
+  for (const c of cat) { try { c.draw(ctxStub); } catch (e) { drawErr = c.id + ': ' + e.message; break; } }
+  check('every gallery character draws with the game\'s art code' + (drawErr ? ' (' + drawErr + ')' : ''), drawErr === null);
+  check('gallery draws leave game.character/royal untouched', G().character === 'girl' && G().royal === true);
+}
+
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -8,6 +8,21 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.31.1] - 2026-09-23
+
+### Added
+- **Character gallery for coloring-book pages** (`docs/characters/`, linked
+  from the docs header + contents). A grid of characters — Jack-Jack, Becca,
+  the Unicorn (standing + in flight), both heroes riding it, the Monster
+  Truck, the Zombie, King Magma and the Giant Spinosaurus — each opening a
+  full-size (~1600 px) PNG to download: color on a transparent background,
+  or auto-traced black-on-white coloring-page line art. No image files: the
+  page loads the game's own scripts and draws with its real art code
+  (`docs/characters/catalog.js`, one entry per character), so it always
+  matches the game. Deep-linkable (`#unicorn`, `#zombie/lines`). Harness
+  checks draw every catalog entry and keep the page's script list in sync
+  with `index.html`.
+
 ## [1.31.0] - 2026-09-12
 
 ### Added

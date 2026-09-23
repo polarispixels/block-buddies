@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block Buddies — Character Gallery</title>
+<meta name="description" content="Full-size, downloadable images of the Block Buddies characters — in color, or as coloring-book line art.">
+<style>
+  :root {
+    --bg: #fdf9f0; --panel: #ffffff; --ink: #33294a; --soft: #6b5f85;
+    --accent: #ff8fb0; --accent2: #4aa3ff; --line: #e8e0d0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    background: linear-gradient(135deg, #5a4a86, #8a5fb0);
+    color: #fff; padding: 36px 16px 30px; text-align: center;
+  }
+  header h1 { margin: 0 0 6px; font-size: 2rem; }
+  header p { margin: 4px auto; max-width: 680px; color: #e8ddff; }
+  .badge {
+    display: inline-block; background: #ffd24a; color: #5a4a86; font-weight: 700; text-decoration: none;
+    border-radius: 999px; padding: 3px 14px; margin: 10px 4px 0; font-size: 0.95rem;
+  }
+  .badge.play { background: #7be07b; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 70px; }
+  h2 { margin: 34px 0 12px; padding-bottom: 4px; border-bottom: 3px solid var(--accent); font-size: 1.4rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px;
+    cursor: pointer; text-align: center; font: inherit; color: inherit;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(90,74,134,.18); outline: none; }
+  .thumb {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px;
+    background: repeating-conic-gradient(#e4dcf0 0 25%, #f3eefa 0 50%) 0 0 / 22px 22px;
+  }
+  .thumb img { max-width: 92%; max-height: 92%; }
+  .thumb .wait { color: var(--soft); font-size: .9rem; }
+  .card b { display: block; margin-top: 8px; }
+  .card small { color: var(--soft); }
+  .note { background: #fff8df; border-left: 6px solid #e8a917; border-radius: 0 10px 10px 0; padding: 10px 16px; }
+  dialog {
+    border: none; border-radius: 18px; padding: 0; width: min(900px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px); color: var(--ink); background: var(--panel);
+  }
+  dialog::backdrop { background: rgba(36,26,69,.72); }
+  .dlg { display: flex; flex-direction: column; max-height: calc(100vh - 32px); }
+  .dlg-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .dlg-head h3 { margin: 0; flex: 1; font-size: 1.25rem; }
+  .close { border: none; background: none; font-size: 1.8rem; line-height: 1; cursor: pointer; color: var(--soft); }
+  .view {
+    flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: repeating-conic-gradient(#e4dcf0 0 25%, #f3eefa 0 50%) 0 0 / 26px 26px;
+  }
+  .view img { max-width: 100%; max-height: 62vh; }
+  .dlg-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--line); }
+  .tabs { display: inline-flex; border: 2px solid #8a5fb0; border-radius: 999px; overflow: hidden; margin-right: auto; }
+  .tabs button { border: none; background: #fff; color: #5a4a86; padding: 7px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: #8a5fb0; color: #fff; }
+  .btn {
+    display: inline-block; border: none; border-radius: 999px; padding: 9px 18px; font: inherit; font-weight: 700;
+    background: var(--accent2); color: #fff; text-decoration: none; cursor: pointer;
+  }
+  .btn.alt { background: #efe8fb; color: #5a4a86; }
+  .meta { width: 100%; color: var(--soft); font-size: .88rem; }
+  footer { text-align: center; color: var(--soft); padding: 20px 16px 40px; font-size: .9rem; }
+  #game { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🖍️ Character Gallery</h1>
+  <p>Every Block Buddies character as a single full-size image — in color, or as coloring-book line art. Click one to view and download it.</p>
+  <a class="badge play" href="../../">▶ Play the game</a>
+  <a class="badge" href="../">📘 Docs</a>
+</header>
+<main>
+  <p class="note">These images are drawn live by the game's own art code, so they always match the game. The color version has a transparent background; the <b>Coloring page</b> version is black lines on white. Both download as big PNGs (about 1600&nbsp;px) ready for other tools.</p>
+  <div id="groups"></div>
+</main>
+<footer>Block Buddies: The Adventures of Jack-Jack and Becca · <a href="../">docs</a></footer>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <div class="dlg">
+    <div class="dlg-head"><h3 id="dlg-title"></h3><button class="close" id="dlg-close" aria-label="Close">×</button></div>
+    <div class="view"><img id="dlg-img" alt=""></div>
+    <div class="dlg-foot">
+      <div class="tabs" role="group" aria-label="Style">
+        <button id="tab-color" aria-pressed="true">Color</button>
+        <button id="tab-lines" aria-pressed="false">Coloring page</button>
+      </div>
+      <a class="btn" id="dl" download>⬇ Download PNG</a>
+      <a class="btn alt" id="open" target="_blank" rel="noopener">Open full size</a>
+      <div class="meta" id="dlg-meta"></div>
+    </div>
+  </div>
+</dialog>
+
+<canvas id="game" width="1280" height="720"></canvas>
+<!-- The game's scripts register keyboard/touch listeners on window (touch ones
+     preventDefault, which would freeze scrolling here). Swallow every listener
+     registration while they load, then restore. -->
+<script>window.__ael = window.addEventListener; window.addEventListener = function () {};</script>
+<script src="../../js/util.js"></script>
+<script src="../../js/audio.js"></script>
+<script src="../../js/particles.js"></script>
+<script src="../../js/entities.js"></script>
+<script src="../../js/puzzleblocks.js"></script>
+<script src="../../js/planetart.js"></script>
+<script src="../../js/ride.js"></script>
+<script src="../../js/beams.js"></script>
+<script src="../../js/arcade.js"></script>
+<script src="../../js/bashart.js"></script>
+<script src="../../js/blockbash.js"></script>
+<script src="../../js/flowerart.js"></script>
+<script src="../../js/flowerscene.js"></script>
+<script src="../../js/flowerland.js"></script>
+<script src="../../js/surfart.js"></script>
+<script src="../../js/surf.js"></script>
+<script src="../../js/stationart.js"></script>
+<script src="../../js/stationscene.js"></script>
+<script src="../../js/station.js"></script>
+<script src="../../js/dinoart.js"></script>
+<script src="../../js/junglescene.js"></script>
+<script src="../../js/rescue.js"></script>
+<script src="../../js/worldmap.js"></script>
+<script src="../../js/levels.js"></script>
+<script src="../../js/game.js"></script>
+<script>
+  window.addEventListener = window.__ael;
+  frame = function () {}; // stop the game's main loop — we only borrow its art
+  AudioSys.unlock = function () {};
+</script>
+<script src="catalog.js"></script>
+<script>
+(function () {
+  const TARGET = 1600;   // longest side of the full-size PNG, px
+  const PAD = 0.06;      // margin around the character, fraction of TARGET
+
+  // Draw once at 1x into scratch space to find the character's pixel bounds.
+  function bounds(entry) {
+    const c = document.createElement('canvas'); c.width = c.height = 1000;
+    const x = c.getContext('2d');
+    entry.draw(x);
+    const d = x.getImageData(0, 0, 1000, 1000).data;
+    let x0 = 1000, y0 = 1000, x1 = -1, y1 = -1;
+    for (let y = 0; y < 1000; y++) for (let i = y * 1000, xx = 0; xx < 1000; xx++, i++) {
+      if (d[i * 4 + 3] > 8) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) throw new Error('nothing drawn for ' + entry.id);
+    return { x: x0 - 2, y: y0 - 2, w: x1 - x0 + 5, h: y1 - y0 + 5 };
+  }
+  // Re-draw as vectors at full size (crisp, not an upscaled bitmap).
+  function renderColor(entry) {
+    const b = bounds(entry);
+    const P = Math.round(TARGET * PAD), k = (TARGET - 2 * P) / Math.max(b.w, b.h);
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(b.w * k) + 2 * P; c.height = Math.ceil(b.h * k) + 2 * P;
+    const x = c.getContext('2d');
+    x.setTransform(k, 0, 0, k, P - b.x * k, P - b.y * k);
+    entry.draw(x);
+    return c;
+  }
+  // Coloring-page line art: edges wherever the flat cartoon colors change,
+  // thickened; near-black areas (pupils, mouths) stay filled; everything else white.
+  function renderLines(color) {
+    const W = color.width, H = color.height;
+    const src = color.getContext('2d').getImageData(0, 0, W, H).data;
+    const n = W * H, r = new Float32Array(n), g = new Float32Array(n), b = new Float32Array(n);
+    for (let i = 0; i < n; i++) { // composite over white
+      const a = src[i * 4 + 3] / 255;
+      r[i] = src[i * 4] * a + 255 * (1 - a); g[i] = src[i * 4 + 1] * a + 255 * (1 - a); b[i] = src[i * 4 + 2] * a + 255 * (1 - a);
+    }
+    const edge = new Uint8Array(n);
+    const diff = (i, j) => Math.abs(r[i] - r[j]) + Math.abs(g[i] - g[j]) + Math.abs(b[i] - b[j]);
+    for (let y = 0; y < H - 1; y++) for (let x = 0; x < W - 1; x++) {
+      const i = y * W + x;
+      if (diff(i, i + 1) > 70 || diff(i, i + W) > 70 || r[i] + g[i] + b[i] < 190) edge[i] = 1;
+    }
+    const R = Math.max(1, Math.round(W / 700)); // line half-thickness
+    const tmp = new Uint8Array(n), out = new Uint8Array(n);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { // separable dilation
+      let on = 0; for (let d = -R; d <= R && !on; d++) { const xx = x + d; if (xx >= 0 && xx < W && edge[y * W + xx]) on = 1; }
+      tmp[y * W + x] = on;
+    }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let on = 0; for (let d = -R; d <= R && !on; d++) { const yy = y + d; if (yy >= 0 && yy < H && tmp[yy * W + x]) on = 1; }
+      out[y * W + x] = on;
+    }
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'), img = x.createImageData(W, H);
+    for (let i = 0; i < n; i++) { const v = out[i] ? 20 : 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+    x.putImageData(img, 0, 0);
+    return c;
+  }
+  const toURL = c => new Promise(res => c.toBlob(bl => res(URL.createObjectURL(bl)), 'image/png'));
+
+  const cache = {}; // id -> { color: canvas, colorURL, linesURL }
+  async function get(entry, lines) {
+    const e = cache[entry.id] || (cache[entry.id] = {});
+    if (!e.color) { e.color = renderColor(entry); e.colorURL = await toURL(e.color); }
+    if (lines && !e.linesURL) e.linesURL = await toURL(renderLines(e.color));
+    return e;
+  }
+
+  // ---- grid ----
+  const groups = {};
+  const root = document.getElementById('groups');
+  for (const entry of CHARACTER_CATALOG) {
+    if (!groups[entry.group]) {
+      const h = document.createElement('h2'); h.textContent = entry.group; root.appendChild(h);
+      groups[entry.group] = document.createElement('div'); groups[entry.group].className = 'grid'; root.appendChild(groups[entry.group]);
+    }
+    const card = document.createElement('button');
+    card.className = 'card'; card.id = 'card-' + entry.id;
+    card.innerHTML = '<div class="thumb"><span class="wait">drawing…</span></div><b></b><small></small>';
+    card.querySelector('b').textContent = entry.name;
+    card.querySelector('small').textContent = entry.blurb;
+    card.addEventListener('click', () => { location.hash = entry.id; });
+    groups[entry.group].appendChild(card);
+  }
+  (async () => { // fill thumbnails one at a time so the page stays responsive
+    for (const entry of CHARACTER_CATALOG) {
+      const th = document.querySelector('#card-' + entry.id + ' .thumb');
+      try {
+        const e = await get(entry, false);
+        th.innerHTML = ''; const img = new Image(); img.alt = entry.name; img.src = e.colorURL; th.appendChild(img);
+      } catch (err) { th.innerHTML = '<span class="wait">couldn’t draw 😢</span>'; console.error(err); }
+      await new Promise(r => setTimeout(r, 0));
+    }
+  })();
+
+  // ---- viewer (deep-linkable: #unicorn, #zombie/lines ...) ----
+  const dlg = document.getElementById('dlg'), img = document.getElementById('dlg-img');
+  const tabC = document.getElementById('tab-color'), tabL = document.getElementById('tab-lines');
+  const dl = document.getElementById('dl'), open = document.getElementById('open');
+  let cur = null, lines = false;
+  async function show() {
+    if (!cur) return;
+    const e = await get(cur, lines);
+    const url = lines ? e.linesURL : e.colorURL;
+    img.src = url; img.alt = cur.name;
+    dl.href = open.href = url;
+    dl.download = 'block-buddies-' + cur.id + (lines ? '-coloring' : '') + '.png';
+    tabC.setAttribute('aria-pressed', String(!lines)); tabL.setAttribute('aria-pressed', String(lines));
+    document.getElementById('dlg-meta').textContent = e.color.width + ' × ' + e.color.height + ' px PNG · ' +
+      (lines ? 'black lines on white' : 'transparent background');
+  }
+  function route() {
+    const [id, view] = location.hash.slice(1).split('/'); // #unicorn or #unicorn/lines
+    const entry = CHARACTER_CATALOG.find(c => c.id === id);
+    if (!entry) { if (dlg.open) dlg.close(); return; }
+    cur = entry; lines = view === 'lines';
+    document.getElementById('dlg-title').textContent = entry.name;
+    img.removeAttribute('src');
+    if (!dlg.open) dlg.showModal();
+    show();
+  }
+  tabC.addEventListener('click', () => { lines = false; show(); });
+  tabL.addEventListener('click', () => { lines = true; show(); });
+  document.getElementById('dlg-close').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
+  dlg.addEventListener('close', () => { if (location.hash) history.replaceState(null, '', location.pathname); });
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>
