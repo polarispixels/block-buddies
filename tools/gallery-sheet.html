@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- Character-gallery CONTACT SHEET (dev tool, see tools/gallery-sheet.sh).
+     Draws CHARACTER_CATALOG entries in color AND coloring-page line art side by side.
+     Query: ?extra=<path to an extra catalog script, relative to this file>
+            &ids=a,b,c   (default: all)   &cols=N (default 3) -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;background:#fff;font:14px sans-serif}#game{display:none}canvas.s{display:block}</style></head><body>
+<canvas id="game" width="1280" height="720"></canvas>
+<script>window.__ael = window.addEventListener; window.addEventListener = function () {};</script>
+<script src="../js/util.js"></script>
+<script src="../js/audio.js"></script>
+<script src="../js/particles.js"></script>
+<script src="../js/entities.js"></script>
+<script src="../js/puzzleblocks.js"></script>
+<script src="../js/planetart.js"></script>
+<script src="../js/ride.js"></script>
+<script src="../js/beams.js"></script>
+<script src="../js/arcade.js"></script>
+<script src="../js/bashart.js"></script>
+<script src="../js/blockbash.js"></script>
+<script src="../js/flowerart.js"></script>
+<script src="../js/flowerscene.js"></script>
+<script src="../js/flowerland.js"></script>
+<script src="../js/surfart.js"></script>
+<script src="../js/surf.js"></script>
+<script src="../js/stationart.js"></script>
+<script src="../js/stationscene.js"></script>
+<script src="../js/station.js"></script>
+<script src="../js/dinoart.js"></script>
+<script src="../js/junglescene.js"></script>
+<script src="../js/rescue.js"></script>
+<script src="../js/worldmap.js"></script>
+<script src="../js/levels.js"></script>
+<script src="../js/game.js"></script>
+<script>window.addEventListener = window.__ael; frame = function () {}; AudioSys.unlock = function () {};</script>
+<script src="../docs/characters/catalog.js"></script>
+<script src="../docs/characters/lineart.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+if (Q.get('extra')) document.write('<script src="' + Q.get('extra') + '"><\/script>');
+</script>
+<canvas class="s" id="sheet"></canvas>
+<script>
+(function () {
+  const ids = Q.get('ids') ? Q.get('ids').split(',') : null;
+  const list = CHARACTER_CATALOG.filter(c => !ids || ids.includes(c.id));
+  const cols = +Q.get('cols') || 3, cw = 640, ch = 360, W = cols * cw, rows = Math.ceil(list.length / cols);
+  const cv = document.getElementById('sheet'); cv.width = W; cv.height = rows * ch;
+  const sh = cv.getContext('2d'); sh.fillStyle = '#fff'; sh.fillRect(0, 0, cv.width, cv.height);
+  list.forEach((c, i) => {
+    const ox = (i % cols) * cw, oy = Math.floor(i / cols) * ch;
+    let err = null, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    try {
+      const tmp = document.createElement('canvas'); tmp.width = tmp.height = 1000; const t = tmp.getContext('2d'); c.draw(t);
+      const d = t.getImageData(0, 0, 1000, 1000).data;
+      for (let y = 0; y < 1000; y++) for (let x = 0; x < 1000; x++) if (d[(y * 1000 + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      if (x1 < 0) err = 'NOTHING DRAWN';
+      if (x0 <= 0 || y0 <= 0 || x1 >= 999 || y1 >= 999) err = 'CLIPPED at scratch edge (bbox ' + [x0, y0, x1, y1] + ')';
+    } catch (e) { err = 'THREW: ' + e.message; }
+    sh.fillStyle = '#f1ecfa'; sh.fillRect(ox, oy, cw / 2, ch);
+    sh.strokeStyle = '#f0c'; sh.strokeRect(ox + .5, oy + .5, cw - 1, ch - 1);
+    sh.fillStyle = err ? '#d00' : '#333'; sh.font = 'bold 15px sans-serif';
+    sh.fillText(c.id + ' [' + c.group + ']' + (err ? '  ' + err : ''), ox + 8, oy + 18);
+    if (err && x1 < 0) return;
+    const k = Math.min((cw / 2 - 30) / (x1 - x0 + 1), (ch - 50) / (y1 - y0 + 1));
+    for (const side of [0, 1]) {
+      sh.save();
+      sh.setTransform(k, 0, 0, k, ox + side * cw / 2 + 15 - x0 * k, oy + 30 - y0 * k);
+      try { c.draw(side ? lineArtCtx(sh, { outline: 3 }) : sh); } catch (e) {}
+      sh.restore();
+    }
+  });
+})();
+</script></body></html>

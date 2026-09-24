@@ -189,7 +189,10 @@
   // ---- grid ----
   const groups = {};
   const root = document.getElementById('groups');
-  for (const entry of CHARACTER_CATALOG) {
+  const ORDER = ['Heroes', 'Friends', 'Vehicles', 'Critters', 'Bosses']; // unknown groups follow, in catalog order
+  const rank = g => { const i = ORDER.indexOf(g); return i < 0 ? ORDER.length : i; };
+  const sorted = CHARACTER_CATALOG.map((c, i) => [c, i]).sort((a, b) => rank(a[0].group) - rank(b[0].group) || a[1] - b[1]).map(p => p[0]);
+  for (const entry of sorted) {
     if (!groups[entry.group]) {
       const h = document.createElement('h2'); h.textContent = entry.group; root.appendChild(h);
       groups[entry.group] = document.createElement('div'); groups[entry.group].className = 'grid'; root.appendChild(groups[entry.group]);
@@ -203,7 +206,7 @@
     groups[entry.group].appendChild(card);
   }
   (async () => { // fill thumbnails one at a time so the page stays responsive
-    for (const entry of CHARACTER_CATALOG) {
+    for (const entry of sorted) {
       const th = document.querySelector('#card-' + entry.id + ' .thumb');
       try {
         const e = await get(entry, false);

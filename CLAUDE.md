@@ -20,8 +20,10 @@ step, zero dependencies. The design doc's success metric governs everything:
   downloadable PNGs of characters, color or coloring-page line art, drawn live
   by the game's own art code (line art = the same draw calls redrawn through
   `lineArtCtx` in `docs/characters/lineart.js`, not a pixel trace). Add a character = one entry in
-  `docs/characters/catalog.js` (`CHARACTER_CATALOG`); its script list must
-  mirror `index.html` (harness-enforced).
+  `docs/characters/catalog.js` (`CHARACTER_CATALOG`) — ONE image per character,
+  no pose variants (Ryan's call); review it with `tools/gallery-sheet.sh <name>
+  ['ids=a,b&cols=N']` (color + line-art contact sheet, flags throw/empty/clip).
+  Its script list must mirror `index.html` (harness-enforced).
 - **Versioning (SEMVER):** `GAME_VERSION` in `js/util.js` (also stamped tiny on
   the title screen — handy live-deploy check). Every release: bump it (MAJOR =
   breaks localStorage saves, MINOR = new level/feature, PATCH = fix), add a
@@ -331,7 +333,7 @@ cleared by `goTitle` and any non-map `startWorld`. Only Space World
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 1031 checks; must print
+  actual badge/footer values). 1032 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

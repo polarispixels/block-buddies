@@ -8,6 +8,26 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.31.3] - 2026-09-24
+
+### Added
+- **Character gallery: 34 characters** (was 10), one image each. New:
+  Friends — Block Buddy, Monkey, Big Buddy Mushroom, Zombie Town Kid,
+  Long-Neck Dino, Rainbow Spider, Flower Person, Bubble Dragon, Race Bot,
+  Bouncy Buddy, Baby Dino, Friendly T-Rex; Vehicles — Rocket, Monster-Truck
+  Pirate Boat, Surfboard (the Monster Truck moves here); Critters — Spider,
+  Centipede, Fire-Breathing Dino, Space Alien, Shark, Alien Spider; Bosses —
+  the Kraken, JunkBot, Giant Space Spider. Groups show in a fixed order
+  (Heroes → Friends → Vehicles → Critters → Bosses).
+- `tools/gallery-sheet.sh` + `tools/gallery-sheet.html`: a color + line-art
+  contact sheet of catalog entries that flags any that throw, draw nothing,
+  or clip the scratch space.
+
+### Changed
+- Coloring pages: thick dark strokes (e.g. spider legs) are now outlined
+  bands to color in, not solid black; see-through glows/shadows are dropped
+  from the color images of the mushroom and surfboard (`catNoGlow`).
+
 ## [1.31.2] - 2026-09-24
 
 ### Changed

@@ -70,9 +70,9 @@ function lineArtCtx(real, opt = {}) {
     } else if (p.lum > 0.8 && lw <= 3) { // a pale hairline edge-accent (game units): the fills already outline it
     } else if (p.a * real.globalAlpha < 0.75) { // a soft half-transparent edge: one outline-weight line
       real.strokeStyle = INK; real.lineWidth = OUT / s; st();
-    } else if (p.lum < DARK || dev < OUT * 1.6) { // a line: keep it a line, in ink
+    } else if ((p.lum < DARK && lw < 5) || dev < OUT * 1.6) { // a line (incl. dark detail: mouths, lashes): keep it a line, in ink
       real.strokeStyle = INK; real.lineWidth = Math.max(lw, DETAIL / s); st();
-    } else { // a thick colored band (mane stripe, arm): outline it
+    } else { // a thick band (mane stripe, arm, dark spider leg — lw ≥ 5 game units): outline it
       real.strokeStyle = INK; real.lineWidth = lw + 2 * OUT / s; st();
       real.strokeStyle = '#fff'; real.lineWidth = lw; st();
     }

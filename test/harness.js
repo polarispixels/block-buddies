@@ -4498,6 +4498,8 @@ for (const n of [1, 2, 3, 4, 5, 10]) {
   const ids = cat.map(c => c.id);
   check('gallery catalog has the proof-of-concept cast with unique ids',
     ['jack-jack', 'becca', 'unicorn', 'zombie', 'king-magma', 'spinosaurus'].every(i => ids.includes(i)) && new Set(ids).size === ids.length);
+  check('every gallery entry has a known group, a name and a blurb',
+    cat.every(c => ['Heroes', 'Friends', 'Vehicles', 'Critters', 'Bosses'].includes(c.group) && c.name && c.blurb && typeof c.draw === 'function'));
   vm.runInContext("game.character = 'girl'; game.royal = true;", sandbox);
   let drawErr = null;
   for (const c of cat) { try { c.draw(ctxStub); } catch (e) { drawErr = c.id + ': ' + e.message; break; } }
