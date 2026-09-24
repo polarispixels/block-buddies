@@ -4,7 +4,10 @@
 // space. The page trims to the drawn pixels and re-renders at full size.
 // The harness loads this file after the game and calls every draw(), so a
 // renamed game function breaks the build instead of silently breaking the page.
-// Adding a character = one more entry here.
+// Adding a character = one more entry here, then run tools/export-characters.py
+// to publish its PNGs + update assets/characters.json (the harness enforces it).
+// IDs are PUBLIC and PERMANENT (external tools fetch assets/characters/<id>.png):
+// never rename or reuse one — change `name` freely instead.
 const CAT_CX = 500, CAT_G = 760, CAT_T = 1.0; // t=1.0: every face's eyes are open (no blink)
 
 function catPlayer(character, vehicle, opts = {}) {

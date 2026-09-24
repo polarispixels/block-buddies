@@ -1,0 +1,351 @@
+{
+  "name": "Block Buddies character assets",
+  "description": "Every character in the Block Buddies Character Gallery as a full-resolution PNG: color on a transparent background, and black-on-white coloring-page line art. IDs are stable; look characters up by id.",
+  "generatedAtVersion": "1.31.3",
+  "sourceHash": "18f80bf22412f9ac",
+  "gallery": "https://polarispixels.github.io/block-buddies/docs/characters/",
+  "imageFormat": "image/png",
+  "count": 34,
+  "characters": [
+    {
+      "id": "jack-jack",
+      "name": "Jack-Jack",
+      "group": "Heroes",
+      "description": "Our hero, in his orange cap, on his trusty wheel.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jack-jack.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jack-jack-line.png",
+      "width": 1096,
+      "height": 1600
+    },
+    {
+      "id": "becca",
+      "name": "Becca",
+      "group": "Heroes",
+      "description": "Curly blonde hair and a little pink bow.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/becca.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/becca-line.png",
+      "width": 1072,
+      "height": 1600
+    },
+    {
+      "id": "unicorn",
+      "name": "The Unicorn",
+      "group": "Friends",
+      "description": "The rainbow-horned flying unicorn of Unicorn Forest.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/unicorn.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/unicorn-line.png",
+      "width": 1600,
+      "height": 1310
+    },
+    {
+      "id": "unicorn-flying",
+      "name": "Unicorn in Flight",
+      "group": "Friends",
+      "description": "Wings up — mid-flap over the forest.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/unicorn-flying.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/unicorn-flying-line.png",
+      "width": 1600,
+      "height": 1310
+    },
+    {
+      "id": "jack-jack-unicorn",
+      "name": "Jack-Jack Rides the Unicorn",
+      "group": "Heroes",
+      "description": "Jack-Jack in the saddle.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jack-jack-unicorn.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jack-jack-unicorn-line.png",
+      "width": 1600,
+      "height": 1362
+    },
+    {
+      "id": "becca-unicorn",
+      "name": "Becca Rides the Unicorn",
+      "group": "Heroes",
+      "description": "Becca in the saddle.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/becca-unicorn.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/becca-unicorn-line.png",
+      "width": 1600,
+      "height": 1389
+    },
+    {
+      "id": "monster-truck",
+      "name": "The Monster Truck",
+      "group": "Vehicles",
+      "description": "Jack-Jack at the wheel of the rally truck.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/monster-truck.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/monster-truck-line.png",
+      "width": 1588,
+      "height": 1600
+    },
+    {
+      "id": "zombie",
+      "name": "The Zombie",
+      "group": "Bosses",
+      "description": "Boss of Zombie Cave (a big softie, really).",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/zombie.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/zombie-line.png",
+      "width": 1170,
+      "height": 1600
+    },
+    {
+      "id": "king-magma",
+      "name": "King Magma",
+      "group": "Bosses",
+      "description": "The molten king of Lava World.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/king-magma.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/king-magma-line.png",
+      "width": 1491,
+      "height": 1600
+    },
+    {
+      "id": "spinosaurus",
+      "name": "Giant Spinosaurus",
+      "group": "Bosses",
+      "description": "The Dino Jungle boss, befriended with a rainbow.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/spinosaurus.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/spinosaurus-line.png",
+      "width": 1600,
+      "height": 909
+    },
+    {
+      "id": "block-buddy",
+      "name": "Block Buddy",
+      "group": "Friends",
+      "description": "One of the game’s namesake smiley blocks, found all over every world.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/block-buddy.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/block-buddy-line.png",
+      "width": 1600,
+      "height": 1600
+    },
+    {
+      "id": "spider",
+      "name": "Spider",
+      "group": "Critters",
+      "description": "A little purple spider from the early worlds — not so scary once you make friends.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/spider.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/spider-line.png",
+      "width": 1600,
+      "height": 1142
+    },
+    {
+      "id": "centipede",
+      "name": "Centipede",
+      "group": "Critters",
+      "description": "A many-legged critter that scurries through Unicorn Forest.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/centipede.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/centipede-line.png",
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "id": "fire-dino",
+      "name": "Fire-Breathing Dino",
+      "group": "Critters",
+      "description": "A fire-breathing dino from Dino Jungle, catching his breath between flame bursts.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/fire-dino.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/fire-dino-line.png",
+      "width": 1600,
+      "height": 980
+    },
+    {
+      "id": "monkey",
+      "name": "Monkey",
+      "group": "Friends",
+      "description": "Jack-Jack’s banana-loving friend from the Jungle Treehouse Trail.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/monkey.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/monkey-line.png",
+      "width": 1357,
+      "height": 1600
+    },
+    {
+      "id": "growth-shroom",
+      "name": "Big Buddy Mushroom",
+      "group": "Friends",
+      "description": "The golden mushroom that makes heroes grow big and strong.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/growth-shroom.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/growth-shroom-line.png",
+      "width": 1600,
+      "height": 1574
+    },
+    {
+      "id": "alien",
+      "name": "Space Alien",
+      "group": "Critters",
+      "description": "A curious little saucer pilot zipping through the Space Maze.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/alien.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/alien-line.png",
+      "width": 1560,
+      "height": 1600
+    },
+    {
+      "id": "zombie-town-kid",
+      "name": "Zombie Town Kid",
+      "group": "Friends",
+      "description": "A kid with a propeller beanie, waiting to be helped in Zombie Town After Dark.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/zombie-town-kid.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/zombie-town-kid-line.png",
+      "width": 1068,
+      "height": 1600
+    },
+    {
+      "id": "jungle-longneck",
+      "name": "Long-Neck Dino",
+      "group": "Friends",
+      "description": "A gentle long-neck dino that leans in to say hello in Dino Jungle.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jungle-longneck.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/jungle-longneck-line.png",
+      "width": 1474,
+      "height": 1600
+    },
+    {
+      "id": "rainbow-spider",
+      "name": "Rainbow Spider",
+      "group": "Friends",
+      "description": "The giant friendly spider who grows big in Jack’s Rainbow Spider Flower Land.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/rainbow-spider.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/rainbow-spider-line.png",
+      "width": 1600,
+      "height": 1396
+    },
+    {
+      "id": "flower-person",
+      "name": "Flower Person",
+      "group": "Friends",
+      "description": "A cheerful daisy friend who lives in the Rainbow Spider Flower Land.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/flower-person.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/flower-person-line.png",
+      "width": 1282,
+      "height": 1600
+    },
+    {
+      "id": "bubble-dragon",
+      "name": "Bubble Dragon",
+      "group": "Friends",
+      "description": "A silly teal dragon who blows bubbles in the Rainbow Spider Flower Land.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/bubble-dragon.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/bubble-dragon-line.png",
+      "width": 1600,
+      "height": 1299
+    },
+    {
+      "id": "race-bot",
+      "name": "Race Bot",
+      "group": "Friends",
+      "description": "A zippy little robot who races through the Rainbow Spider Flower Land.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/race-bot.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/race-bot-line.png",
+      "width": 1037,
+      "height": 1600
+    },
+    {
+      "id": "kraken",
+      "name": "The Kraken",
+      "group": "Bosses",
+      "description": "The giant octopus boss of Ocean Surf — befriend him with the rainbow block.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/kraken.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/kraken-line.png",
+      "width": 1600,
+      "height": 1175
+    },
+    {
+      "id": "shark",
+      "name": "Shark",
+      "group": "Critters",
+      "description": "A cool shark who splashes surfers off their boards in Ocean Surf.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/shark.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/shark-line.png",
+      "width": 1600,
+      "height": 1081
+    },
+    {
+      "id": "junkbot",
+      "name": "JunkBot",
+      "group": "Bosses",
+      "description": "The junkyard boss built from tires and scrap in Junkyard Block Bash.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/junkbot.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/junkbot-line.png",
+      "width": 1600,
+      "height": 1394
+    },
+    {
+      "id": "bouncy-buddy",
+      "name": "Bouncy Buddy",
+      "group": "Friends",
+      "description": "Bouncy Buddy, the happy rubber ball from Junkyard Block Bash.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/bouncy-buddy.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/bouncy-buddy-line.png",
+      "width": 1600,
+      "height": 1600
+    },
+    {
+      "id": "giant-spider",
+      "name": "Giant Space Spider",
+      "group": "Bosses",
+      "description": "The giant alien spider guarding the Alien Space Station.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/giant-spider.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/giant-spider-line.png",
+      "width": 1600,
+      "height": 1389
+    },
+    {
+      "id": "alien-spider",
+      "name": "Alien Spider",
+      "group": "Critters",
+      "description": "A glowing alien spider that scurries through the Alien Space Station.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/alien-spider.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/alien-spider-line.png",
+      "width": 1600,
+      "height": 1395
+    },
+    {
+      "id": "baby-dino",
+      "name": "Baby Dino",
+      "group": "Friends",
+      "description": "A happy baby dinosaur rescued in the Great Dinosaur Rescue.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/baby-dino.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/baby-dino-line.png",
+      "width": 1600,
+      "height": 1344
+    },
+    {
+      "id": "t-rex",
+      "name": "Friendly T-Rex",
+      "group": "Friends",
+      "description": "The friendly T-Rex who carries you home in the Great Dinosaur Rescue.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/t-rex.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/t-rex-line.png",
+      "width": 1600,
+      "height": 1467
+    },
+    {
+      "id": "rocket",
+      "name": "Rocket",
+      "group": "Vehicles",
+      "description": "The little rocket from Planet Blocks and the Space map.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/rocket.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/rocket-line.png",
+      "width": 1189,
+      "height": 1600
+    },
+    {
+      "id": "pirate-boat",
+      "name": "Monster-Truck Pirate Boat",
+      "group": "Vehicles",
+      "description": "The wild monster-truck pirate boat from Ocean Surf.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/pirate-boat.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/pirate-boat-line.png",
+      "width": 1253,
+      "height": 1600
+    },
+    {
+      "id": "surfboard",
+      "name": "Surfboard",
+      "group": "Vehicles",
+      "description": "The surfboard that rides the waves in Ocean Surf.",
+      "colorImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/surfboard.png",
+      "lineArtImageUrl": "https://polarispixels.github.io/block-buddies/assets/characters/surfboard-line.png",
+      "width": 1600,
+      "height": 649
+    }
+  ]
+}

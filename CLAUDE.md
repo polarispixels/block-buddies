@@ -23,7 +23,13 @@ step, zero dependencies. The design doc's success metric governs everything:
   `docs/characters/catalog.js` (`CHARACTER_CATALOG`) — ONE image per character,
   no pose variants (Ryan's call); review it with `tools/gallery-sheet.sh <name>
   ['ids=a,b&cols=N']` (color + line-art contact sheet, flags throw/empty/clip).
-  Its script list must mirror `index.html` (harness-enforced).
+  Its script list must mirror `index.html` (harness-enforced). After adding
+  or changing a character, run `tools/export-characters.py`: it re-renders
+  the static PNGs in `assets/characters/` (`<id>.png` + `<id>-line.png`) and
+  `assets/characters.json`, the public manifest external tools use. IDs are
+  permanent public URLs — never rename one. The harness fails on manifest
+  drift or gallery-code changes without a re-export; game-art changes need a
+  manual re-export.
 - **Versioning (SEMVER):** `GAME_VERSION` in `js/util.js` (also stamped tiny on
   the title screen — handy live-deploy check). Every release: bump it (MAJOR =
   breaks localStorage saves, MINOR = new level/feature, PATCH = fix), add a
@@ -333,7 +339,7 @@ cleared by `goTitle` and any non-map `startWorld`. Only Space World
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 1032 checks; must print
+  actual badge/footer values). 1040 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).

@@ -8,6 +8,29 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.31.4] - 2026-09-24
+
+### Added
+- **Character asset manifest** for external tools/AI:
+  `assets/characters.json` (https://polarispixels.github.io/block-buddies/assets/characters.json)
+  lists all 34 gallery characters — `id`, `name`, `group`, `description`,
+  `colorImageUrl`, `lineArtImageUrl`, `width`, `height` — pointing at static
+  1600 px PNGs in `assets/characters/` (`<id>.png` transparent color,
+  `<id>-line.png` coloring page). Public HTTPS, no auth; IDs are permanent.
+  Linked from the gallery page; each viewer shows the character's id and
+  permanent URL.
+- `tools/export-characters.py` regenerates the PNGs + manifest via headless
+  Chrome, through `docs/characters/render.js` — the renderer now shared with
+  the gallery page, so downloads and published assets are identical.
+- Harness: manifest ↔ catalog sync (ids, order, names, groups,
+  descriptions), URL pattern, every PNG present at its listed size (long side
+  exactly 1600), no orphans, a `sourceHash` of the gallery code, and a frozen
+  published-ID list so an id can't be renamed or dropped silently.
+
+### Fixed
+- Full-size images could come out 1601 px on the long side (rounding); now
+  exactly 1600.
+
 ## [1.31.3] - 2026-09-24
 
 ### Added

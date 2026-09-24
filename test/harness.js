@@ -4512,6 +4512,35 @@ for (const n of [1, 2, 3, 4, 5, 10]) {
   for (const c of cat) { try { c.draw(vm.runInContext('lineArtCtx', sandbox)(ctxStub)); } catch (e) { lineErr = c.id + ': ' + e.message; break; } }
   check('every gallery character redraws as coloring-page line art' + (lineErr ? ' (' + lineErr + ')' : ''), lineErr === null);
   check('character gallery loads lineart.js', galHtml.includes('<script src="lineart.js"></script>'));
+
+  // ---- the static asset manifest (assets/characters.json, v1.31.4) ----
+  const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'characters.json'), 'utf8'));
+  const BASE = 'https://polarispixels.github.io/block-buddies/assets/characters/';
+  check('manifest lists exactly the gallery catalog, in order (re-run tools/export-characters.py)',
+    JSON.stringify(man.characters.map(c => c.id)) === JSON.stringify(ids) && man.count === ids.length);
+  check('manifest names, groups and descriptions match the catalog',
+    cat.every((c, i) => man.characters[i] && man.characters[i].name === c.name && man.characters[i].group === c.group && man.characters[i].description === c.blurb));
+  check('manifest URLs are the stable public pattern',
+    man.characters.every(c => c.colorImageUrl === BASE + c.id + '.png' && c.lineArtImageUrl === BASE + c.id + '-line.png'));
+  const pngSize = f => { try { const b = fs.readFileSync(f); return b.toString('ascii', 1, 4) === 'PNG' ? [b.readUInt32BE(16), b.readUInt32BE(20)] : null; } catch (e) { return null; } };
+  check('every manifest image exists as a full-resolution PNG of the listed size',
+    man.characters.every(c => ['', '-line'].every(sfx => {
+      const d = pngSize(path.join(ROOT, 'assets', 'characters', c.id + sfx + '.png'));
+      return d && d[0] === c.width && d[1] === c.height && Math.max(d[0], d[1]) === 1600;
+    })));
+  check('no orphan character PNGs outside the manifest',
+    fs.readdirSync(path.join(ROOT, 'assets', 'characters')).every(f => man.characters.some(c => f === c.id + '.png' || f === c.id + '-line.png')));
+  const srcHash = require('crypto').createHash('sha256');
+  for (const f of ['catalog.js', 'lineart.js', 'render.js']) srcHash.update(fs.readFileSync(path.join(ROOT, 'docs', 'characters', f)));
+  check('published images match the current gallery code (sourceHash — re-run tools/export-characters.py)', man.sourceHash === srcHash.digest('hex').slice(0, 16));
+  // IDs are public and permanent: external tools fetch assets/characters/<id>.png
+  const PUBLISHED_IDS = ['jack-jack', 'becca', 'unicorn', 'unicorn-flying', 'jack-jack-unicorn', 'becca-unicorn', 'monster-truck',
+    'zombie', 'king-magma', 'spinosaurus', 'block-buddy', 'spider', 'centipede', 'fire-dino', 'monkey', 'growth-shroom', 'alien',
+    'zombie-town-kid', 'jungle-longneck', 'rainbow-spider', 'flower-person', 'bubble-dragon', 'race-bot', 'kraken', 'shark',
+    'junkbot', 'bouncy-buddy', 'giant-spider', 'alien-spider', 'baby-dino', 't-rex', 'rocket', 'pirate-boat', 'surfboard'];
+  check('no published character id was renamed or removed', PUBLISHED_IDS.every(i => ids.includes(i)));
+  check('gallery page links the manifest and loads the shared renderer',
+    galHtml.includes('href="../../assets/characters.json"') && galHtml.includes('<script src="render.js"></script>'));
 }
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
