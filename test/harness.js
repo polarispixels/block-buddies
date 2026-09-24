@@ -4503,6 +4503,13 @@ for (const n of [1, 2, 3, 4, 5, 10]) {
   for (const c of cat) { try { c.draw(ctxStub); } catch (e) { drawErr = c.id + ': ' + e.message; break; } }
   check('every gallery character draws with the game\'s art code' + (drawErr ? ' (' + drawErr + ')' : ''), drawErr === null);
   check('gallery draws leave game.character/royal untouched', G().character === 'girl' && G().royal === true);
+  // the coloring pages redraw the same art through lineArtCtx (v1.31.2) — every entry must survive it
+  sandbox.Path2D = class { rect() {} };
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'docs', 'characters', 'lineart.js'), 'utf8'), sandbox, { filename: 'lineart.js' });
+  let lineErr = null;
+  for (const c of cat) { try { c.draw(vm.runInContext('lineArtCtx', sandbox)(ctxStub)); } catch (e) { lineErr = c.id + ': ' + e.message; break; } }
+  check('every gallery character redraws as coloring-page line art' + (lineErr ? ' (' + lineErr + ')' : ''), lineErr === null);
+  check('character gallery loads lineart.js', galHtml.includes('<script src="lineart.js"></script>'));
 }
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);

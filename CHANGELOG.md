@@ -8,6 +8,20 @@ architecture; **MINOR** = new player-visible content (level, vehicle, enemy, pow
 **PATCH** = fixes and tuning. Every release bumps `GAME_VERSION` in `js/util.js`, adds an
 entry here, updates `docs/index.html`, and gets a git tag `vX.Y.Z`.
 
+## [1.31.2] - 2026-09-24
+
+### Changed
+- **Coloring pages are now redrawn, not traced.** The gallery's pixel
+  edge-trace produced broken, illegible lines (the flying unicorn was
+  unreadable). New `docs/characters/lineart.js`: `lineArtCtx(ctx)` wraps the
+  canvas so the game's own drawing code re-draws itself as line art — every
+  fill white with a crisp black outline (shapes closed, so half-domes like
+  Jack-Jack's cap get their edge), thick colored strokes as outlined bands,
+  only SMALL dark shapes (pupils, mouths) solid (tires and boots stay
+  colorable), faint glows and pale hairline accents dropped, painter's order
+  kept so overlaps read correctly. "Unicorn in Flight" uses a cleaner wing
+  pose. Harness: every catalog entry must survive the line-art redraw.
+
 ## [1.31.1] - 2026-09-23
 
 ### Added

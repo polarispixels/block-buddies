@@ -42,7 +42,7 @@ const CHARACTER_CATALOG = [
   { id: 'unicorn', name: 'The Unicorn', group: 'Friends', blurb: 'The rainbow-horned flying unicorn of Unicorn Forest.',
     draw(ctx) { drawUnicornBody(ctx, CAT_CX - 56, CAT_G - 98, 112, 98, CAT_T, { facing: 1 }); } },
   { id: 'unicorn-flying', name: 'Unicorn in Flight', group: 'Friends', blurb: 'Wings up — mid-flap over the forest.',
-    draw(ctx) { drawUnicornBody(ctx, CAT_CX - 56, CAT_G - 98, 112, 98, CAT_T, { facing: 1, airborne: true, flapT: 0.2 }); } },
+    draw(ctx) { drawUnicornBody(ctx, CAT_CX - 56, CAT_G - 98, 112, 98, CAT_T, { facing: 1, airborne: true, flapT: 0 }); } },
   { id: 'jack-jack-unicorn', name: 'Jack-Jack Rides the Unicorn', group: 'Heroes', blurb: 'Jack-Jack in the saddle.',
     draw(ctx) { catAsHero('boy', () => catPlayer('boy', 'unicorn').draw(ctx)); } },
   { id: 'becca-unicorn', name: 'Becca Rides the Unicorn', group: 'Heroes', blurb: 'Becca in the saddle.',

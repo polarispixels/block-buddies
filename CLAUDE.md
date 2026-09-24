@@ -17,8 +17,9 @@ step, zero dependencies. The design doc's success metric governs everything:
   https://polarispixels.github.io/block-buddies/docs/ — architecture, per-level
   detail, systems, versioning. Keep it in sync with reality on every change.
 - **Character gallery:** `docs/characters/` (linked from the docs) — full-size
-  downloadable PNGs of characters, color or auto-traced coloring-page line art,
-  drawn live by the game's own art code. Add a character = one entry in
+  downloadable PNGs of characters, color or coloring-page line art, drawn live
+  by the game's own art code (line art = the same draw calls redrawn through
+  `lineArtCtx` in `docs/characters/lineart.js`, not a pixel trace). Add a character = one entry in
   `docs/characters/catalog.js` (`CHARACTER_CATALOG`); its script list must
   mirror `index.html` (harness-enforced).
 - **Versioning (SEMVER):** `GAME_VERSION` in `js/util.js` (also stamped tiny on
@@ -330,7 +331,7 @@ cleared by `goTitle` and any non-map `startWorld`. Only Space World
   every boss stage, both endings, vehicles, touch-tap paths, title pickers,
   plus a BFS solvability check of the space maze (zero sealed rooms, long
   goal path) and version/changelog/docs sync checks (the docs check parses the
-  actual badge/footer values). 1029 checks; must print
+  actual badge/footer values). 1031 checks; must print
   `ALL CHECKS PASSED`. Run it 2-3× — a
   flaky pass usually means a real nondeterminism bug. Add checks for every
   new feature and every bug fix (regression tests caught 3 shipped bugs).
